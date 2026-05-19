@@ -29,6 +29,16 @@ resume-build build --mode ai \
     --formats latex,pdf,md,json \
     --output ./out/
 
+# CLI — AI mode WITHOUT an API key (interactive, route through a Claude chat)
+# Each LLM call prints a block to copy into a Claude chat; paste the reply back,
+# end with a line containing "===END===". No token, no network.
+resume-build build --mode ai \
+    --llm-provider claude-session \
+    --gh-user yourhandle \
+    --role-prompt "cybersecurity blue team / SOC analyst" \
+    --docs ./my-resume.pdf \
+    --output ./out/
+
 # CLI — static mode
 resume-build build --mode static \
     --gh-user yourhandle \

@@ -13,6 +13,7 @@ from typing import Callable
 from ..config import Settings, get_settings
 from .anthropic_provider import AnthropicProvider
 from .base import LLMProvider
+from .claude_session_provider import ClaudeSessionProvider
 from .null_provider import NullProvider
 from .openai_provider import OpenAIProvider
 
@@ -29,10 +30,15 @@ def _build_null(_: Settings) -> LLMProvider:
     return NullProvider()
 
 
+def _build_claude_session(_: Settings) -> LLMProvider:
+    return ClaudeSessionProvider()
+
+
 _REGISTRY: dict[str, Callable[[Settings], LLMProvider]] = {
     "anthropic": _build_anthropic,
     "openai": _build_openai,
     "null": _build_null,
+    "claude-session": _build_claude_session,
 }
 
 

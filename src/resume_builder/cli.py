@@ -16,6 +16,7 @@ from pathlib import Path
 import typer
 
 from .config import get_settings
+from .llm import get_provider
 from .models import Mode
 from .pipeline import BuildInputs, Pipeline
 from .role import StaticRolePicker
@@ -53,6 +54,13 @@ def build(
         help="Comma-separated output formats: latex, md, json, pdf.",
     ),
     output: Path = typer.Option(Path("./out"), "--output", help="Output directory."),
+    llm_provider: str | None = typer.Option(
+        None,
+        "--llm-provider",
+        help="Override LLM provider (anthropic | openai | claude-session | null). "
+        "Use `claude-session` to drive AI mode interactively via stdin/stdout — "
+        "no API key required.",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Build a role-targeted resume."""
@@ -65,7 +73,8 @@ def build(
         flag = "--role-prompt" if mode == Mode.AI else "--role"
         raise typer.BadParameter(f"{flag} is required in {mode.value} mode.")
 
-    pipeline = Pipeline(mode=mode)
+    llm = get_provider(llm_provider) if (llm_provider and mode == Mode.AI) else None
+    pipeline = Pipeline(mode=mode, llm=llm)
     inputs = BuildInputs(
         gh_user=gh_user,
         role_selection=selection,
