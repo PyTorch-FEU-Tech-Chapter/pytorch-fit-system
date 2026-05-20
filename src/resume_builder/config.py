@@ -9,7 +9,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     gh_user: str | None = None
     config_dir: Path = DEFAULT_CONFIG_DIR
+
+    @field_validator("config_dir", mode="before")
+    @classmethod
+    def _coerce_config_dir(cls, v):
+        # Empty env values land here as "" which Path turns into Path('.') silently;
+        # treat blank as "use the default".
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return DEFAULT_CONFIG_DIR
+        return v
 
     @property
     def roles_path(self) -> Path:

@@ -16,7 +16,6 @@ from pathlib import Path
 import typer
 
 import json
-import os
 
 from .config import get_settings
 from .llm import get_provider
@@ -27,7 +26,6 @@ from .sources.social import build_default_aggregator, load_scrape_config
 from .sources.social.auth import (
     ConsolePrompt,
     Credentials,
-    FilePrompt,
     LoginError,
     SessionStore,
 )
@@ -116,21 +114,36 @@ def list_vendors() -> None:
         typer.echo(f"  {name}")
 
 
-@app.command()
-def scrape(
-    vendor: str = typer.Option(..., "--vendor", help="Vendor name (e.g. twitter)."),
-    handle: str = typer.Option("", "--handle", help="User handle on that vendor."),
-    full_name: str = typer.Option(
-        "", "--full-name", help="Full name for mention search."
-    ),
-    limit: int = typer.Option(50, "--limit"),
-    output: Path | None = typer.Option(None, "--output", help="Write JSON here."),
-) -> None:
-    """Run a single vendor and dump posts + mentions as JSON for debugging."""
+def _pick_vendor_interactive() -> str:
+    """Show a numbered menu of vendors; accept number or name."""
     agg = build_default_aggregator()
-    if vendor not in agg.available_vendors():
-        raise typer.BadParameter(f"Unknown vendor: {vendor}")
-    factory = agg._registry[vendor]  # intentional: debug-only path  # noqa: SLF001
+    vendors = agg.available_vendors()
+    typer.echo("\nAvailable vendors:")
+    for i, v in enumerate(vendors, 1):
+        typer.echo(f"  {i}. {v}")
+    while True:
+        raw = typer.prompt("Pick a vendor (number or name)").strip().lower()
+        if raw.isdigit() and 1 <= int(raw) <= len(vendors):
+            return vendors[int(raw) - 1]
+        if raw in vendors:
+            return raw
+        typer.secho("Invalid choice. Try again.", fg=typer.colors.YELLOW)
+
+
+@app.command()
+def scrape() -> None:
+    """Run a single vendor and dump posts + mentions as JSON. No flags — just answer the prompts."""
+    vendor = _pick_vendor_interactive()
+    agg = build_default_aggregator()
+    handle = typer.prompt(
+        "Your handle on that vendor (leave blank to skip own-posts)", default=""
+    )
+    full_name = typer.prompt(
+        "Full name for mention search (leave blank to skip)", default=""
+    )
+    limit = int(typer.prompt("Max results per call", default="50"))
+
+    factory = agg._registry[vendor]  # noqa: SLF001
     impl = factory()
     posts = impl.fetch_own_posts(handle, limit=limit) if handle else []
     mentions = impl.search_mentions(full_name, limit=limit) if full_name else []
@@ -140,9 +153,16 @@ def scrape(
         "mentions": [m.model_dump(mode="json") for m in mentions],
     }
     text = json.dumps(payload, indent=2, default=str)
-    if output:
-        output.write_text(text, encoding="utf-8")
-        typer.echo(f"Wrote {output}")
+
+    if typer.confirm("Save output to a file?", default=False):
+        raw = typer.prompt("Output path", default=f"out/{vendor}.json")
+        out_path = Path(raw)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(text, encoding="utf-8")
+        typer.secho(
+            f"Wrote {out_path} ({len(posts)} posts, {len(mentions)} mentions)",
+            fg=typer.colors.GREEN,
+        )
     else:
         typer.echo(text)
 
@@ -189,62 +209,42 @@ def _resolve_login(vendor: str):
 
 
 @app.command()
-def login(
-    vendor: str = typer.Option(..., "--vendor", help="twitter | linkedin | facebook | instagram"),
-    username: str = typer.Option(..., "--username", "-u"),
-    use_browser_cookies: bool = typer.Option(
-        False,
-        "--from-browser",
-        help="Skip programmatic login; pull cookies from local browser instead.",
-    ),
-    browser: str = typer.Option(
-        "auto",
-        "--browser",
-        help="chrome|edge|firefox|brave|opera|auto. `auto` tries Chrome first then "
-        "falls through the others so other users on Edge/Firefox still work.",
-    ),
-    prompt_mode: str = typer.Option(
-        "console",
-        "--prompt-mode",
-        help="console | file. `file` mode coordinates Q&A via files in --prompt-dir "
-        "so a remote agent can drive login while you type into a text editor.",
-    ),
-    prompt_dir: Path | None = typer.Option(
-        None,
-        "--prompt-dir",
-        help="Directory for FilePrompt question/answer files. Required when prompt-mode=file.",
-    ),
-    password_env: str | None = typer.Option(
-        None,
-        "--password-env",
-        help="Read password from this env var instead of prompting. Recommended with "
-        "--prompt-mode file so the password never touches disk.",
-    ),
-) -> None:
-    """Sign in to a social vendor. Prompts the password (hidden) and any 2FA challenges.
+def login() -> None:
+    """Sign in to a social vendor. No flags — just answer the prompts.
 
-    On programmatic-login failure (checkpoint, CAPTCHA, etc.), pass --from-browser
-    to read cookies from your already-signed-in browser session — no password needed.
+    You'll be asked: which vendor, browser-cookie path or username+password,
+    then any 2FA codes if they come up.
     """
-    store = SessionStore()
-    if prompt_mode == "file":
-        if prompt_dir is None:
-            raise typer.BadParameter("--prompt-dir is required when --prompt-mode=file")
-        prompt = FilePrompt(prompt_dir)
-        typer.echo(f"FilePrompt active. Watch {prompt_dir}/status.txt and answer qN.txt by creating qN.answer.")
-    else:
-        prompt = ConsolePrompt()
+    import getpass
 
-    if use_browser_cookies:
+    store = SessionStore()
+    vendor = _pick_vendor_interactive()
+
+    typer.echo("\nHow do you want to sign in?")
+    typer.echo("  1. Use cookies from my browser (recommended — no password needed)")
+    typer.echo("  2. Type my username and password here")
+    choice = typer.prompt("Pick (1 or 2)", default="1").strip()
+
+    if choice == "1":
+        typer.echo("\nWhich browser are you signed in on?")
+        typer.echo("  1. Chrome  (needs admin shell on Windows)")
+        typer.echo("  2. Edge")
+        typer.echo("  3. Firefox")
+        typer.echo("  4. Brave")
+        typer.echo("  5. Opera")
+        typer.echo("  6. Auto (try all, Chrome first)")
+        b_raw = typer.prompt("Pick (1-6)", default="6").strip()
+        b_map = {"1": "chrome", "2": "edge", "3": "firefox", "4": "brave", "5": "opera", "6": "auto"}
+        browser = b_map.get(b_raw, "auto")
         report = import_cookies_report(vendor, browser=browser)
-        typer.echo("Browser cookie probe:")
+        typer.echo("\nBrowser cookie probe:")
         for name, status in report.attempts:
             typer.echo(f"  {name:<10} {status}")
         if not report.ok:
             typer.secho(
-                f"\nNo {vendor} cookies recovered. On Windows, Chrome requires admin "
-                "to decrypt cookies — try Edge or run this terminal as admin. "
-                "Make sure you are signed in on that browser first.",
+                f"\nNo {vendor} cookies recovered. On Windows, Chrome cookies need "
+                "an admin shell to decrypt. Try Edge, or right-click PowerShell -> "
+                "'Run as administrator'. Make sure you're signed in on that browser first.",
                 fg=typer.colors.RED,
             )
             raise typer.Exit(code=1)
@@ -255,34 +255,33 @@ def login(
         )
         return
 
-    if password_env:
-        password = os.environ.get(password_env, "")
-        if not password:
-            typer.secho(f"Env var {password_env} is empty or unset.", fg=typer.colors.RED)
-            raise typer.Exit(code=1)
-    else:
-        password = prompt.ask(f"{vendor} password", secret=True)
+    # Username/password path
+    username = typer.prompt(f"{vendor} username or email")
+    password = getpass.getpass(f"{vendor} password (hidden): ")
+    if not password:
+        typer.secho("Empty password — aborting.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
     creds = Credentials(username=username, password=password)
     login_fn = _resolve_login(vendor)
     try:
-        cookies = login_fn(creds, prompt)
+        cookies = login_fn(creds, ConsolePrompt())
     except LoginError as exc:
-        typer.secho(f"Login failed: {exc}", fg=typer.colors.RED)
-        typer.echo("Tip: retry with --from-browser if you can sign in via your browser.")
+        typer.secho(f"\nLogin failed: {exc}", fg=typer.colors.RED)
+        typer.echo("Tip: try the browser-cookie path instead — no password needed.")
         raise typer.Exit(code=1) from exc
-
     store.save(vendor, cookies)
     typer.secho(
-        f"Signed in. {len(cookies)} cookies saved to {store.path(vendor)}",
+        f"\nSigned in. {len(cookies)} cookies saved to {store.path(vendor)}",
         fg=typer.colors.GREEN,
     )
 
 
 @app.command()
-def logout(vendor: str = typer.Option(..., "--vendor")) -> None:
-    """Clear the persisted session for a vendor."""
+def logout() -> None:
+    """Clear the persisted session for a vendor — no flags, just answer the prompt."""
+    vendor = _pick_vendor_interactive()
     SessionStore().clear(vendor)
-    typer.echo(f"Cleared session for {vendor}.")
+    typer.secho(f"Cleared session for {vendor}.", fg=typer.colors.GREEN)
 
 
 if __name__ == "__main__":
