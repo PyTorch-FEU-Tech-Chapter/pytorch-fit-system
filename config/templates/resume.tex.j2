@@ -72,6 +72,15 @@
 (* endfor *)
 (* endif *)
 
+(* if resume.achievements *)
+\section*{Achievements}
+\begin{itemize}
+(* for a in resume.achievements *)
+  \item \textbf{<< a.title | tex_escape >>}(* if a.date *) \textit{(<< a.date | tex_escape >>)}(* endif *) --- \textit{<< a.source | tex_escape >>}(* if a.snippet *): << a.snippet | tex_escape >>(* endif *)
+(* endfor *)
+\end{itemize}
+(* endif *)
+
 (* if resume.certifications *)
 \section*{Certifications}
 \begin{itemize}

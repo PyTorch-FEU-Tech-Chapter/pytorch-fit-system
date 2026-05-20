@@ -70,7 +70,7 @@ class RawDocument(BaseModel):
 class Evidence(BaseModel):
     """One unit of role-relevance signal extracted from a source."""
 
-    source_kind: Literal["repo", "document"]
+    source_kind: Literal["repo", "document", "social"]
     source_id: str = Field(..., description="Repo full_name or document filename.")
     snippet: str = ""
     matched_terms: list[str] = Field(default_factory=list)
@@ -124,6 +124,18 @@ class ResumeCertification(BaseModel):
     url: str | None = None
 
 
+class ResumeAchievement(BaseModel):
+    """A noteworthy accomplishment surfaced from social signals or documents."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    title: str
+    source: str = Field(..., description="Vendor or origin label, e.g. 'facebook' or 'github'.")
+    url: str | None = None
+    date: str | None = None
+    snippet: str = ""
+
+
 class Resume(BaseModel):
     """Canonical resume model. All renderers consume exactly this."""
 
@@ -137,4 +149,5 @@ class Resume(BaseModel):
     projects: list[ResumeProject] = Field(default_factory=list)
     education: list[ResumeEducation] = Field(default_factory=list)
     certifications: list[ResumeCertification] = Field(default_factory=list)
+    achievements: list[ResumeAchievement] = Field(default_factory=list)
     generated_on: date = Field(default_factory=date.today)

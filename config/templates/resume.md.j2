@@ -55,6 +55,14 @@
 {% endfor %}
 {% endif %}
 
+{% if resume.achievements %}
+## Achievements
+
+{% for a in resume.achievements %}
+- **{{ a.title }}**{% if a.date %} *({{ a.date }})*{% endif %} — *{{ a.source }}*{% if a.snippet %}: {{ a.snippet }}{% endif %}
+{% endfor %}
+{% endif %}
+
 {% if resume.certifications %}
 ## Certifications
 

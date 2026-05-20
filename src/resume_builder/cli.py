@@ -15,11 +15,14 @@ from pathlib import Path
 
 import typer
 
+import json
+
 from .config import get_settings
 from .llm import get_provider
 from .models import Mode
 from .pipeline import BuildInputs, Pipeline
 from .role import StaticRolePicker
+from .sources.social import build_default_aggregator, load_scrape_config
 
 app = typer.Typer(help="GitHub-aware role-targeted resume builder.", no_args_is_help=True)
 
@@ -54,6 +57,12 @@ def build(
         help="Comma-separated output formats: latex, md, json, pdf.",
     ),
     output: Path = typer.Option(Path("./out"), "--output", help="Output directory."),
+    social: Path | None = typer.Option(
+        None,
+        "--social",
+        help="Path to a social.yaml describing handles + enabled vendors for the "
+        "scraping middleman. Optional — pipeline runs fine without it.",
+    ),
     llm_provider: str | None = typer.Option(
         None,
         "--llm-provider",
@@ -81,12 +90,74 @@ def build(
         docs_path=docs,
         formats=_parse_formats(formats),
         output_dir=output,
+        social_config_path=social,
     )
     result = pipeline.run(inputs)
     typer.echo(f"\nGenerated for role: {result.resume.role.label}")
     typer.echo(f"Projects included: {len(result.resume.projects)}")
     for path in result.output_paths:
         typer.echo(f"  -> {path}")
+
+
+@app.command("list-vendors")
+def list_vendors() -> None:
+    """List registered social-media vendor handlers."""
+    agg = build_default_aggregator()
+    for name in agg.available_vendors():
+        typer.echo(f"  {name}")
+
+
+@app.command()
+def scrape(
+    vendor: str = typer.Option(..., "--vendor", help="Vendor name (e.g. twitter)."),
+    handle: str = typer.Option("", "--handle", help="User handle on that vendor."),
+    full_name: str = typer.Option(
+        "", "--full-name", help="Full name for mention search."
+    ),
+    limit: int = typer.Option(50, "--limit"),
+    output: Path | None = typer.Option(None, "--output", help="Write JSON here."),
+) -> None:
+    """Run a single vendor and dump posts + mentions as JSON for debugging."""
+    agg = build_default_aggregator()
+    if vendor not in agg.available_vendors():
+        raise typer.BadParameter(f"Unknown vendor: {vendor}")
+    factory = agg._registry[vendor]  # intentional: debug-only path  # noqa: SLF001
+    impl = factory()
+    posts = impl.fetch_own_posts(handle, limit=limit) if handle else []
+    mentions = impl.search_mentions(full_name, limit=limit) if full_name else []
+    payload = {
+        "vendor": vendor,
+        "posts": [p.model_dump(mode="json") for p in posts],
+        "mentions": [m.model_dump(mode="json") for m in mentions],
+    }
+    text = json.dumps(payload, indent=2, default=str)
+    if output:
+        output.write_text(text, encoding="utf-8")
+        typer.echo(f"Wrote {output}")
+    else:
+        typer.echo(text)
+
+
+@app.command("scrape-all")
+def scrape_all(
+    config: Path = typer.Option(..., "--config", help="Path to social.yaml."),
+    output: Path | None = typer.Option(None, "--output", help="Write merged JSON."),
+) -> None:
+    """Run every enabled vendor through the aggregator and dump merged JSON."""
+    scrape_config = load_scrape_config(str(config))
+    agg = build_default_aggregator()
+    result = agg.collect(scrape_config)
+    payload = {
+        "posts": [p.model_dump(mode="json") for p in result.posts],
+        "mentions": [m.model_dump(mode="json") for m in result.mentions],
+        "failures": result.failures,
+    }
+    text = json.dumps(payload, indent=2, default=str)
+    if output:
+        output.write_text(text, encoding="utf-8")
+        typer.echo(f"Wrote {output} ({len(result.posts)} posts, {len(result.mentions)} mentions)")
+    else:
+        typer.echo(text)
 
 
 if __name__ == "__main__":
