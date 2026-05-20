@@ -59,6 +59,63 @@ class ScriptedPrompt:
         return self.answers.pop(0)
 
 
+class FilePrompt:
+    """File-coordinated prompt for environments without a usable stdin.
+
+    Each ``ask`` writes a ``qN.txt`` file containing the question, then polls for
+    a sibling ``qN.answer`` file the user creates with the response. Answer files
+    are unlinked immediately after read so secrets don't linger.
+
+    Layout (under ``base_dir``):
+        q1.txt        # written by us; contains the question
+        q1.answer     # written by the user; we read + delete it
+
+    A ``status.txt`` file is updated at each step so monitors can tail it.
+    """
+
+    def __init__(self, base_dir: Path, *, timeout_s: float = 600.0, poll_s: float = 1.0) -> None:
+        self._base = Path(base_dir)
+        self._base.mkdir(parents=True, exist_ok=True)
+        self._timeout = timeout_s
+        self._poll = poll_s
+        self._counter = 0
+
+    def ask(self, question: str, *, secret: bool = False) -> str:
+        import time
+
+        self._counter += 1
+        q_path = self._base / f"q{self._counter}.txt"
+        a_path = self._base / f"q{self._counter}.answer"
+        meta = "[secret]\n" if secret else ""
+        q_path.write_text(f"{meta}{question}\n", encoding="utf-8")
+        self._set_status(f"awaiting answer #{self._counter}: {question}")
+
+        deadline = time.monotonic() + self._timeout
+        while time.monotonic() < deadline:
+            if a_path.exists():
+                try:
+                    answer = a_path.read_text(encoding="utf-8").strip()
+                finally:
+                    try:
+                        a_path.unlink()
+                    except OSError:
+                        pass
+                try:
+                    q_path.unlink()
+                except OSError:
+                    pass
+                self._set_status(f"received answer #{self._counter}")
+                return answer
+            time.sleep(self._poll)
+        raise LoginError(f"FilePrompt timeout waiting for answer to: {question}")
+
+    def _set_status(self, line: str) -> None:
+        try:
+            (self._base / "status.txt").write_text(line + "\n", encoding="utf-8")
+        except OSError:
+            pass
+
+
 # ---- challenges ----
 
 

@@ -16,6 +16,7 @@ from pathlib import Path
 import typer
 
 import json
+import os
 
 from .config import get_settings
 from .llm import get_provider
@@ -23,7 +24,13 @@ from .models import Mode
 from .pipeline import BuildInputs, Pipeline
 from .role import StaticRolePicker
 from .sources.social import build_default_aggregator, load_scrape_config
-from .sources.social.auth import ConsolePrompt, Credentials, LoginError, SessionStore
+from .sources.social.auth import (
+    ConsolePrompt,
+    Credentials,
+    FilePrompt,
+    LoginError,
+    SessionStore,
+)
 from .sources.social.browser_cookies import import_cookies_report
 
 app = typer.Typer(help="GitHub-aware role-targeted resume builder.", no_args_is_help=True)
@@ -196,6 +203,23 @@ def login(
         help="chrome|edge|firefox|brave|opera|auto. `auto` tries Chrome first then "
         "falls through the others so other users on Edge/Firefox still work.",
     ),
+    prompt_mode: str = typer.Option(
+        "console",
+        "--prompt-mode",
+        help="console | file. `file` mode coordinates Q&A via files in --prompt-dir "
+        "so a remote agent can drive login while you type into a text editor.",
+    ),
+    prompt_dir: Path | None = typer.Option(
+        None,
+        "--prompt-dir",
+        help="Directory for FilePrompt question/answer files. Required when prompt-mode=file.",
+    ),
+    password_env: str | None = typer.Option(
+        None,
+        "--password-env",
+        help="Read password from this env var instead of prompting. Recommended with "
+        "--prompt-mode file so the password never touches disk.",
+    ),
 ) -> None:
     """Sign in to a social vendor. Prompts the password (hidden) and any 2FA challenges.
 
@@ -203,7 +227,13 @@ def login(
     to read cookies from your already-signed-in browser session — no password needed.
     """
     store = SessionStore()
-    prompt = ConsolePrompt()
+    if prompt_mode == "file":
+        if prompt_dir is None:
+            raise typer.BadParameter("--prompt-dir is required when --prompt-mode=file")
+        prompt = FilePrompt(prompt_dir)
+        typer.echo(f"FilePrompt active. Watch {prompt_dir}/status.txt and answer qN.txt by creating qN.answer.")
+    else:
+        prompt = ConsolePrompt()
 
     if use_browser_cookies:
         report = import_cookies_report(vendor, browser=browser)
@@ -225,7 +255,13 @@ def login(
         )
         return
 
-    password = prompt.ask(f"{vendor} password", secret=True)
+    if password_env:
+        password = os.environ.get(password_env, "")
+        if not password:
+            typer.secho(f"Env var {password_env} is empty or unset.", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+    else:
+        password = prompt.ask(f"{vendor} password", secret=True)
     creds = Credentials(username=username, password=password)
     login_fn = _resolve_login(vendor)
     try:
