@@ -197,6 +197,47 @@ _LOGIN_REGISTRY = {
     "instagram": "resume_builder.sources.social.vendors.instagram:login_instagram",
 }
 
+# Per-vendor cookie names users will see in DevTools.
+# First entry in each tuple is required; the rest are optional but improve reliability.
+_VENDOR_COOKIES: dict[str, tuple[str, ...]] = {
+    "facebook": ("c_user", "xs"),
+    "linkedin": ("li_at",),
+    "instagram": ("sessionid",),
+    "twitter": ("auth_token", "ct0"),
+}
+
+_DEVTOOLS_HINTS: dict[str, str] = {
+    "facebook": "Open facebook.com signed in -> F12 -> Application tab -> Cookies -> https://www.facebook.com",
+    "linkedin": "Open linkedin.com signed in -> F12 -> Application tab -> Cookies -> https://www.linkedin.com",
+    "instagram": "Open instagram.com signed in -> F12 -> Application tab -> Cookies -> https://www.instagram.com",
+    "twitter": "Open x.com signed in -> F12 -> Application tab -> Cookies -> https://x.com",
+}
+
+
+def _collect_manual_cookies(vendor: str) -> dict[str, str]:
+    """Walk the user through DevTools cookie-copy. Returns whatever was provided."""
+    needed = _VENDOR_COOKIES.get(vendor, ())
+    if not needed:
+        typer.secho(f"No cookie schema for vendor {vendor}", fg=typer.colors.RED)
+        return {}
+    typer.echo("")
+    typer.secho(
+        f"How to grab the cookies for {vendor}:",
+        fg=typer.colors.CYAN,
+        bold=True,
+    )
+    typer.echo(f"  {_DEVTOOLS_HINTS.get(vendor, '(see browser DevTools cookie panel)')}")
+    typer.echo(f"  You will need: {', '.join(needed)}")
+    typer.echo("  Tip: click the cookie row, then double-click the Value cell to select it.\n")
+
+    out: dict[str, str] = {}
+    for name in needed:
+        value = masked_input(f"Paste value of `{name}`: ")
+        value = value.strip().strip('"').strip("'")
+        if value:
+            out[name] = value
+    return out
+
 
 def _resolve_login(vendor: str):
     target = _LOGIN_REGISTRY.get(vendor)
@@ -220,9 +261,10 @@ def login() -> None:
     vendor = _pick_vendor_interactive()
 
     typer.echo("\nHow do you want to sign in?")
-    typer.echo("  1. Use cookies from my browser (recommended — no password needed)")
+    typer.echo("  1. Use cookies from my browser automatically")
     typer.echo("  2. Type my username and password here")
-    choice = typer.prompt("Pick (1 or 2)", default="1").strip()
+    typer.echo("  3. Paste cookie values from DevTools (most reliable — works with any Chrome version)")
+    choice = typer.prompt("Pick (1, 2, or 3)", default="3").strip()
 
     if choice == "1":
         typer.echo("\nWhich browser are you signed in on?")
@@ -240,16 +282,51 @@ def login() -> None:
         for name, status in report.attempts:
             typer.echo(f"  {name:<10} {status}")
         if not report.ok:
-            typer.secho(
-                f"\nNo {vendor} cookies recovered. On Windows, Chrome cookies need "
-                "an admin shell to decrypt. Try Edge, or right-click PowerShell -> "
-                "'Run as administrator'. Make sure you're signed in on that browser first.",
-                fg=typer.colors.RED,
+            app_bound = any(
+                "unable to get key" in status.lower()
+                or "app-bound" in status.lower()
+                for _, status in report.attempts
             )
+            requires_admin = any(
+                "requiresadmin" in status.lower() for _, status in report.attempts
+            )
+            typer.echo("")
+            if app_bound:
+                typer.secho(
+                    "Chrome v127+ uses app-bound encryption that browser_cookie3 "
+                    "cannot read. Admin shell will NOT help. Try Edge or Firefox, "
+                    "or use option 3 (paste cookies from DevTools) — that always works.",
+                    fg=typer.colors.RED,
+                )
+            elif requires_admin:
+                typer.secho(
+                    "Chrome cookies on this box are DPAPI-encrypted at user scope. "
+                    "Right-click PowerShell -> 'Run as administrator' and retry, "
+                    "or use option 3 (paste from DevTools) — no admin needed.",
+                    fg=typer.colors.RED,
+                )
+            else:
+                typer.secho(
+                    f"No {vendor} cookies recovered. Make sure you're signed in "
+                    "on that browser first, or use option 3 (paste from DevTools).",
+                    fg=typer.colors.RED,
+                )
             raise typer.Exit(code=1)
         store.save(vendor, report.cookies)
         typer.secho(
             f"\nSaved {len(report.cookies)} cookies for {vendor} -> {store.path(vendor)}",
+            fg=typer.colors.GREEN,
+        )
+        return
+
+    if choice == "3":
+        cookies = _collect_manual_cookies(vendor)
+        if not cookies:
+            typer.secho("No cookies entered — aborting.", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+        store.save(vendor, cookies)
+        typer.secho(
+            f"\nSaved {len(cookies)} cookies for {vendor} -> {store.path(vendor)}",
             fg=typer.colors.GREEN,
         )
         return
