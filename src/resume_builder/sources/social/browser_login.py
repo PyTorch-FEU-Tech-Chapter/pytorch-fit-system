@@ -19,19 +19,53 @@ from dataclasses import dataclass
 log = logging.getLogger(__name__)
 
 
-_LOGIN_URLS: dict[str, str] = {
-    "facebook": "https://www.facebook.com/",
-    "twitter": "https://x.com/i/flow/login",
-    "linkedin": "https://www.linkedin.com/login",
-    "instagram": "https://www.instagram.com/accounts/login/",
-}
+@dataclass(frozen=True)
+class VendorConfig:
+    """Per-vendor selector + URL data sourced from DevTools analysis of each login page."""
 
-# Cookie whose presence means the vendor has authenticated the session.
-_SUCCESS_COOKIE: dict[str, str] = {
-    "facebook": "c_user",
-    "twitter": "auth_token",
-    "linkedin": "li_at",
-    "instagram": "sessionid",
+    url: str
+    success_cookie: str
+    # Optional: an element whose appearance also signals a successful sign-in
+    # (useful when a vendor sets the success cookie only after a redirect).
+    success_selector: str | None
+    # Optional: the form field where we can pre-fill a username/email to save a step.
+    username_selector: str | None
+    # Optional: heuristic to detect that the vendor is asking for a 2FA code so we can
+    # nudge the user instead of just sitting silent.
+    twofa_selector: str | None
+
+
+_VENDOR_CONFIG: dict[str, VendorConfig] = {
+    "facebook": VendorConfig(
+        url="https://www.facebook.com/",
+        success_cookie="c_user",
+        # Facebook home feed renders the main column with [role=main].
+        success_selector="div[role='main']",
+        username_selector="input#email",
+        # Two-factor / checkpoint form input from the DevTools analysis.
+        twofa_selector="input#approvals_code",
+    ),
+    "twitter": VendorConfig(
+        url="https://x.com/i/flow/login",
+        success_cookie="auth_token",
+        success_selector="[data-testid='primaryColumn']",
+        username_selector="input[autocomplete='username']",
+        twofa_selector="input[autocomplete='one-time-code']",
+    ),
+    "linkedin": VendorConfig(
+        url="https://www.linkedin.com/login",
+        success_cookie="li_at",
+        success_selector="main",
+        username_selector="input#username",
+        twofa_selector="input#input__phone_verification_pin",
+    ),
+    "instagram": VendorConfig(
+        url="https://www.instagram.com/accounts/login/",
+        success_cookie="sessionid",
+        success_selector="main[role='main']",
+        username_selector="input[name='username']",
+        twofa_selector="input[name='verificationCode']",
+    ),
 }
 
 
@@ -48,44 +82,83 @@ class BrowserLoginResult:
 def open_login_window(
     vendor: str,
     *,
+    prefill_username: str | None = None,
     poll_seconds: float = 1.5,
     timeout_seconds: float = 600.0,
     settle_seconds: float = 2.0,
     playwright_module=None,
+    on_twofa_detected=None,
 ) -> BrowserLoginResult:
     """Open a real Chromium window for the vendor; return cookies after sign-in.
 
-    ``playwright_module`` is for tests — production callers leave it None and the
-    real ``playwright.sync_api`` is imported lazily.
+    ``prefill_username`` types the username into the vendor's username field
+    automatically (selectors come from each vendor's DevTools analysis), so the user
+    only has to type the password + any 2FA code.
+
+    ``on_twofa_detected`` is invoked once when the 2FA input appears — the CLI uses
+    this to print a hint like "Enter the code from your authenticator in the window".
+
+    ``playwright_module`` is for tests; production leaves it ``None``.
     """
     sync_playwright = _resolve_playwright(playwright_module)
 
-    url = _LOGIN_URLS.get(vendor)
-    if not url:
-        raise RuntimeError(f"No login URL configured for vendor: {vendor}")
-    success_cookie = _SUCCESS_COOKIE[vendor]
+    cfg = _VENDOR_CONFIG.get(vendor)
+    if cfg is None:
+        raise RuntimeError(f"No login config for vendor: {vendor}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         context = browser.new_context()
         page = context.new_page()
-        page.goto(url)
+        page.goto(cfg.url)
 
+        if prefill_username and cfg.username_selector:
+            try:
+                page.wait_for_selector(cfg.username_selector, timeout=10_000)
+                page.fill(cfg.username_selector, prefill_username)
+            except Exception as exc:  # noqa: BLE001
+                log.debug("prefill skipped (selector %s not ready): %s", cfg.username_selector, exc)
+
+        notified_twofa = False
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
             cookies = _jar_to_dict(context.cookies())
-            if success_cookie in cookies:
+            if cfg.success_cookie in cookies and _selector_present(page, cfg.success_selector):
                 time.sleep(settle_seconds)
                 cookies = _jar_to_dict(context.cookies())
                 state = context.storage_state()
                 browser.close()
                 return BrowserLoginResult(cookies=cookies, storage_state=state)
+
+            if (
+                not notified_twofa
+                and cfg.twofa_selector
+                and on_twofa_detected
+                and _selector_present(page, cfg.twofa_selector)
+            ):
+                notified_twofa = True
+                try:
+                    on_twofa_detected(vendor)
+                except Exception:  # noqa: BLE001 - never let a CLI callback derail login
+                    pass
+
             time.sleep(poll_seconds)
 
         browser.close()
         raise TimeoutError(
-            f"login window timed out for {vendor} — no `{success_cookie}` cookie set."
+            f"login window timed out for {vendor} — no `{cfg.success_cookie}` cookie set."
         )
+
+
+def _selector_present(page, selector: str | None) -> bool:
+    """Return True if selector is None (no constraint) or the element is visible."""
+    if not selector:
+        return True
+    try:
+        element = page.query_selector(selector)
+        return bool(element)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _resolve_playwright(injected):

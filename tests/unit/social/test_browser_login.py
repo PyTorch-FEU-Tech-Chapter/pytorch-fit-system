@@ -13,11 +13,16 @@ from resume_builder.sources.social.browser_login import (
 )
 
 
-def _make_playwright(cookie_jar_sequence: list[list[dict]], storage_state: dict | None = None):
+def _make_playwright(
+    cookie_jar_sequence: list[list[dict]],
+    storage_state: dict | None = None,
+    *,
+    query_selector_returns: object = MagicMock(),
+):
     """Build a fake sync_playwright that returns the supplied cookie jars in order.
 
-    Each call to ``context.cookies()`` pops the next jar. When the jar contains the
-    success cookie, the flow exits and returns.
+    ``query_selector_returns`` is what ``page.query_selector`` returns whenever it's
+    called — default is a truthy MagicMock so the success-selector check passes.
     """
     context = MagicMock()
     storage = storage_state if storage_state is not None else {"cookies": [], "origins": []}
@@ -26,6 +31,7 @@ def _make_playwright(cookie_jar_sequence: list[list[dict]], storage_state: dict 
     browser = MagicMock()
     browser.new_context.return_value = context
     page = MagicMock()
+    page.query_selector.return_value = query_selector_returns
     context.new_page.return_value = page
     chromium = MagicMock()
     chromium.launch.return_value = browser
@@ -108,3 +114,44 @@ def test_different_vendor_uses_right_success_cookie():
     )
     assert result.cookies == {"li_at": "AbCdEf"}
     page.goto.assert_called_once_with("https://www.linkedin.com/login")
+
+
+def test_prefill_username_types_into_facebook_email_field():
+    """Pre-fill should target FB's input#email selector from the DevTools analysis."""
+    jars = [
+        [{"name": "c_user", "value": "100012345"}],
+        [{"name": "c_user", "value": "100012345"}],
+    ]
+    fake_pw, _, page, _ = _make_playwright(jars)
+    open_login_window(
+        "facebook",
+        prefill_username="jane.doe@example.com",
+        poll_seconds=0.0,
+        timeout_seconds=5.0,
+        settle_seconds=0.0,
+        playwright_module=fake_pw,
+    )
+    page.wait_for_selector.assert_called_once_with("input#email", timeout=10_000)
+    page.fill.assert_called_once_with("input#email", "jane.doe@example.com")
+
+
+def test_twofa_callback_fires_when_2fa_input_appears(monkeypatch):
+    """When FB's approvals_code field becomes visible, the CLI gets a one-shot hint."""
+    cookie_jars = [[], [], [{"name": "c_user", "value": "x"}], [{"name": "c_user", "value": "x"}]]
+
+    # The 2FA selector is queried before the success check; first calls return truthy
+    # (2FA visible), later we don't care because cookie path exits the loop.
+    fake_pw, _, page, _ = _make_playwright(cookie_jars)
+    notifications: list[str] = []
+
+    open_login_window(
+        "facebook",
+        poll_seconds=0.0,
+        timeout_seconds=5.0,
+        settle_seconds=0.0,
+        playwright_module=fake_pw,
+        on_twofa_detected=notifications.append,
+    )
+    assert notifications == ["facebook"], (
+        "2FA callback should fire exactly once when approvals_code becomes visible"
+    )

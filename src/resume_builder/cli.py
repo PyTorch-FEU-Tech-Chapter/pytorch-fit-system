@@ -356,8 +356,21 @@ def _run_playwright_login(vendor: str, store: SessionStore) -> bool:
         "username, password, and any 2FA codes. When you reach your home page, "
         "the window will close automatically and your session is saved."
     )
+    prefill = typer.prompt(
+        f"\n(Optional) Pre-fill your {vendor} username/email so you only have to type the password",
+        default="",
+    ).strip() or None
+
+    def _twofa_hint(v: str) -> None:
+        typer.secho(
+            f"  ↪ {v} is asking for a 2FA code — enter it in the open window.",
+            fg=typer.colors.CYAN,
+        )
+
     try:
-        result = open_login_window(vendor)
+        result = open_login_window(
+            vendor, prefill_username=prefill, on_twofa_detected=_twofa_hint
+        )
     except PlaywrightNotInstalled as exc:
         typer.secho(f"\n{exc}", fg=typer.colors.RED)
         return False
