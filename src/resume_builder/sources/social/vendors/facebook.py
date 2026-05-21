@@ -1,8 +1,16 @@
-"""Facebook handler — mbasic.facebook.com via curl-impersonated GETs.
+"""Facebook handler.
 
-Requires `FB_COOKIE` env var formatted as `c_user=...; xs=...` (copy from a logged-in
-browser DevTools Network tab). Without the cookie, the vendor returns empty results
-rather than failing — the rest of the pipeline still produces a valid CV.
+Two scrape paths, picked at runtime:
+
+1. **Headless Playwright** using the ``storage_state.json`` written during sign-in.
+   Hits real ``www.facebook.com`` URLs as the authenticated user — full React feed,
+   not the mobile-basic fallback. This is the path the user explicitly chose when
+   they ran ``resume-build login``.
+
+2. **mbasic.facebook.com via curl** with cookies — kept as a fallback for users who
+   only have cookies (env var / DevTools paste) and never ran the Playwright sign-in.
+
+Vendors return ``[]`` cleanly when neither path is usable.
 """
 
 from __future__ import annotations
@@ -12,8 +20,9 @@ import os
 import re
 from typing import Iterable
 
-from ..auth import Credentials, LoginError, LoginPrompt, resolve_session_cookies
+from ..auth import Credentials, LoginError, LoginPrompt, SessionStore, resolve_session_cookies
 from ..base import SocialVendor
+from ..headless_browser import NoStoredSessionError, fetch_rendered_html
 from ..http import HttpClient
 from ..models import SocialMention, SocialPost
 
@@ -42,37 +51,149 @@ def _strip_html(s: str) -> str:
 class FacebookVendor(SocialVendor):
     name = "facebook"
 
-    def __init__(self, cookies: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        cookies: dict[str, str] | None = None,
+        *,
+        prefer_headless: bool = True,
+        session_store: SessionStore | None = None,
+    ) -> None:
         resolved = cookies if cookies is not None else resolve_session_cookies("facebook")
         if not resolved:
             log.warning(
                 "Facebook vendor has no cookies (env FB_COOKIE / session store / "
-                "browser jar all empty) — returning [] for all calls."
+                "browser jar all empty) — curl fallback will return []."
             )
         self._client = HttpClient(cookies=resolved)
         self._authenticated = bool(resolved)
+        self._prefer_headless = prefer_headless
+        self._store = session_store or SessionStore()
+        # Cache the storage_state presence so we don't hit disk on every call.
+        self._has_storage_state = self._store.load_storage_state("facebook") is not None
 
     # ---- public ----
 
     def fetch_own_posts(self, handle: str, limit: int = 50) -> list[SocialPost]:
+        if self._prefer_headless and self._has_storage_state:
+            posts = self._headless_own_posts(handle, limit)
+            if posts:
+                return posts
+            log.info("headless FB own-posts returned empty; falling back to mbasic curl.")
         if not self._authenticated:
             return []
         try:
             html = self._get(f"{_BASE}/{handle}")
         except Exception as exc:  # noqa: BLE001
-            log.warning("facebook fetch_own_posts failed: %s", exc)
+            log.warning("facebook mbasic fetch_own_posts failed: %s", exc)
             return []
         return list(self._parse_posts(html, owner=handle))[:limit]
 
     def search_mentions(self, full_name: str, limit: int = 50) -> list[SocialMention]:
+        if self._prefer_headless and self._has_storage_state:
+            mentions = self._headless_search_mentions(full_name, limit)
+            if mentions:
+                return mentions
+            log.info("headless FB mentions returned empty; falling back to mbasic curl.")
         if not self._authenticated:
             return []
         try:
             html = self._get(f"{_BASE}/search/posts/", params={"q": full_name})
         except Exception as exc:  # noqa: BLE001
-            log.warning("facebook search_mentions failed: %s", exc)
+            log.warning("facebook mbasic search_mentions failed: %s", exc)
             return []
         return list(self._parse_mentions(html))[:limit]
+
+    # ---- headless path ----
+
+    def _headless_own_posts(self, handle: str, limit: int) -> list[SocialPost]:
+        url = f"https://www.facebook.com/{handle}"
+        try:
+            html = fetch_rendered_html(
+                "facebook",
+                url,
+                wait_for_selector="div[role='main']",
+                store=self._store,
+            )
+        except NoStoredSessionError:
+            return []
+        return list(self._parse_rendered_posts(html, profile_url=url))[:limit]
+
+    def _headless_search_mentions(
+        self, full_name: str, limit: int
+    ) -> list[SocialMention]:
+        from urllib.parse import quote_plus
+
+        url = f"https://www.facebook.com/search/posts/?q={quote_plus(full_name)}"
+        try:
+            html = fetch_rendered_html(
+                "facebook",
+                url,
+                wait_for_selector="div[role='main']",
+                store=self._store,
+            )
+        except NoStoredSessionError:
+            return []
+        return list(self._parse_rendered_mentions(html, query_url=url))[:limit]
+
+    @staticmethod
+    def _parse_rendered_posts(html: str, profile_url: str) -> Iterable[SocialPost]:
+        """Pull post text out of the rendered React feed.
+
+        FB posts on the modern site live inside ``<div role="article">`` blocks; we
+        snapshot the inner text and use the article anchor's ``href`` as the post id.
+        """
+        if not html:
+            return
+        article_re = re.compile(
+            r'role="article"[^>]*>(.*?)(?=role="article"|</body>)',
+            re.IGNORECASE | re.DOTALL,
+        )
+        href_re = re.compile(r'href="(/[^"]*?/posts/[^"]+|/permalink/\d+[^"]*)"')
+        for match in article_re.finditer(html):
+            block = match.group(1)
+            href_m = href_re.search(block)
+            text = _strip_html(block)[:600]
+            if not text:
+                continue
+            link = href_m.group(1) if href_m else ""
+            post_id = link.rsplit("/", 1)[-1].split("?")[0] if link else f"render-{hash(text) & 0xFFFFFF}"
+            yield SocialPost(
+                vendor="facebook",
+                post_id=post_id,
+                url=f"https://www.facebook.com{link}" if link else profile_url,
+                text=text,
+            )
+
+    @staticmethod
+    def _parse_rendered_mentions(html: str, query_url: str) -> Iterable[SocialMention]:
+        if not html:
+            return
+        article_re = re.compile(
+            r'role="article"[^>]*>(.*?)(?=role="article"|</body>)',
+            re.IGNORECASE | re.DOTALL,
+        )
+        href_re = re.compile(r'href="(/[^"]*?/posts/[^"]+|/permalink/\d+[^"]*)"')
+        author_re = re.compile(r'<strong[^>]*>([^<]{1,80})</strong>')
+        for match in article_re.finditer(html):
+            block = match.group(1)
+            href_m = href_re.search(block)
+            author_m = author_re.search(block)
+            text = _strip_html(block)[:600]
+            if not text:
+                continue
+            link = href_m.group(1) if href_m else ""
+            mention_id = (
+                link.rsplit("/", 1)[-1].split("?")[0]
+                if link
+                else f"render-{hash(text) & 0xFFFFFF}"
+            )
+            yield SocialMention(
+                vendor="facebook",
+                mention_id=mention_id,
+                url=f"https://www.facebook.com{link}" if link else query_url,
+                text=text,
+                author_name=(author_m.group(1).strip() if author_m else ""),
+            )
 
     # ---- internals ----
 
