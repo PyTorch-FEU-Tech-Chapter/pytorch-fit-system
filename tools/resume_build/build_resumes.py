@@ -24,8 +24,11 @@ sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "src"))
 from social_scraping.common.paths import DATA, RESUMES  # noqa: E402
 
-GH_USER = "octocat"
-DOCS = ROOT / "Doe-John-Andrew-CV.pdf"
+import os
+
+# Personal values come from the environment / .env (gitignored), never hardcoded.
+GH_USER = os.environ.get("RESUME_GH_USER") or "your-github-username"
+DOCS = Path(os.environ.get("RESUME_DOCS") or (ROOT / "private" / "cv.pdf"))
 FORMATS = ["latex", "md", "json", "pdf"]
 ROLES = ["cybersecurity-redteam", "cybersecurity-blueteam", "fullstack-web", "ml-engineer"]
 

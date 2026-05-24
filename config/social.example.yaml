@@ -6,7 +6,7 @@
 #   IG_COOKIE="<sessionid value>"    # optional for Instagram
 #   NITTER_HOST="https://nitter..."  # optional; pin a private nitter instance
 
-full_name: "Jane Doe"
+full_name: "Your Name"
 enabled_vendors:
   - facebook
   - linkedin
@@ -15,7 +15,7 @@ enabled_vendors:
 cache_ttl_seconds: 21600
 per_vendor_limit: 30
 handles:
-  facebook: jane.doe
-  linkedin: jdoe
-  twitter: yourhandle
-  instagram: yourhandle
+  facebook: your.facebook.handle
+  linkedin: your-linkedin-handle
+  twitter: yourtwitterhandle
+  instagram: yourinstagramhandle

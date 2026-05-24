@@ -1,6 +1,13 @@
 # Generated artifacts (scraped data, media, screenshots, built resumes)
 /out/
 
+# Personal inputs (CV, source documents) — never commit
+/private/
+
+# Local social profile config (real handles/IDs)
+/config/social.yaml
+/config/social.local.yaml
+
 # Python
 __pycache__/
 *.py[cod]
