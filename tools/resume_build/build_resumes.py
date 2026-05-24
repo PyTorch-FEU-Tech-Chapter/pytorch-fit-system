@@ -29,7 +29,9 @@ import os
 # Personal values come from the environment / .env (gitignored), never hardcoded.
 GH_USER = os.environ.get("RESUME_GH_USER") or "your-github-username"
 DOCS = Path(os.environ.get("RESUME_DOCS") or (ROOT / "private" / "cv.pdf"))
-FORMATS = ["html", "latex", "md", "json", "pdf"]
+# Render the design formats; the PDF is produced from the polished HTML via headless
+# Chromium (print CSS / A4) instead of the basic reportlab path.
+FORMATS = ["html", "latex", "md", "json"]
 ROLES = ["cybersecurity-redteam", "cybersecurity-blueteam", "fullstack-web", "ml-engineer"]
 
 FB = DATA / "facebook.json"
@@ -73,6 +75,25 @@ def _linkedin_profile() -> dict:
     return json.loads(LI.read_text(encoding="utf-8")) if LI.exists() else {}
 
 
+def _html_to_pdf(html_pdf_pairs: list[tuple[Path, Path]]) -> None:
+    """Convert each polished resume.html to resume.pdf via headless Chromium, honoring
+    the template's print CSS (@page A4 + margins). One browser for all resumes."""
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        for html_path, pdf_path in html_pdf_pairs:
+            if not html_path.exists():
+                _say(f"[pdf] skip (no html): {html_path}")
+                continue
+            page.goto(html_path.resolve().as_uri(), wait_until="networkidle")
+            page.emulate_media(media="print")
+            page.pdf(path=str(pdf_path), prefer_css_page_size=True, print_background=True)
+            _say(f"[pdf] {pdf_path.relative_to(ROOT).as_posix()}")
+        browser.close()
+
+
 def _enrich_contact(resume, li: dict) -> None:
     """Fill contact gaps from LinkedIn (the PDF parse yields no name)."""
     c = resume.contact
@@ -114,6 +135,7 @@ def main() -> int:
          f"{len(li_education)} LinkedIn education entries into every resume")
 
     summary = []
+    html_pdf_pairs: list[tuple[Path, Path]] = []
     for role in ROLES:
         out_dir = RESUMES / role
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -141,10 +163,18 @@ def main() -> int:
                  f"{len(achievements)} achievements")
             for pth in paths:
                 _say(f"[build]    -> {pth}")
+            html_pdf_pairs.append((out_dir / "resume.html", out_dir / "resume.pdf"))
             summary.append((role, len(resume.projects), len(paths)))
         except Exception as exc:  # noqa: BLE001
             _say(f"[build] {role} FAILED: {exc!r}")
             summary.append((role, -1, 0))
+
+    # Produce the polished PDF for every resume directly from its HTML (Chromium print).
+    _say("\n[build] rendering polished PDFs from HTML (headless Chromium)...")
+    try:
+        _html_to_pdf(html_pdf_pairs)
+    except Exception as exc:  # noqa: BLE001
+        _say(f"[build] HTML->PDF conversion failed: {exc!r}")
 
     _say("\n[build] DONE")
     for role, proj, n in summary:
