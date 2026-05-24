@@ -113,6 +113,33 @@ class StaticSynthesizer(Synthesizer):
             m = re.search(r"\\name\{([^}]+)\}", text)
             if m:
                 contact.name = m.group(1).strip()
+        if not contact.name:
+            # Plain-text / PDF inputs have no \name{} — take the first line near the
+            # top that looks like a person's name.
+            guessed = StaticSynthesizer._guess_name(text)
+            if guessed:
+                contact.name = guessed
+
+    @staticmethod
+    def _guess_name(text: str) -> str:
+        """Best-effort name from the first lines of a plain-text/PDF resume.
+
+        Picks the first of the first ~15 non-empty lines that reads like a name:
+        2–5 tokens, alphabetic (allowing ., -, accents), no digits/@/URL, and at
+        least two tokens starting uppercase.
+        """
+        lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+        for line in lines[:15]:
+            if "@" in line or "http" in line.lower() or any(ch.isdigit() for ch in line):
+                continue
+            tokens = line.split()
+            if not (2 <= len(tokens) <= 5):
+                continue
+            if not all(re.fullmatch(r"[A-Za-zÀ-ÿ.\-']+", t) for t in tokens):
+                continue
+            if sum(1 for t in tokens if t[:1].isupper()) >= 2:
+                return line
+        return ""
 
     @staticmethod
     def _split_blocks(body: str) -> Iterable[str]:
@@ -165,12 +192,14 @@ class StaticSynthesizer(Synthesizer):
 
     @staticmethod
     def _derive_skills(role: RoleSpec, evidence: list[Evidence]) -> list[str]:
-        seen: dict[str, None] = {}
+        # Dedupe case-insensitively (e.g. "AWS"/"aws", "Docker"/"docker") while
+        # preserving the first-seen original casing and ordering.
+        seen: dict[str, str] = {}
         for skill in role.must_have_skills:
-            seen[skill] = None
+            seen.setdefault(skill.lower(), skill)
         for e in evidence:
             for term in e.matched_terms:
-                seen[term] = None
+                seen.setdefault(term.lower(), term)
         for skill in role.nice_to_have:
-            seen[skill] = None
-        return list(seen.keys())
+            seen.setdefault(skill.lower(), skill)
+        return list(seen.values())

@@ -1,0 +1,26 @@
+# Generated artifacts (scraped data, media, screenshots, built resumes)
+/out/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environment
+.venv/
+venv/
+
+# Test / coverage caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets / local env
+.env
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
