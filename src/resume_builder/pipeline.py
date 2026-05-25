@@ -255,7 +255,8 @@ def _filter_projects_with_ai(
     prompt = (
         f"TARGET ROLE: {role.label}\n"
         f"Role keywords: {', '.join(role.keywords)}\n"
-        f"Must-have skills: {', '.join(role.must_have_skills)}\n\n"
+        f"Must-have skills: {', '.join(role.must_have_skills)}\n"
+        f"Nice-to-have: {', '.join(role.nice_to_have)}\n\n"
         f"Candidate projects:\n{listing}\n\n"
         "Return a verdict for every index."
     )

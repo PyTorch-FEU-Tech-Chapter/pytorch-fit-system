@@ -43,7 +43,7 @@ class _StubLLM(LLMProvider):
     def structured(self, prompt, schema, system=None, max_tokens=2048):
         items = [
             {"index": i, "relevant": i in self._keep, "focused_description": self._keep.get(i)}
-            for i in range(prompt.count("["))
+            for i in range(prompt.count("\n["))
         ]
         return schema.model_validate({"items": items})
 

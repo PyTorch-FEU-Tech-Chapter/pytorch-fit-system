@@ -95,6 +95,10 @@ class PdfRenderer(Renderer):
         doc.addPageTemplates([
             PageTemplate(id="two-col", frames=[header_frame, side_frame, main_frame]),
         ])
+        # Known limitation: this is a single-page two-column template. If sidebar
+        # content (Skills + Certifications + Education) overflows side_frame it spills
+        # into main_frame rather than a new page. Resume content is expected to fit one
+        # page; multi-page two-column continuation is intentionally out of scope.
 
         styles = getSampleStyleSheet()
         h1 = ParagraphStyle("h1", parent=styles["Heading1"], spaceAfter=2, fontSize=16)
