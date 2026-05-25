@@ -84,6 +84,9 @@ class AISynthesizer(Synthesizer):
             f"Candidate documents (resume, bio, notes):\n{docs_blob}\n\n"
             "Compose the final Resume. Include `role`, `contact`, `summary`, `skills`, "
             "`experience`, `projects` (use the GitHub evidence), `education`, `certifications`. "
+            "Education is supporting detail — keep it concise. In each education entry's `notes`, "
+            "include academic standing (GPA, Dean's List, scholarships) and ONLY the coursework or "
+            "curriculum that demonstrates expertise for THIS target role; omit unrelated subjects. "
             "Use generated_on = today."
         )
 

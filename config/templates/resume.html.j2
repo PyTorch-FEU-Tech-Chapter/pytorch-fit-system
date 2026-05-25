@@ -172,22 +172,6 @@
   </section>
   {% endif %}
 
-  {% if resume.education %}
-  <section>
-    <h2>Education</h2>
-    {% for e in resume.education %}
-    <div class="edu">
-      <div class="row">
-        <span class="school">{{ e.school }}</span>
-        {% if e.start or e.end %}<span class="when">{{ e.start or "" }} – {{ e.end or "" }}</span>{% endif %}
-      </div>
-      {% if e.degree or e.field %}<div class="degree">{{ e.degree }}{% if e.field %} · {{ e.field }}{% endif %}</div>{% endif %}
-      {% if e.notes %}<ul class="bullets">{% for n in e.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
-    </div>
-    {% endfor %}
-  </section>
-  {% endif %}
-
   {% if resume.skills %}
   <section>
     <h2>Skills</h2>
@@ -207,6 +191,22 @@
         {% if c.date %}<span class="when">{{ c.date }}</span>{% endif %}
       </div>
       {% if c.issuer %}<div class="degree">{{ c.issuer }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.education %}
+  <section>
+    <h2>Education</h2>
+    {% for e in resume.education %}
+    <div class="edu">
+      <div class="row">
+        <span class="school">{{ e.school }}</span>
+        {% if e.start or e.end %}<span class="when">{{ e.start or "" }} – {{ e.end or "" }}</span>{% endif %}
+      </div>
+      {% if e.degree or e.field %}<div class="degree">{{ e.degree }}{% if e.field %} · {{ e.field }}{% endif %}</div>{% endif %}
+      {% if e.notes %}<ul class="bullets">{% for n in e.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
     </div>
     {% endfor %}
   </section>

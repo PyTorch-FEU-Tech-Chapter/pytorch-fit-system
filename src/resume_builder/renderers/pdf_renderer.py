@@ -125,6 +125,17 @@ class PdfRenderer(Renderer):
                     story.append(Paragraph(f"<i>Tech: {', '.join(p.tech)}</i>", body))
                 story.append(Spacer(1, 2))
 
+        if resume.certifications:
+            story.append(Paragraph("Certifications", h2))
+            for c in resume.certifications:
+                line = f"<b>{c.name}</b>"
+                if c.issuer:
+                    line += f" &mdash; {c.issuer}"
+                if c.date:
+                    line += f" ({c.date})"
+                story.append(Paragraph(line, body))
+
+        # Education last — basic supporting info goes at the end of the resume.
         if resume.education:
             story.append(Paragraph("Education", h2))
             for e in resume.education:
@@ -136,16 +147,6 @@ class PdfRenderer(Renderer):
                 story.append(Paragraph(line, body))
                 for n in e.notes:
                     story.append(Paragraph(f"&bull; {n}", body))
-
-        if resume.certifications:
-            story.append(Paragraph("Certifications", h2))
-            for c in resume.certifications:
-                line = f"<b>{c.name}</b>"
-                if c.issuer:
-                    line += f" &mdash; {c.issuer}"
-                if c.date:
-                    line += f" ({c.date})"
-                story.append(Paragraph(line, body))
 
         doc.build(story)
         return buf.getvalue()

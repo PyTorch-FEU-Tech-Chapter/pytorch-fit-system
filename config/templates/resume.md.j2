@@ -43,19 +43,6 @@
 
 {% endfor %}
 {% endif %}
-{% if resume.education %}
-## Education
-
-{% for e in resume.education %}
-### {{ e.school }}{% if e.degree %} — {{ e.degree }}{% endif %}{% if e.field %} in {{ e.field }}{% endif +%}
-{% if e.start or e.end %}*{{ e.start or "" }} – {{ e.end or "" }}*
-{% endif %}
-{% for n in e.notes %}
-- {{ n }}
-{% endfor %}
-
-{% endfor %}
-{% endif %}
 {% if resume.achievements %}
 ## Achievements
 
@@ -69,5 +56,18 @@
 
 {% for c in resume.certifications %}
 - **{{ c.name }}**{% if c.issuer %} — {{ c.issuer }}{% endif %}{% if c.date %} ({{ c.date }}){% endif +%}
+{% endfor %}
+{% endif %}
+{% if resume.education %}
+## Education
+
+{% for e in resume.education %}
+### {{ e.school }}{% if e.degree %} — {{ e.degree }}{% endif %}{% if e.field %} in {{ e.field }}{% endif +%}
+{% if e.start or e.end %}*{{ e.start or "" }} – {{ e.end or "" }}*
+{% endif %}
+{% for n in e.notes %}
+- {{ n }}
+{% endfor %}
+
 {% endfor %}
 {% endif %}
