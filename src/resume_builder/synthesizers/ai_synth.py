@@ -87,6 +87,9 @@ class AISynthesizer(Synthesizer):
             "Education is supporting detail — keep it concise. In each education entry's `notes`, "
             "include academic standing (GPA, Dean's List, scholarships) and ONLY the coursework or "
             "curriculum that demonstrates expertise for THIS target role; omit unrelated subjects. "
+            "For `projects`, include only those that genuinely demonstrate THIS role; "
+            "omit projects whose real purpose is unrelated to the role even if they share "
+            "a programming language. "
             "Use generated_on = today."
         )
 
