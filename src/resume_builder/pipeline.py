@@ -7,8 +7,11 @@ module operates on abstract interfaces and concrete inputs.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from pathlib import Path
+
+from pydantic import BaseModel, Field
 
 from .config import Settings, get_settings
 from .extractors import AIExtractor, Extractor, StaticExtractor
@@ -63,6 +66,124 @@ def _achievements_from_social(result: CollectResult) -> list[ResumeAchievement]:
     return out
 
 
+# ---- role-aware achievement filtering ------------------------------------------
+
+
+class _AchievementVerdict(BaseModel):
+    """One LLM judgement about a candidate achievement."""
+
+    index: int = Field(..., description="Index of the candidate in the input list.")
+    relevant: bool = Field(
+        ..., description="True only if it genuinely supports the TARGET ROLE."
+    )
+    focused_snippet: str | None = Field(
+        None,
+        description="The snippet trimmed to ONLY the role-relevant part, or null if relevant is false.",
+    )
+
+
+class _AchievementVerdicts(BaseModel):
+    items: list[_AchievementVerdict] = Field(default_factory=list)
+
+
+_ACHIEVEMENT_SYSTEM = (
+    "You are a strict resume editor specializing one resume to one target role. "
+    "You are given social/recognition posts that were dumped indiscriminately. "
+    "Keep an item ONLY when it is a real achievement/recognition that a hiring manager for the "
+    "TARGET ROLE would care about. Drop anything off-topic for the role — event hosting, "
+    "influencer/gaming features, generic meetups, club initiations, and administrative thesis "
+    "chores are NOT role achievements. When kept, rewrite focused_snippet to contain only the "
+    "portion that speaks to the target role; strip promotional fluff. Be ruthless: if it does not "
+    "clearly belong on a resume for THIS role, mark it not relevant."
+)
+
+
+def _role_terms(role: RoleSpec) -> list[str]:
+    terms: list[str] = []
+    terms += role.keywords
+    terms += role.must_have_skills
+    terms += role.nice_to_have
+    # de-dup, drop empties, lowercase
+    seen: set[str] = set()
+    out: list[str] = []
+    for t in terms:
+        key = t.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            out.append(key)
+    return out
+
+
+def _keyword_relevant(text: str, terms: list[str]) -> bool:
+    """Word-boundary, case-insensitive match so short acronyms (SOC, IDS) don't over-match."""
+    hay = text.lower()
+    for term in terms:
+        if re.search(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])", hay):
+            return True
+    return False
+
+
+def _filter_achievements_by_role(
+    candidates: list[ResumeAchievement],
+    role: RoleSpec,
+    llm: LLMProvider | None,
+) -> list[ResumeAchievement]:
+    """Keep only achievements relevant to the target role.
+
+    AI verifies and segregates when a real provider is available; otherwise a strict
+    keyword gate is used. Returns [] when nothing qualifies — we never pad the section.
+    """
+    if not candidates:
+        return []
+
+    use_ai = llm is not None and not isinstance(llm, NullProvider)
+    if use_ai:
+        try:
+            return _filter_with_ai(candidates, role, llm)
+        except Exception:  # noqa: BLE001 — any LLM/parse failure falls back to keywords
+            log.warning("AI achievement filter failed; falling back to keyword gate.")
+
+    terms = _role_terms(role)
+    return [
+        a
+        for a in candidates
+        if _keyword_relevant(f"{a.title}\n{a.snippet or ''}", terms)
+    ]
+
+
+def _filter_with_ai(
+    candidates: list[ResumeAchievement],
+    role: RoleSpec,
+    llm: LLMProvider,
+) -> list[ResumeAchievement]:
+    listing = "\n".join(
+        f"[{i}] {a.title}\n    {(a.snippet or '').strip()[:400]}"
+        for i, a in enumerate(candidates)
+    )
+    prompt = (
+        f"TARGET ROLE: {role.label}\n"
+        f"Role keywords: {', '.join(role.keywords)}\n"
+        f"Must-have skills: {', '.join(role.must_have_skills)}\n"
+        f"Nice-to-have: {', '.join(role.nice_to_have)}\n\n"
+        f"Candidate achievements:\n{listing}\n\n"
+        "Return a verdict for every index."
+    )
+    verdicts = llm.structured(
+        prompt, schema=_AchievementVerdicts, system=_ACHIEVEMENT_SYSTEM, max_tokens=2048
+    )
+    kept: list[ResumeAchievement] = []
+    for v in verdicts.items:
+        if not v.relevant or not (0 <= v.index < len(candidates)):
+            continue
+        src = candidates[v.index]
+        kept.append(
+            src.model_copy(update={"snippet": v.focused_snippet.strip()})
+            if v.focused_snippet and v.focused_snippet.strip()
+            else src
+        )
+    return kept
+
+
 @dataclass
 class PipelineResult:
     resume: Resume
@@ -109,7 +230,8 @@ class Pipeline:
         resume = self.synthesizer.build(role, repos, evidence, documents)
         social_result = self._collect_social(inputs.social_config_path)
         if social_result is not None:
-            resume.achievements = _achievements_from_social(social_result)
+            candidates = _achievements_from_social(social_result)
+            resume.achievements = _filter_achievements_by_role(candidates, role, self.llm)
         paths = self._render_all(resume, inputs.formats, inputs.output_dir)
         return PipelineResult(resume=resume, output_paths=paths)
 
