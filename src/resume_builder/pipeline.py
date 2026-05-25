@@ -17,7 +17,7 @@ from .config import Settings, get_settings
 from .extractors import AIExtractor, Extractor, StaticExtractor
 from .llm import LLMProvider, get_provider
 from .llm.null_provider import NullProvider
-from .models import Mode, RawDocument, Repo, Resume, ResumeAchievement, RoleSpec
+from .models import Mode, RawDocument, Repo, Resume, ResumeAchievement, ResumeProject, RoleSpec
 from .renderers import get_renderer
 from .role import AIRolePicker, RolePicker, StaticRolePicker
 from .sources import DocumentSource, GitHubSource
@@ -184,6 +184,98 @@ def _filter_with_ai(
     return kept
 
 
+# ---- role-aware project filtering -----------------------------------------------
+
+
+class _ProjectVerdict(BaseModel):
+    """One LLM judgement about a candidate project."""
+
+    index: int = Field(..., description="Index of the candidate in the input list.")
+    relevant: bool = Field(
+        ..., description="True only if the project genuinely demonstrates the TARGET ROLE."
+    )
+    focused_description: str | None = Field(
+        None,
+        description="The description rewritten for the target role, or null if not relevant.",
+    )
+
+
+class _ProjectVerdicts(BaseModel):
+    items: list[_ProjectVerdict] = Field(default_factory=list)
+
+
+_PROJECT_SYSTEM = (
+    "You are a strict resume editor specializing one resume to one target role. "
+    "Keep a project ONLY when it genuinely demonstrates skills a hiring manager for the "
+    "TARGET ROLE would value. A project may be relevant to more than one role, but a "
+    "compiler is not a machine-learning project and a static website is not a security "
+    "project — judge by what the project actually is, not by which languages it lists. "
+    "When kept, rewrite focused_description to emphasize the role-relevant angle. If it "
+    "does not clearly belong on a resume for THIS role, mark it not relevant."
+)
+
+
+def _filter_projects_by_role(
+    projects: list[ResumeProject],
+    role: RoleSpec,
+    llm: LLMProvider | None,
+) -> list[ResumeProject]:
+    """Keep only projects relevant to the target role (multi-role allowed).
+
+    AI verifies and re-frames when a real provider is available; otherwise a keyword
+    gate over name + tech + description is used. Returns [] when nothing qualifies.
+    """
+    if not projects:
+        return []
+
+    use_ai = llm is not None and not isinstance(llm, NullProvider)
+    if use_ai:
+        try:
+            return _filter_projects_with_ai(projects, role, llm)
+        except Exception:  # noqa: BLE001 — any LLM/parse failure falls back to keywords
+            log.warning("AI project filter failed; falling back to keyword gate.")
+
+    terms = _role_terms(role)
+    return [
+        p
+        for p in projects
+        if _keyword_relevant(f"{p.name}\n{' '.join(p.tech)}\n{p.description}", terms)
+    ]
+
+
+def _filter_projects_with_ai(
+    projects: list[ResumeProject],
+    role: RoleSpec,
+    llm: LLMProvider,
+) -> list[ResumeProject]:
+    listing = "\n".join(
+        f"[{i}] {p.name} — tech: {', '.join(p.tech)}\n    {(p.description or '').strip()[:400]}"
+        for i, p in enumerate(projects)
+    )
+    prompt = (
+        f"TARGET ROLE: {role.label}\n"
+        f"Role keywords: {', '.join(role.keywords)}\n"
+        f"Must-have skills: {', '.join(role.must_have_skills)}\n"
+        f"Nice-to-have: {', '.join(role.nice_to_have)}\n\n"
+        f"Candidate projects:\n{listing}\n\n"
+        "Return a verdict for every index."
+    )
+    verdicts = llm.structured(
+        prompt, schema=_ProjectVerdicts, system=_PROJECT_SYSTEM, max_tokens=2048
+    )
+    kept: list[ResumeProject] = []
+    for v in verdicts.items:
+        if not v.relevant or not (0 <= v.index < len(projects)):
+            continue
+        src = projects[v.index]
+        kept.append(
+            src.model_copy(update={"description": v.focused_description.strip()})
+            if v.focused_description and v.focused_description.strip()
+            else src
+        )
+    return kept
+
+
 @dataclass
 class PipelineResult:
     resume: Resume
@@ -228,6 +320,7 @@ class Pipeline:
             self.docs.collect(inputs.docs_path) if inputs.docs_path else []
         )
         resume = self.synthesizer.build(role, repos, evidence, documents)
+        resume.projects = _filter_projects_by_role(resume.projects, role, self.llm)
         social_result = self._collect_social(inputs.social_config_path)
         if social_result is not None:
             candidates = _achievements_from_social(social_result)
