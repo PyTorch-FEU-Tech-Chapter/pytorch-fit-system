@@ -55,17 +55,22 @@ el => {
 }
 """
 
-# Classify an article by its permalinks. A clean post permalink (without comment_id)
-# marks a real post. Only when the article has a comment permalink AND no post
-# permalink do we treat it as a comment — articles with no recognizable links are
-# kept as posts rather than dropped, so genuine posts aren't lost to a strict filter.
+# Classify an article. Facebook tags comment articles with aria-label="Comment by …"
+# — the authoritative signal — so any such article is a comment. As a fallback, an
+# article whose only permalink carries comment_id (and has no clean post link) is also
+# a comment. Articles with no recognizable links are kept as posts rather than dropped.
 _POST_HREF_JS = """
 el => {
+  const label = el.getAttribute('aria-label') || '';
+  const labelledComment = /^\\s*comment by/i.test(label);
   const links = Array.from(el.querySelectorAll(
     'a[href*="/posts/"], a[href*="/permalink/"], a[href*="story_fbid"]'));
   const post = links.find(a => !a.href.includes('comment_id'));
-  const hasComment = links.some(a => a.href.includes('comment_id'));
-  return { href: post ? post.href : '', isComment: !post && hasComment };
+  const hasCommentLink = links.some(a => a.href.includes('comment_id'));
+  return {
+    href: post ? post.href : '',
+    isComment: labelledComment || (!post && hasCommentLink),
+  };
 }
 """
 
