@@ -97,6 +97,13 @@ def scroll_collect(
     the feed exhausted (Facebook sometimes lazy-loads with a small delay).
     """
     visual_debug = visual_debug_from_env()
+    # In visual mode, wait noticeably longer for each batch to render so the user
+    # can watch the content load instead of the page racing ahead of it.
+    load_wait_ms = (
+        max(settle_ms, visual_debug.delay_ms * 3)
+        if visual_debug.enabled and visual_debug.delay_ms
+        else settle_ms
+    )
     seen = 0
     flat = 0
     for _ in range(max_scrolls):
@@ -118,8 +125,20 @@ def scroll_collect(
             flat += 1
             if flat >= no_growth_passes:
                 break
+        prev = len(items)
         try:
-            page.evaluate("window.scrollBy(0, window.innerHeight * 0.9)")
+            page.evaluate("window.scrollBy(0, window.innerHeight * 0.85)")
+            # Only move on once new items have actually rendered, so each batch is
+            # visibly loaded before the next scroll. Times out gracefully at the
+            # end of the feed (no new content within the window).
+            try:
+                page.wait_for_function(
+                    "({ sel, n }) => document.querySelectorAll(sel).length > n",
+                    arg={"sel": item_selector, "n": prev},
+                    timeout=load_wait_ms,
+                )
+            except Exception as exc:  # noqa: BLE001 - no growth = likely feed end
+                log.debug("no new content within %dms: %s", load_wait_ms, exc)
             pause(page, debug=visual_debug)
             page.wait_for_timeout(settle_ms)
         except Exception as exc:  # noqa: BLE001 - closed window or navigation
