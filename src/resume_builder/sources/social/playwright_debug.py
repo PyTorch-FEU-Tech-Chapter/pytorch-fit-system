@@ -57,6 +57,10 @@ def launch_options(headless: bool, debug: PlaywrightVisualDebug | None = None) -
     channel = os.getenv("RESUME_BUILD_PLAYWRIGHT_CHANNEL", "chrome").strip()
     if channel and channel.lower() != "chromium":
         options["channel"] = channel
+    if not resolved_headless:
+        # Maximize the visible window so the site lays out at full width and the
+        # centered highlights sit properly inside the viewport.
+        options["args"] = ["--start-maximized"]
     if debug.enabled and debug.delay_ms:
         options["slow_mo"] = debug.delay_ms
     return options
@@ -83,13 +87,17 @@ def highlight_selector(
             """
             ({ selector, color, ms, label }) => {
               const nodes = Array.from(document.querySelectorAll(selector)).slice(0, 12);
+              // Bring the focused element to the middle of the viewport once, so the
+              // user sees it centered instead of clipped at an edge while scrolling.
+              if (nodes[0]) {
+                nodes[0].scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
+              }
               for (const node of nodes) {
                 const previous = {
                   outline: node.style.outline,
                   boxShadow: node.style.boxShadow,
                   transition: node.style.transition,
                 };
-                node.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
                 node.style.transition = "outline 120ms ease, box-shadow 120ms ease";
                 node.style.outline = `4px solid ${color}`;
                 node.style.boxShadow = `0 0 0 6px ${color}55`;

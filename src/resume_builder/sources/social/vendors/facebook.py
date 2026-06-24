@@ -45,22 +45,52 @@ _TAG_STRIP_RE = re.compile(r"<[^>]+>")
 _AUTHOR_RE = re.compile(r"<strong[^>]*>([^<]+)</strong>")
 
 
+# Read the post body only — clone the article and drop nested comment articles
+# before reading innerText, so the snapshot never captures comment-section text.
+_POST_BODY_TEXT_JS = """
+el => {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('[role="article"]').forEach(n => n.remove());
+  return (clone.innerText || '').trim();
+}
+"""
+
+# A real post permalink, never a comment permalink (comment links carry comment_id).
+# Empty string means this article has no post link of its own — i.e. it is a comment.
+_POST_HREF_JS = """
+el => {
+  const links = Array.from(el.querySelectorAll(
+    'a[href*="/posts/"], a[href*="/permalink/"], a[href*="story_fbid"]'));
+  const post = links.find(a => !a.href.includes('comment_id'));
+  return post ? post.href : '';
+}
+"""
+
+
 def _snapshot_article(element) -> dict:
     """Extract a stable plain-dict snapshot of a single FB article element.
 
     The snapshot keeps everything we need (text, url, author, post_id) so the
     Playwright page can close before parsing — avoiding stale-handle errors.
+
+    Comment articles are flagged via ``is_comment`` (no post permalink of their
+    own) so the caller can drop them, and the post text excludes nested comments.
     """
-    text = (element.inner_text() or "").strip()
-    href = ""
-    author = ""
     try:
-        # FB renders post permalinks as anchors carrying /posts/ or /permalink/ paths.
-        anchor = element.query_selector('a[href*="/posts/"], a[href*="/permalink/"]')
-        if anchor:
-            href = anchor.get_attribute("href") or ""
+        text = (element.evaluate(_POST_BODY_TEXT_JS) or "").strip()
     except Exception:  # noqa: BLE001
-        pass
+        text = (element.inner_text() or "").strip()
+
+    href = ""
+    try:
+        href = element.evaluate(_POST_HREF_JS) or ""
+    except Exception:  # noqa: BLE001
+        href = ""
+
+    # No post link of its own → this article is a comment; caller skips it.
+    is_comment = not href
+
+    author = ""
     try:
         # Author name lives in the post header strong/h-style element.
         author_el = element.query_selector("strong, h2, h3")
@@ -71,13 +101,16 @@ def _snapshot_article(element) -> dict:
 
     if href.startswith("/"):
         href = f"https://www.facebook.com{href}"
-    post_id = ""
-    if href:
-        post_id = href.rstrip("/").rsplit("/", 1)[-1].split("?")[0]
-    if not post_id:
-        post_id = f"render-{hash(text) & 0xFFFFFF}"
+    href = href.split("?")[0]  # drop comment_id / tracking query params
+    post_id = href.rstrip("/").rsplit("/", 1)[-1] if href else f"render-{hash(text) & 0xFFFFFF}"
 
-    return {"post_id": post_id, "url": href, "author": author, "text": text[:1000]}
+    return {
+        "post_id": post_id,
+        "url": href,
+        "author": author,
+        "text": text[:1000],
+        "is_comment": is_comment,
+    }
 
 
 def _parse_cookie_header(raw: str) -> dict[str, str]:
@@ -208,6 +241,8 @@ class FacebookVendor(SocialVendor):
     ) -> Iterable[SocialPost]:
         seen_ids: set[str] = set()
         for rec in records:
+            if rec.get("is_comment"):
+                continue
             post_id = rec["post_id"]
             if post_id in seen_ids:
                 continue
@@ -228,6 +263,8 @@ class FacebookVendor(SocialVendor):
         name_lower = full_name.lower()
         seen_ids: set[str] = set()
         for rec in records:
+            if rec.get("is_comment"):
+                continue
             mention_id = rec["post_id"]
             text = rec["text"]
             if not text or mention_id in seen_ids:

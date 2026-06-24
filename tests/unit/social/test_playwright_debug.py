@@ -45,6 +45,7 @@ def test_visual_debug_forces_headed_browser_and_slow_mo(monkeypatch):
     assert launch_options(True, debug) == {
         "headless": False,
         "channel": "chrome",
+        "args": ["--start-maximized"],
         "slow_mo": 700,
     }
 

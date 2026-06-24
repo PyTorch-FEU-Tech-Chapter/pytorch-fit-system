@@ -54,9 +54,16 @@ def PlaywrightSession(  # noqa: N802 - context-manager helper
     visual_debug = visual_debug_from_env()
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(**launch_options(headless, visual_debug))
+        opts = launch_options(headless, visual_debug)
+        browser = p.chromium.launch(**opts)
         try:
-            context = browser.new_context(storage_state=state)
+            # When the window is maximized (visible mode), let the page fill the whole
+            # window instead of Playwright's fixed 1280x720 viewport, so the site is
+            # properly aligned and the centered highlights line up with what's on screen.
+            context_kwargs = {"storage_state": state}
+            if "--start-maximized" in (opts.get("args") or []):
+                context_kwargs["no_viewport"] = True
+            context = browser.new_context(**context_kwargs)
             context.set_default_timeout(timeout_ms)
             page = context.new_page()
             highlight_selector(page, "body", label=f"{vendor} session ready", debug=visual_debug)
