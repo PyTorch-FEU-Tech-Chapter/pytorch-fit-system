@@ -62,7 +62,13 @@ def PlaywrightSession(  # noqa: N802 - context-manager helper
             highlight_selector(page, "body", label=f"{vendor} session ready", debug=visual_debug)
             yield page
         finally:
-            browser.close()
+            # The user may have closed the window themselves; closing an already
+            # gone browser raises TargetClosedError — swallow it so a manual close
+            # ends the scrape cleanly instead of dumping a traceback.
+            try:
+                browser.close()
+            except Exception as exc:  # noqa: BLE001
+                log.debug("browser close after session: %s", exc)
 
 
 # Backwards-compatible alias for older imports.
@@ -93,7 +99,11 @@ def scroll_collect(
             label="items collected before scroll",
             debug=visual_debug,
         )
-        items = page.query_selector_all(item_selector) or []
+        try:
+            items = page.query_selector_all(item_selector) or []
+        except Exception as exc:  # noqa: BLE001 - page/browser closed mid-scroll
+            log.info("scroll stopped early (page closed?): %s", exc)
+            return []
         if len(items) > seen:
             seen = len(items)
             flat = 0
@@ -104,12 +114,16 @@ def scroll_collect(
         try:
             page.evaluate("window.scrollBy(0, window.innerHeight * 0.9)")
             pause(page, debug=visual_debug)
-        except Exception as exc:  # noqa: BLE001
+            page.wait_for_timeout(settle_ms)
+        except Exception as exc:  # noqa: BLE001 - closed window or navigation
             log.debug("scroll failed: %s", exc)
             break
-        page.wait_for_timeout(settle_ms)
     highlight_selector(page, item_selector, label="final collected items", debug=visual_debug)
-    return page.query_selector_all(item_selector) or []
+    try:
+        return page.query_selector_all(item_selector) or []
+    except Exception as exc:  # noqa: BLE001 - page closed before final read
+        log.info("final collect skipped (page closed?): %s", exc)
+        return []
 
 
 def fetch_rendered_html(

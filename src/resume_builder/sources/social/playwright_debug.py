@@ -51,6 +51,12 @@ def launch_options(headless: bool, debug: PlaywrightVisualDebug | None = None) -
         resolved_headless = False
 
     options: dict[str, object] = {"headless": resolved_headless}
+    # Drive the user's real Google Chrome by default instead of Playwright's
+    # bundled Chromium. Override with RESUME_BUILD_PLAYWRIGHT_CHANNEL=chromium
+    # (or empty) to fall back to bundled Chromium.
+    channel = os.getenv("RESUME_BUILD_PLAYWRIGHT_CHANNEL", "chrome").strip()
+    if channel and channel.lower() != "chromium":
+        options["channel"] = channel
     if debug.enabled and debug.delay_ms:
         options["slow_mo"] = debug.delay_ms
     return options

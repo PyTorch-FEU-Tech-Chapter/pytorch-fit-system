@@ -34,6 +34,11 @@ from ..models import SocialMention, SocialPost
 log = logging.getLogger(__name__)
 
 _BASE = "https://mbasic.facebook.com"
+# Facebook wraps BOTH posts and individual comments in ``div[role="article"]``,
+# with comment articles nested inside the post article. Excluding any article that
+# sits inside another article keeps only top-level posts — so the scraper never
+# walks into (or highlights) the comment section.
+_POST_ARTICLE_SELECTOR = 'div[role="article"]:not([role="article"] [role="article"])'
 _POST_LINK_RE = re.compile(r'href="(/story\.php\?story_fbid=\d+[^"]*)"')
 _TEXT_BLOCK_RE = re.compile(r"<p>(.*?)</p>", re.IGNORECASE | re.DOTALL)
 _TAG_STRIP_RE = re.compile(r"<[^>]+>")
@@ -183,7 +188,7 @@ class FacebookVendor(SocialVendor):
                 return []
             articles = scroll_collect(
                 page,
-                "div[role='article']",
+                _POST_ARTICLE_SELECTOR,
                 max_scrolls=max_scrolls,
             )
             log.info("FB scrape captured %d articles at %s", len(articles), url)

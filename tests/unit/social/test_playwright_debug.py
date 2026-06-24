@@ -9,15 +9,26 @@ from resume_builder.sources.social.playwright_debug import (
 )
 
 
-def test_launch_options_are_plain_headless_without_visual_env(monkeypatch):
+def test_launch_options_use_chrome_channel_without_visual_env(monkeypatch):
     monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_VISUAL", raising=False)
     monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_DELAY_MS", raising=False)
     monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_HIGHLIGHT_MS", raising=False)
     monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_HEADLESS", raising=False)
+    monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_CHANNEL", raising=False)
 
     debug = visual_debug_from_env()
 
     assert debug.enabled is False
+    assert launch_options(True, debug) == {"headless": True, "channel": "chrome"}
+
+
+def test_channel_override_falls_back_to_bundled_chromium(monkeypatch):
+    monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_VISUAL", raising=False)
+    monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_HEADLESS", raising=False)
+    monkeypatch.setenv("RESUME_BUILD_PLAYWRIGHT_CHANNEL", "chromium")
+
+    debug = visual_debug_from_env()
+
     assert launch_options(True, debug) == {"headless": True}
 
 
@@ -26,11 +37,16 @@ def test_visual_debug_forces_headed_browser_and_slow_mo(monkeypatch):
     monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_DELAY_MS", raising=False)
     monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_HIGHLIGHT_MS", raising=False)
     monkeypatch.setenv("RESUME_BUILD_PLAYWRIGHT_HEADLESS", "1")
+    monkeypatch.delenv("RESUME_BUILD_PLAYWRIGHT_CHANNEL", raising=False)
 
     debug = visual_debug_from_env()
 
     assert debug.enabled is True
-    assert launch_options(True, debug) == {"headless": False, "slow_mo": 700}
+    assert launch_options(True, debug) == {
+        "headless": False,
+        "channel": "chrome",
+        "slow_mo": 700,
+    }
 
 
 def test_highlight_selector_outlines_and_pauses_when_visual_debug_enabled(monkeypatch):

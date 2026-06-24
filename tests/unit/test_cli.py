@@ -2,10 +2,48 @@ from __future__ import annotations
 
 from typer.testing import CliRunner
 
-from resume_builder.cli import app
+from resume_builder.cli import _apply_visual_env, app
 from resume_builder.llm import LLMProvider, register_provider
+from resume_builder.sources.social.playwright_debug import visual_debug_from_env
 
 runner = CliRunner()
+
+
+_VISUAL_ENV = (
+    "RESUME_BUILD_PLAYWRIGHT_VISUAL",
+    "RESUME_BUILD_PLAYWRIGHT_DELAY_MS",
+    "RESUME_BUILD_PLAYWRIGHT_HIGHLIGHT_MS",
+)
+
+
+def test_apply_visual_env_noop_when_disabled(monkeypatch):
+    for key in _VISUAL_ENV:
+        monkeypatch.delenv(key, raising=False)
+
+    _apply_visual_env(False, None)
+
+    assert visual_debug_from_env().enabled is False
+
+
+def test_apply_visual_env_sets_headed_slow_mo_and_highlight(monkeypatch):
+    for key in _VISUAL_ENV:
+        monkeypatch.delenv(key, raising=False)
+
+    _apply_visual_env(True, 1200)
+
+    debug = visual_debug_from_env()
+    assert debug.enabled is True
+    assert debug.force_headed is True
+    assert debug.delay_ms == 1200
+    # Highlight defaults to at least the step delay so the outline survives the pause.
+    assert debug.highlight_ms == 1200
+
+
+def test_scrape_exposes_visual_flags():
+    result = runner.invoke(app, ["scrape", "--help"])
+    assert result.exit_code == 0
+    assert "--visual" in result.output
+    assert "--delay-ms" in result.output
 
 
 class _FakeReviewProvider(LLMProvider):

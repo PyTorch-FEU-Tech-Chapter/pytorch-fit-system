@@ -11,6 +11,7 @@ Examples:
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 import typer
@@ -164,9 +165,42 @@ def _pick_vendor_interactive() -> str:
         typer.secho("Invalid choice. Try again.", fg=typer.colors.YELLOW)
 
 
+def _apply_visual_env(visual: bool, delay_ms: int | None) -> None:
+    """Translate --visual / --delay-ms flags into the env vars the Playwright
+    visual-debug layer (``playwright_debug.visual_debug_from_env``) already reads.
+
+    Keeps a single source of truth — the flags are just a friendlier front door
+    to the existing ``RESUME_BUILD_PLAYWRIGHT_*`` knobs.
+    """
+    if visual:
+        os.environ["RESUME_BUILD_PLAYWRIGHT_VISUAL"] = "1"
+    if delay_ms is not None:
+        os.environ["RESUME_BUILD_PLAYWRIGHT_DELAY_MS"] = str(delay_ms)
+        # A highlight at least as long as the step delay keeps the outline visible
+        # through the pause, unless the user already pinned it explicitly.
+        os.environ.setdefault("RESUME_BUILD_PLAYWRIGHT_HIGHLIGHT_MS", str(delay_ms))
+
+
 @app.command()
-def scrape() -> None:
-    """Run a single vendor and dump posts + mentions as JSON. No flags — just answer the prompts."""
+def scrape(
+    visual: bool = typer.Option(
+        False,
+        "--visual",
+        help="Watch the scrape in a real Chromium window: highlights each focused "
+        "element and pauses between steps.",
+    ),
+    delay_ms: int | None = typer.Option(
+        None,
+        "--delay-ms",
+        help="Slow-motion delay (ms) between Playwright steps. Implies --visual. "
+        "Default visual delay is 700ms.",
+    ),
+) -> None:
+    """Run a single vendor and dump posts + mentions as JSON. Answer the prompts.
+
+    Pass --visual (optionally with --delay-ms) to watch the scrape step by step.
+    """
+    _apply_visual_env(visual or delay_ms is not None, delay_ms)
     vendor = _pick_vendor_interactive()
     agg = build_default_aggregator()
     handle = typer.prompt(
