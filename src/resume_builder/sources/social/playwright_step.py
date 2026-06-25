@@ -1,8 +1,16 @@
 """Visible, slow, per-post step-through for the social scraper.
 
 Unlike ``playwright_debug`` (passive highlighting), this module *mutates* the live
-DOM: it walks the first N collected posts one at a time and **deletes** their comment
-sections so the user can watch what content actually remains as the post text.
+DOM: it walks the first N collected posts one at a time and aggressively **deletes**
+everything that won't be read — comments, action chrome, and media — so the only
+thing left inside each post is the text the scraper actually extracts. This is a
+visualization aid: it makes "what does the scraper focus on?" literally visible.
+
+Four stages per post:
+  1. POST     — outline the whole post (red): "this is all I look at".
+  2. COMMENTS — flash + delete the comment section (orange): ignored.
+  3. TEXT     — strip media/chrome too, outline what remains (green): the read text.
+  4. SHARED   — if this is a reshare, outline the shared post (blue) as PRESERVED.
 
 Enabled only when ``RESUME_BUILD_PLAYWRIGHT_STEP_LIMIT`` is a positive integer — off
 (0) by default. The long per-step pause is decoupled from the global ``slow_mo`` so
@@ -18,12 +26,13 @@ from .playwright_debug import PlaywrightVisualDebug, pause, visual_debug_from_en
 
 log = logging.getLogger(__name__)
 
-_POST_COLOR = "#ff2d75"   # red   — the whole post being scraped
-_TEXT_COLOR = "#22c55e"   # green — the cleaned text source
+_POST_COLOR = "#ff2d75"     # red    — the whole post being scraped
 _COMMENT_COLOR = "#ff7a18"  # orange — comments about to be deleted
+_TEXT_COLOR = "#22c55e"     # green  — the text that remains after stripping
+_SHARED_COLOR = "#3b82f6"   # blue   — a reshared post, preserved (never deleted)
 
-# Highlight a single article element and label it (persists through the pause; the
-# next step overwrites the outline).
+# Outline + label a single element (persists through the pause; the next step
+# overwrites it). Scrolls the element into view so the user can follow along.
 _HIGHLIGHT_EL_JS = """
 (el, { color, label }) => {
   try { el.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" }); } catch (e) {}
@@ -54,9 +63,9 @@ _FLASH_DOOMED_JS = """
 }
 """
 
-# Actually remove the comment articles + chrome from the live DOM. Returns how many
+# Remove the comment articles + action chrome from the live DOM. Returns how many
 # comment articles were deleted (shared posts are never matched, so never removed).
-_DELETE_DOOMED_JS = """
+_DELETE_COMMENTS_JS = """
 el => {
   let removed = 0;
   el.querySelectorAll('[role="article"]').forEach(n => {
@@ -70,6 +79,40 @@ el => {
     '[role="button"], [role="toolbar"], form, svg, [data-visualcompletion="ignore"]'
   ).forEach(n => n.remove());
   return removed;
+}
+"""
+
+# Strip non-text media so only the readable text is left inside the post. Media inside
+# a preserved shared post is intentionally left alone so its context survives.
+_STRIP_MEDIA_JS = """
+el => {
+  const shared = Array.from(el.querySelectorAll('[role="article"]')).find(n => {
+    const label = n.getAttribute('aria-label') || '';
+    return !/^\\s*comment by/i.test(label) && !/^\\s*reply by/i.test(label);
+  });
+  let removed = 0;
+  el.querySelectorAll('img, video, image, [role="img"], svg').forEach(n => {
+    if (shared && shared.contains(n)) return;  // keep the reshared post's media
+    n.remove();
+    removed++;
+  });
+  return removed;
+}
+"""
+
+# Outline a nested reshared post (a nested article that is NOT a comment) so the user
+# sees it is preserved, not deleted. Returns true when a shared post is present.
+_MARK_SHARED_JS = """
+(el, { color }) => {
+  const shared = Array.from(el.querySelectorAll('[role="article"]')).find(n => {
+    const label = n.getAttribute('aria-label') || '';
+    return !/^\\s*comment by/i.test(label) && !/^\\s*reply by/i.test(label);
+  });
+  if (!shared) return false;
+  shared.style.outline = `4px solid ${color}`;
+  shared.style.boxShadow = `0 0 0 6px ${color}55`;
+  shared.setAttribute('data-resume-build-step', 'SHARED (preserved)');
+  return true;
 }
 """
 
@@ -91,11 +134,9 @@ def step_through_articles(
     limit: int | None = None,
     debug: PlaywrightVisualDebug | None = None,
 ) -> int:
-    """Slowly walk the first ``limit`` posts, deleting their comments on the live page.
+    """Slowly walk the first ``limit`` posts, stripping each down to its text live.
 
-    For each post: outline it red (the post), then green (the text source), then flash
-    its comments orange and delete them from the DOM. Returns the number of posts
-    stepped through. A no-op when ``limit`` resolves to 0.
+    Returns the number of posts stepped through. A no-op when ``limit`` resolves to 0.
     """
     limit = step_limit_from_env() if limit is None else limit
     if limit <= 0:
@@ -129,20 +170,30 @@ def _step_one(
     debug: PlaywrightVisualDebug,
     delay_ms: int,
 ) -> None:
-    # 1. The whole post.
-    article.evaluate(_HIGHLIGHT_EL_JS, {"color": _POST_COLOR, "label": f"POST #{index + 1} being scraped"})
+    n = index + 1
+
+    # 1. The whole post — "this is all I look at".
+    article.evaluate(_HIGHLIGHT_EL_JS, {"color": _POST_COLOR, "label": f"POST #{n} — ito lang ang titingin"})
     pause(page, debug=debug, ms=delay_ms)
 
-    # 2. The cleaned text source (same region — matches current extraction).
-    article.evaluate(_HIGHLIGHT_EL_JS, {"color": _TEXT_COLOR, "label": "text source"})
-    pause(page, debug=debug, ms=delay_ms)
-
-    # 3. Comments hit -> flash, then delete from the DOM so focus is visible.
+    # 2. Comments hit -> flash, then delete from the DOM so they're visibly ignored.
     article.evaluate(_FLASH_DOOMED_JS, {"color": _COMMENT_COLOR})
     pause(page, debug=debug, ms=delay_ms)
-    removed = article.evaluate(_DELETE_DOOMED_JS)
-    log.debug("deleted %s comment article(s) from post #%d", removed, index + 1)
+    removed = article.evaluate(_DELETE_COMMENTS_JS)
+    log.debug("post #%d: deleted %s comment article(s)", n, removed)
     pause(page, debug=debug, ms=delay_ms)
+
+    # 3. Strip media/chrome too -> only the readable TEXT remains.
+    stripped = article.evaluate(_STRIP_MEDIA_JS)
+    log.debug("post #%d: stripped %s media node(s)", n, stripped)
+    article.evaluate(_HIGHLIGHT_EL_JS, {"color": _TEXT_COLOR, "label": "natitirang TEXT — ito lang kinukuha"})
+    pause(page, debug=debug, ms=delay_ms)
+
+    # 4. Shared post (if any) — preserved, never deleted.
+    has_shared = article.evaluate(_MARK_SHARED_JS, {"color": _SHARED_COLOR})
+    if has_shared:
+        log.debug("post #%d: shared post preserved", n)
+        pause(page, debug=debug, ms=delay_ms)
 
 
 def _int_env(name: str, default: int) -> int:

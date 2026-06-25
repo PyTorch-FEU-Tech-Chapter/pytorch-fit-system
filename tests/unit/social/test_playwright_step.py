@@ -76,6 +76,20 @@ def test_step_through_deletes_comments_per_article(monkeypatch):
     assert "reply by" in joined
 
 
+def test_step_through_strips_media_and_preserves_shared(monkeypatch):
+    monkeypatch.setenv("RESUME_BUILD_PLAYWRIGHT_VISUAL", "1")
+    page = MagicMock()
+    article = MagicMock()
+    page.query_selector_all.return_value = [article]
+
+    step_through_articles(page, "sel", limit=1)
+
+    joined = " ".join(str(c.args[0]) for c in article.evaluate.call_args_list).lower()
+    # Aggressive strip removes media, and shared posts are explicitly preserved.
+    assert "img" in joined and "video" in joined
+    assert "shared (preserved)" in joined
+
+
 def test_step_through_handles_more_articles_than_exist(monkeypatch):
     monkeypatch.setenv("RESUME_BUILD_PLAYWRIGHT_VISUAL", "1")
     page = MagicMock()
