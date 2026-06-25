@@ -23,6 +23,7 @@ from .playwright_debug import (
     pause,
     visual_debug_from_env,
 )
+from .browser_login import _cdp_url_from_env
 
 log = logging.getLogger(__name__)
 
@@ -55,23 +56,24 @@ def PlaywrightSession(  # noqa: N802 - context-manager helper
 
     with sync_playwright() as p:
         opts = launch_options(headless, visual_debug)
-        browser = p.chromium.launch(**opts)
-        try:
-            # When the window is maximized (visible mode), let the page fill the whole
-            # window instead of Playwright's fixed 1280x720 viewport, so the site is
-            # properly aligned and the centered highlights line up with what's on screen.
+        cdp_url = _cdp_url_from_env()
+        if cdp_url:
+            browser = p.chromium.connect_over_cdp(cdp_url)
+            context = browser.contexts[0] if browser.contexts else browser.new_context()
+            page = context.new_page()
+        else:
+            browser = p.chromium.launch(**opts)
             context_kwargs = {"storage_state": state}
             if "--start-maximized" in (opts.get("args") or []):
                 context_kwargs["no_viewport"] = True
             context = browser.new_context(**context_kwargs)
             context.set_default_timeout(timeout_ms)
             page = context.new_page()
+            
+        try:
             highlight_selector(page, "body", label=f"{vendor} session ready", debug=visual_debug)
             yield page
         finally:
-            # The user may have closed the window themselves; closing an already
-            # gone browser raises TargetClosedError — swallow it so a manual close
-            # ends the scrape cleanly instead of dumping a traceback.
             try:
                 browser.close()
             except Exception as exc:  # noqa: BLE001
@@ -123,7 +125,9 @@ def scroll_collect(
             flat = 0
         else:
             flat += 1
-            if flat >= no_growth_passes:
+            # If we haven't found any items yet, allow more passes (e.g. scrolling past large headers)
+            allowed_passes = no_growth_passes if seen > 0 else max(no_growth_passes, 10)
+            if flat >= allowed_passes:
                 break
         prev = len(items)
         try:

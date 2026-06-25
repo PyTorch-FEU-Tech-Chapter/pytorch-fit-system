@@ -51,6 +51,9 @@ resume-build build --mode static \
 uvicorn resume_builder.web.app:app --reload
 ```
 
+For GitHub, Google, and Microsoft login setup, see
+[`docs/web-auth-setup.md`](docs/web-auth-setup.md).
+
 ## Architecture
 
 See `C:\Users\Drew\.claude\plans\pwede-bang-magkaroon-ka-peppy-trinket.md` for the full plan and design rationale.

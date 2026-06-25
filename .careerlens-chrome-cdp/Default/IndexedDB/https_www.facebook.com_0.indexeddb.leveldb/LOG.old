@@ -1,0 +1,7 @@
+2026/06/26-01:39:34.294 374c Reusing MANIFEST C:\Users\Drew\Desktop\resume-build-chopper\.careerlens-chrome-cdp\Default\IndexedDB\https_www.facebook.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/06/26-01:39:34.295 374c Recovering log #3
+2026/06/26-01:39:34.350 374c Reusing old log C:\Users\Drew\Desktop\resume-build-chopper\.careerlens-chrome-cdp\Default\IndexedDB\https_www.facebook.com_0.indexeddb.leveldb/000003.log 
+2026/06/26-01:47:17.266 23f4 Level-0 table #5: started
+2026/06/26-01:47:17.290 23f4 Level-0 table #5: 844500 bytes OK
+2026/06/26-01:47:17.300 23f4 Delete type=0 #3
+2026/06/26-01:47:17.301 23f4 Manual compaction at level-0 from (begin) .. (end); will stop at (end)

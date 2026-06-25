@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CareerLens AI Prototype</title>
+  <link rel="stylesheet" href="/static/prototype.css">
+  <script id="advisor-demo-payload" type="application/json">{"achievements": [{"id": "ach-1", "source": "GitHub repository", "text": "Built a React and FastAPI campus event platform with PostgreSQL, admin analytics, and registration workflow.", "title": "Campus event platform", "url": "https://github.com/demo/campus-event-platform"}, {"id": "ach-2", "source": "LinkedIn post", "text": "Reached hackathon finals by delivering a working student services prototype with a four-person team.", "title": "Hackathon finalist"}, {"id": "ach-3", "source": "Facebook event post", "text": "Led a student organization workflow tool pilot and posted deployment screenshots from the event operations team.", "title": "Student organization workflow pilot"}], "mcq_answers": {}, "student_id": "demo-student", "target_role": "Full-Stack Development Internship"}</script>
+  <script defer src="/static/prototype.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">CL</div>
+      <span>CareerLens AI</span>
+    </div>
+    <nav class="nav" aria-label="Application navigation">
+      <button class="active" type="button" data-page-target="dashboard">Dashboard</button>
+      <button type="button" data-page-target="evidence">Evidence Map</button>
+      <button type="button" data-page-target="resume">Resume Studio</button>
+      <button type="button" data-page-target="advisor">CDO Advisor</button>
+    </nav>
+  </aside>
+
+  <main class="main" id="app-main">
+    <section class="page-panel active" id="dashboard" data-page-panel="dashboard" aria-label="Dashboard">
+      <div class="topbar">
+        <div>
+          <p class="eyebrow">AI Campus Hackathon prototype</p>
+          <h1 class="page-title">Career intelligence workspace</h1>
+          <p class="subtitle">
+            Reconstruct student achievements from approved digital sources and turn
+            verified evidence into role-targeted resumes.
+          </p>
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="button" data-page-target="resume">Open Resume Studio</button>
+        </div>
+      </div>
+
+      <div class="hero-grid">
+        <div class="overview">
+          <div class="profile-row">
+            <div>
+              <p class="eyebrow">Student profile</p>
+              <h2 class="student-name">Juan Dela Cruz</h2>
+              <p class="profile-meta">
+                4th Year BS Computer Science | FEU Tech<br>
+                Target: Full-Stack Development Internship
+              </p>
+            </div>
+            <div class="score" aria-label="Resume readiness score 82 percent">
+              <div>
+                <strong>82%</strong>
+                <span>ready</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="metrics" aria-label="Profile metrics">
+            <div class="metric">
+              <strong>46</strong>
+              <span>career signals found</span>
+            </div>
+            <div class="metric">
+              <strong>5</strong>
+              <span>evidence nodes</span>
+            </div>
+            <div class="metric">
+              <strong>3</strong>
+              <span>next actions</span>
+            </div>
+          </div>
+        </div>
+
+        <figure class="concept" aria-label="CareerLens AI concept visual">
+          <img src="/static/careerlens-concept.png" alt="CareerLens AI dashboard concept visual">
+        </figure>
+      </div>
+
+      <section class="auth-panel get-started" aria-label="Let's Get Started">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Let's Get Started</p>
+            <h2>Connect identity first, then approve social sessions</h2>
+          </div>
+          <button class="btn" type="button" data-auth-refresh>Refresh status</button>
+        </div>
+
+        <div class="auth-grid">
+          <section>
+            <div class="section-header compact">
+              <h3>Identity providers</h3>
+              <span class="section-label">Stored email for future provider reuse</span>
+            </div>
+            <div class="auth-list">
+              
+              <article class="auth-card" data-provider-card="github">
+                <div>
+                  <h4>GitHub</h4>
+                  <p>Fast developer identity for repos and prefilled social login email.</p>
+                  <small data-provider-status="github">Checking status...</small>
+                </div>
+                <div class="auth-actions">
+                  <a class="btn primary" href="/auth/github/start">Sign in</a>
+                  <button class="btn" type="button" data-disconnect-provider="github">Disconnect</button>
+                </div>
+              </article>
+              
+              <article class="auth-card" data-provider-card="google">
+                <div>
+                  <h4>Google</h4>
+                  <p>Student identity option for future Drive, certificate, and email imports.</p>
+                  <small data-provider-status="google">Checking status...</small>
+                </div>
+                <div class="auth-actions">
+                  <a class="btn primary" href="/auth/google/start">Sign in</a>
+                  <button class="btn" type="button" data-disconnect-provider="google">Disconnect</button>
+                </div>
+              </article>
+              
+              <article class="auth-card" data-provider-card="microsoft">
+                <div>
+                  <h4>Microsoft</h4>
+                  <p>School account option for future OneDrive and campus identity integrations.</p>
+                  <small data-provider-status="microsoft">Checking status...</small>
+                </div>
+                <div class="auth-actions">
+                  <a class="btn primary" href="/auth/microsoft/start">Sign in</a>
+                  <button class="btn" type="button" data-disconnect-provider="microsoft">Disconnect</button>
+                </div>
+              </article>
+              
+            </div>
+          </section>
+
+          <section>
+            <div class="section-header compact">
+              <h3>Social scraping sessions</h3>
+              <span class="section-label">User-approved visible login</span>
+            </div>
+            <div class="auth-list">
+              
+              <article class="auth-card" data-social-card="facebook">
+                <div>
+                  <h4>Facebook</h4>
+                  <p>Opens visible browser login, then stores Playwright session state.</p>
+                  <small data-social-status="facebook">Checking status...</small>
+                </div>
+                <div class="auth-actions">
+                  <button class="btn primary" type="button" data-social-login="facebook">Connect</button>
+                  <button class="btn" type="button" data-disconnect-social="facebook">Disconnect</button>
+                </div>
+              </article>
+              
+              <article class="auth-card" data-social-card="linkedin">
+                <div>
+                  <h4>LinkedIn</h4>
+                  <p>Uses the identity email as prefill, then reuses saved session for scraping.</p>
+                  <small data-social-status="linkedin">Checking status...</small>
+                </div>
+                <div class="auth-actions">
+                  <button class="btn primary" type="button" data-social-login="linkedin">Connect</button>
+                  <button class="btn" type="button" data-disconnect-social="linkedin">Disconnect</button>
+                </div>
+              </article>
+              
+            </div>
+          </section>
+        </div>
+
+        <div class="auth-log" data-auth-log>No login job has been started.</div>
+      </section>
+    </section>
+
+    <section class="page-panel" id="evidence" data-page-panel="evidence" aria-label="Evidence Map">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Extraction layer</p>
+          <h1 class="page-title">Evidence Map</h1>
+          <p class="subtitle">
+            Career evidence is normalized into achievements, projects, skills, leadership, and certifications.
+          </p>
+        </div>
+      </div>
+      <div class="section-grid">
+        <div class="section">
+          <div class="graph">
+            <div class="graph-center">Juan Dela Cruz professional profile</div>
+            
+            <article class="row-item">
+              <div>
+                <h3>Hackathon Finalist</h3>
+                <p>Achievement</p>
+              </div>
+              <span class="confidence">96%</span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>Campus Event Platform</h3>
+                <p>Project</p>
+              </div>
+              <span class="confidence">91%</span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>React + FastAPI</h3>
+                <p>Skill Cluster</p>
+              </div>
+              <span class="confidence">89%</span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>Student Org Tech Lead</h3>
+                <p>Leadership</p>
+              </div>
+              <span class="confidence">84%</span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>Cloud Fundamentals</h3>
+                <p>Certification</p>
+              </div>
+              <span class="confidence">78%</span>
+            </article>
+            
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="source-list">
+            
+            <article class="row-item">
+              <div>
+                <h3>GitHub</h3>
+                <p>Repositories, README files, languages, contribution evidence</p>
+              </div>
+              <span class="pill green">API import | 12</span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>LinkedIn</h3>
+                <p>Posts, profile milestones, leadership and project updates</p>
+              </div>
+              <span class="pill green">Authorized scrape | 18</span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>Facebook</h3>
+                <p>Hackathon posts, event photos, project announcements</p>
+              </div>
+              <span class="pill green">User-approved scrape | 9</span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>Certificates</h3>
+                <p>Coursework, badges, and verified learning records</p>
+              </div>
+              <span class="pill green">Uploaded | 6</span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>Previous Resume</h3>
+                <p>Education, contact details, and baseline work history</p>
+              </div>
+              <span class="pill green">Parsed | 1</span>
+            </article>
+            
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page-panel" id="resume" data-page-panel="resume" aria-label="Resume Studio">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">Resume Studio</p>
+          <h1 class="page-title">ATS Internship Resume</h1>
+          <p class="subtitle">Full-Stack Development Internship</p>
+        </div>
+      </div>
+      <div class="workspace">
+        <div class="resume-preview" aria-label="Resume preview">
+          <header>
+            <h2>Juan Dela Cruz</h2>
+            <p>ATS Internship Resume | Full-Stack Development Internship</p>
+          </header>
+          <h3>Summary</h3>
+          <p>
+            Computer Science student focused on full-stack product development,
+            hackathon execution, and campus technology leadership.
+          </p>
+          <h3>Selected Projects</h3>
+          <ul>
+            <li>Built a campus event platform using React, FastAPI, and PostgreSQL.</li>
+            <li>Created a repository-backed resume builder that filters projects by target role.</li>
+            <li>Led a student organization workflow tool from prototype to pilot release.</li>
+          </ul>
+          <h3>Skills</h3>
+          <p>Python, JavaScript, React, FastAPI, PostgreSQL, GitHub Actions, UI prototyping.</p>
+        </div>
+
+        <div class="studio-side">
+          <section class="section-panel">
+            <div class="section-header compact">
+              <h2>Format preview controls</h2>
+              <span class="section-label">Preview only</span>
+            </div>
+            <div class="resume-list">
+              
+              <article class="row-item">
+                <div>
+                  <h3>Template</h3>
+                  <p>ATS Compact</p>
+                </div>
+              </article>
+              
+              <article class="row-item">
+                <div>
+                  <h3>Section order</h3>
+                  <p>Summary, Skills, Projects, Experience</p>
+                </div>
+              </article>
+              
+              <article class="row-item">
+                <div>
+                  <h3>Emphasis mode</h3>
+                  <p>Full-stack internship</p>
+                </div>
+              </article>
+              
+              <article class="row-item">
+                <div>
+                  <h3>Export targets</h3>
+                  <p>HTML, JSON, Markdown, PDF, LaTeX</p>
+                </div>
+              </article>
+              
+            </div>
+          </section>
+
+          <section class="section-panel">
+            <div class="section-header compact">
+              <h2>Injection JSON slots</h2>
+              <span class="section-label">Not executed yet</span>
+            </div>
+            <pre class="json-preview">{
+  "summary": "Preview-only: inject role-targeted profile summary.",
+  "skills": "Preview-only: inject normalized technical skill clusters.",
+  "projects": "Preview-only: inject selected role-relevant project evidence.",
+  "advisor_tags": "Preview-only: inject CDO Advisor competency tags."
+}</pre>
+          </section>
+
+          <section class="section-panel">
+            <div class="section-header compact">
+              <h2>Generated resumes</h2>
+              <span class="section-label">Loaded from out/resumes</span>
+            </div>
+            <div class="resume-list" data-resume-list>Loading generated resumes...</div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="page-panel" id="advisor" data-page-panel="advisor" aria-label="CDO Advisor">
+      <div class="cdo-band">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Career Development Office</p>
+            <h1>Advisor snapshot for Maria Santos</h1>
+          </div>
+          <span class="pill blue">JSON injection testing</span>
+        </div>
+        <p>Most students have project evidence but weak quantified impact statements.</p>
+        <div class="cdo-grid">
+          <div class="cdo-stat">
+            <strong>36</strong>
+            <span>students in queue</span>
+          </div>
+          <div class="cdo-stat">
+            <strong>21</strong>
+            <span>resume-ready</span>
+          </div>
+          <div class="cdo-stat">
+            <strong>9</strong>
+            <span>need review</span>
+          </div>
+          <div class="cdo-stat">
+            <strong>6</strong>
+            <span>at risk</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-grid">
+        <section class="section-panel">
+          <div class="section-header compact">
+            <h2>Advisor AI interpretation</h2>
+            <button class="btn primary" type="button" data-advisor-run>Run demo analysis</button>
+          </div>
+          <p class="band-copy">
+            AI returns tags and MCQ questions as JSON. Readiness scores are computed by the deterministic advisor algorithm.
+          </p>
+          <div class="recommendation-list" data-advisor-summary>
+            
+            <article class="row-item">
+              <div>
+                <h3>Add measurable project outcomes</h3>
+                <p>Use deployment count, active users, performance gains, or team size.</p>
+              </div>
+              <span class="pill red">
+                High
+              </span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>Close the cloud deployment gap</h3>
+                <p>Complete one cloud-hosted project and document CI/CD steps.</p>
+              </div>
+              <span class="pill gold">
+                Medium
+              </span>
+            </article>
+            
+            <article class="row-item">
+              <div>
+                <h3>Prepare interview stories</h3>
+                <p>Convert hackathon and org work into STAR-format examples.</p>
+              </div>
+              <span class="pill gold">
+                Medium
+              </span>
+            </article>
+            
+          </div>
+        </section>
+
+        <section class="section-panel">
+          <div class="section-header compact">
+            <h2>Injection response</h2>
+            <span class="section-label">JSON only</span>
+          </div>
+          <pre class="json-preview" data-advisor-output>{
+  "status": "ready",
+  "action": "Run demo analysis"
+}</pre>
+        </section>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

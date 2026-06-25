@@ -1,0 +1,925 @@
+WEBVTT
+
+00:00:04.240 --> 00:00:06.840
+Halo.
+
+00:00:06.910 --> 00:00:10.189
+Everyone, I'm Boris. I'm a member of technical staff here
+
+00:00:10.189 --> 00:00:13.412
+at Anthropic and I created Quad Code and here to talk to
+
+00:00:13.412 --> 00:00:16.692
+you a little bit about some practical tips and tricks for
+
+00:00:16.692 --> 00:00:20.085
+using Quad Code. It's going to be a very practical, I'm not
+
+00:00:20.085 --> 00:00:23.195
+going to go too much into the history or the theory or
+
+00:00:23.195 --> 00:00:25.410
+anything like this.
+
+00:00:25.410 --> 00:00:28.336
+And yeah, before we start actually, can we get a quick show
+
+00:00:28.336 --> 00:00:32.190
+of hands who is used quad code before?
+
+00:00:32.240 --> 00:00:35.114
+Yeah, alright, that's what we like to see. For everyone
+
+00:00:35.114 --> 00:00:38.193
+that didn't raise your hands, I know you're not supposed to
+
+00:00:38.193 --> 00:00:41.222
+do this while people are talking, but if you can open your
+
+00:00:41.222 --> 00:00:44.300
+laptop and type this.
+
+00:00:46.400 --> 00:00:48.578
+And this will help you install quad code just so you can
+
+00:00:48.578 --> 00:00:52.030
+follow along for the rest of the talk.
+
+00:00:55.620 --> 00:01:00.480
+All you need is no JS if if you have it, this should work.
+
+00:01:01.540 --> 00:01:04.400
+Did you want us all?
+
+00:01:04.400 --> 00:01:06.604
+Yeah, if you, well, you don't have to, you don't have to
+
+00:01:06.604 --> 00:01:08.846
+follow along. But if you don't have it yet, yeah, this is
+
+00:01:08.846 --> 00:01:12.780
+your chance to install it so you can follow along.
+
+00:01:14.250 --> 00:01:17.318
+So what is Quad Code? Quad Code is a new kind of AI
+
+00:01:17.318 --> 00:01:20.623
+assistant, and there's been different generations of AI
+
+00:01:20.623 --> 00:01:23.691
+assistance for coding. Most of them have been about
+
+00:01:23.691 --> 00:01:27.114
+completing, you know, like a line at a time, completing a
+
+00:01:27.114 --> 00:01:30.418
+few lines of code at a time. Quad Code is not for that.
+
+00:01:30.418 --> 00:01:33.782
+It's fully agentic. So it's meant for building features,
+
+00:01:33.782 --> 00:01:36.990
+for writing entire functions, entire files.
+
+00:01:36.990 --> 00:01:40.880
+Fixing entire bugs at the same time.
+
+00:01:40.880 --> 00:01:44.001
+And what's kind of cool about Quad Code is it works with
+
+00:01:44.001 --> 00:01:47.067
+all of your tools and you don't have to change out your
+
+00:01:47.067 --> 00:01:50.298
+workflow, you don't have to swap everything to start using
+
+00:01:50.298 --> 00:01:53.474
+it. So whatever IDE use, if you use VS Code or if you use
+
+00:01:53.474 --> 00:01:56.596
+Xcode, or if you use Jetbrains Ides, there's some people
+
+00:01:56.596 --> 00:01:59.827
+had Anthropic that you can't pry them from their cold dead
+
+00:01:59.827 --> 00:02:02.080
+hands, but they use Quad Code.
+
+00:02:02.080 --> 00:02:04.350
+Because Claude code works with every single ID, every
+
+00:02:04.350 --> 00:02:05.930
+terminal out there.
+
+00:02:05.930 --> 00:02:09.584
+It'll work locally over remote SSH, over Timax, whatever
+
+00:02:09.584 --> 00:02:14.020
+environment you're in, you can run it.
+
+00:02:15.130 --> 00:02:17.591
+Its general purpose and this is something where if you
+
+00:02:17.591 --> 00:02:20.187
+haven't used these kind of free form coding assistance in
+
+00:02:20.187 --> 00:02:22.783
+the past, it can be kind of hard to figure out how to get
+
+00:02:22.783 --> 00:02:25.335
+started because you open it up and you just see a prompt
+
+00:02:25.335 --> 00:02:27.975
+bar and you might wonder like what do I, what do I do with
+
+00:02:27.975 --> 00:02:29.910
+this? What do I type in?
+
+00:02:29.910 --> 00:02:32.563
+It's a power tool, so you can use it for a lot of things,
+
+00:02:32.563 --> 00:02:35.217
+but also because it can do so much. We don't try to guide
+
+00:02:35.217 --> 00:02:37.962
+you towards a particular workflow because really you should
+
+00:02:37.962 --> 00:02:42.250
+be able to use it however you want as an engineer.
+
+00:02:45.490 --> 00:02:48.108
+As you open up quad code for the first time, there's a few
+
+00:02:48.108 --> 00:02:50.726
+things that we recommend doing to get your environment set
+
+00:02:50.726 --> 00:02:53.300
+up. And these are pretty straightforward. So run terminal
+
+00:02:53.300 --> 00:02:55.963
+setup. This will give you shift enter for new lines. So you
+
+00:02:55.963 --> 00:02:58.582
+don't have to do like backslashes to enter new lines. This
+
+00:02:58.582 --> 00:03:01.580
+is, you know, it makes it a little bit nicer to use.
+
+00:03:01.580 --> 00:03:04.999
+Do slash theme to set light mode or dark mode or adult
+
+00:03:04.999 --> 00:03:07.240
+denize themes.
+
+00:03:07.240 --> 00:03:10.624
+You can do slash install GitHub app. So today when we
+
+00:03:10.624 --> 00:03:14.260
+announced the GitHub app where you can add mention Claude
+
+00:03:14.260 --> 00:03:17.958
+on any GitHub issue or pull request. So to install it just
+
+00:03:17.958 --> 00:03:21.790
+run this command in your terminal.
+
+00:03:21.790 --> 00:03:24.676
+You can customize the set of allowed tools that you can use
+
+00:03:24.676 --> 00:03:27.417
+so you're not prompted for it every time. This is pretty
+
+00:03:27.417 --> 00:03:30.255
+convenient for stuff that I'm prompted about a bunch. I'll
+
+00:03:30.255 --> 00:03:32.901
+definitely customize it in this way so I don't have to
+
+00:03:32.901 --> 00:03:35.691
+accept it every time. And something that I actually do is
+
+00:03:35.691 --> 00:03:38.481
+for a lot of my prompts, I won't hand type them into quad
+
+00:03:38.481 --> 00:03:41.126
+code. If you're on Mac OS, you can go into your system
+
+00:03:41.126 --> 00:03:43.724
+settings under accessibility is dictation and you can
+
+00:03:43.724 --> 00:03:46.514
+enable it. And so something I do is you just hit like the
+
+00:03:46.514 --> 00:03:50.200
+dictation key twice and you can just speak your prompt.
+
+00:03:50.200 --> 00:03:52.564
+And it helps a lot to have specific prompts. So this is
+
+00:03:52.564 --> 00:03:55.097
+actually pretty awesome. You can just talk to quad code and
+
+00:03:55.097 --> 00:03:57.588
+like you would another engineer and you don't have to type
+
+00:03:57.588 --> 00:04:00.180
+a lot of code.
+
+00:04:02.670 --> 00:04:05.273
+So when you're starting out with quad code, it's so free
+
+00:04:05.273 --> 00:04:07.968
+form and it can do everything. What do you start with? The
+
+00:04:07.968 --> 00:04:10.571
+thing I recommend above everything else is starting with
+
+00:04:10.571 --> 00:04:12.992
+code based Q&A. So just asking your question, asking
+
+00:04:12.992 --> 00:04:15.140
+questions here, code base.
+
+00:04:15.140 --> 00:04:17.835
+This is something that we teach new hires at Anthropic. So
+
+00:04:17.835 --> 00:04:20.576
+on the first day in technical onboarding, you weren't about
+
+00:04:20.576 --> 00:04:23.317
+quad code. You download it, you get it set up, and then you
+
+00:04:23.317 --> 00:04:26.500
+immediately start asking questions about the code base.
+
+00:04:26.500 --> 00:04:29.021
+And in the past, when you were doing technical onboarding,
+
+00:04:29.021 --> 00:04:31.499
+it's something that taxes the team a lot, right? You have
+
+00:04:31.499 --> 00:04:33.977
+to ask other engineers on the team questions. You have to
+
+00:04:33.977 --> 00:04:36.456
+look around the code, and this takes a while. You have to
+
+00:04:36.456 --> 00:04:40.310
+figure out how to use the tools that this takes a long time.
+
+00:04:40.310 --> 00:04:42.812
+With what code? You can just ask Quad code and it'll export
+
+00:04:42.812 --> 00:04:45.315
+the code base that will answer these kind of questions. And
+
+00:04:45.315 --> 00:04:47.776
+so I don't. Anthropic onboarding used to take about two or
+
+00:04:47.776 --> 00:04:50.071
+three weeks for technical hires. It's now about two or
+
+00:04:50.071 --> 00:04:52.530
+three days.
+
+00:04:53.860 --> 00:04:56.678
+What's also kind of cool about Q&A is we we don't do any
+
+00:04:56.678 --> 00:04:59.546
+sort of indexing. So there's no remote database with your
+
+00:04:59.546 --> 00:05:02.415
+code. We don't upload it anywhere. Your code stays local.
+
+00:05:02.415 --> 00:05:05.380
+We do not train generative models on the code.
+
+00:05:05.380 --> 00:05:07.669
+So it's there, you control it. There's no indices or
+
+00:05:07.669 --> 00:05:09.160
+anything like this.
+
+00:05:09.160 --> 00:05:11.525
+And what that means is also, there's no setup. So you start
+
+00:05:11.525 --> 00:05:13.891
+Claude, you download it, you start it. There's no indexing.
+
+00:05:13.891 --> 00:05:18.060
+You don't have to wait. You can just use it right away.
+
+00:05:18.950 --> 00:05:21.565
+This is a technical talk, so I'm going to show some very
+
+00:05:21.565 --> 00:05:24.181
+specific prompts and very specific code samples that you
+
+00:05:24.181 --> 00:05:26.935
+can use and hopefully improve and upload all your quad code
+
+00:05:26.935 --> 00:05:28.240
+experience.
+
+00:05:28.240 --> 00:05:30.858
+So some kind of questions that you can ask is, you know,
+
+00:05:30.858 --> 00:05:33.568
+like how is this particular piece of code used or how do I
+
+00:05:33.568 --> 00:05:36.141
+instantiate this thing and cloud code, It won't just do
+
+00:05:36.141 --> 00:05:38.897
+like a text search and try to answer this. It will often go
+
+00:05:38.897 --> 00:05:41.562
+a level deeper and it will try to find examples of how is
+
+00:05:41.562 --> 00:05:44.110
+this class instantiated, how is it used?
+
+00:05:44.110 --> 00:05:46.482
+And it will give you a much deeper answer, so something
+
+00:05:46.482 --> 00:05:48.938
+that you would get out of a wiki or documentation instead
+
+00:05:48.938 --> 00:05:52.040
+of justice like command F.
+
+00:05:52.230 --> 00:05:55.238
+Something that I do a lot also is asking about git history.
+
+00:05:55.238 --> 00:05:58.096
+So for example, you know, why does this function have 15
+
+00:05:58.096 --> 00:06:01.004
+arguments and why are the arguments named this weird way?
+
+00:06:01.004 --> 00:06:03.862
+And this is something I bet in all of our code bases you
+
+00:06:03.862 --> 00:06:07.570
+have some function like this or some class like this.
+
+00:06:07.570 --> 00:06:10.048
+And fraud code can look through history and it'll look to
+
+00:06:10.048 --> 00:06:12.527
+figure out how did these arguments get introduced and who
+
+00:06:12.527 --> 00:06:14.963
+introduced them and what was the situation, what are the
+
+00:06:14.963 --> 00:06:17.399
+issues that those commits linked to another look through
+
+00:06:17.399 --> 00:06:19.835
+all this and summarize it. And you don't have to tell it
+
+00:06:19.835 --> 00:06:22.357
+that in all these, in all this detail, you just ask it. So
+
+00:06:22.357 --> 00:06:24.836
+just say look through history. And I don't know how to do
+
+00:06:24.836 --> 00:06:26.520
+this.
+
+00:06:26.520 --> 00:06:28.863
+The reason that knows, by the way, is not because we
+
+00:06:28.863 --> 00:06:31.472
+prompted it to. There's nothing in the system prompt about
+
+00:06:31.472 --> 00:06:34.080
+looking through history. It knows it because the model was
+
+00:06:34.080 --> 00:06:36.733
+awesome, and if you tell it to use it don't know how to use
+
+00:06:36.733 --> 00:06:40.850
+git. So we're lucky to be building on such a good model.
+
+00:06:40.850 --> 00:06:44.393
+I often ask about GitHub issues so you know it can use web
+
+00:06:44.393 --> 00:06:47.637
+fetch and it can fetch issues and woke up contacts on
+
+00:06:47.637 --> 00:06:51.170
+issues too and this is pretty awesome.
+
+00:06:51.170 --> 00:06:54.020
+And this is something that I do every single Monday in our
+
+00:06:54.020 --> 00:06:56.726
+weekly stand up is I ask what did I ship this week? And
+
+00:06:56.726 --> 00:06:59.432
+quad Code looks the log, it knows my username and it'll
+
+00:06:59.432 --> 00:07:02.187
+just give me a nice read out of everything I shipped and
+
+00:07:02.187 --> 00:07:06.410
+I'll just copy and paste that into a document.
+
+00:07:09.200 --> 00:07:11.724
+So yeah, that's tip #1 for people that have not used quad
+
+00:07:11.724 --> 00:07:14.248
+code before, if you're just showing it to someone for the
+
+00:07:14.248 --> 00:07:16.728
+first time onboarding your team, the thing we definitely
+
+00:07:16.728 --> 00:07:19.121
+recommend is start with code based Q&A. Don't start by
+
+00:07:19.121 --> 00:07:21.689
+using fancy tools. Don't start by editing code. Just start
+
+00:07:21.689 --> 00:07:24.300
+by asking questions about the code base and that will teach
+
+00:07:24.300 --> 00:07:26.824
+people how to prompt and it will start teaching them this
+
+00:07:26.824 --> 00:07:29.130
+boundary of like what can Claude code do? What is it
+
+00:07:29.130 --> 00:07:31.698
+capable of versus what do you need to hold his hand with a
+
+00:07:31.698 --> 00:07:34.135
+little bit more? What can be 1 shotted? What can be two
+
+00:07:34.135 --> 00:07:36.572
+shotted, 3 shotted? What do you need to use interactive
+
+00:07:36.572 --> 00:07:36.860
+mode?
+
+00:07:36.860 --> 00:07:39.420
+We're in Apple.
+
+00:07:40.860 --> 00:07:43.056
+Once you're pretty comfortable with Q&A, you can dive into
+
+00:07:43.056 --> 00:07:44.350
+editing code.
+
+00:07:44.350 --> 00:07:46.170
+This is the next thing.
+
+00:07:46.170 --> 00:07:49.321
+And the cool thing about any sort of agentic, you know,
+
+00:07:49.321 --> 00:07:52.472
+like using a LEM in agentic ways, you give it tools and
+
+00:07:52.472 --> 00:07:55.848
+it's just like magical. It figures out how to use the tools.
+
+00:07:55.848 --> 00:07:59.280
+And with Quad code, we give it a pretty small set of tools.
+
+00:07:59.280 --> 00:08:02.600
+It's not a lot. And so it has a tool to edit files, it has
+
+00:08:02.600 --> 00:08:05.976
+a tool to run bash commands, it has a tool to search files.
+
+00:08:05.976 --> 00:08:08.959
+And it'll string these together to explore the code,
+
+00:08:08.959 --> 00:08:12.310
+brainstorm, and then finally make edits.
+
+00:08:12.310 --> 00:08:14.301
+And you don't have to prompt it specifically to use this
+
+00:08:14.301 --> 00:08:16.327
+tool and this tool and this tool. You just say, you know,
+
+00:08:16.327 --> 00:08:18.389
+do this thing and it will figure out how to do it. It will
+
+00:08:18.389 --> 00:08:20.380
+string it together in the right way that makes sense for
+
+00:08:20.380 --> 00:08:22.730
+quad code.
+
+00:08:25.470 --> 00:08:28.492
+There's a lot of ways to use this. Something I like to do
+
+00:08:28.492 --> 00:08:31.462
+sometimes is before having Claude jump in to write code,
+
+00:08:31.462 --> 00:08:34.588
+I'll ask it to brainstorm a little bit or make a plan. This
+
+00:08:34.588 --> 00:08:37.350
+is something we highly recommend and something I see
+
+00:08:37.350 --> 00:08:40.476
+sometimes as people, you know, they take quad code and they
+
+00:08:40.476 --> 00:08:43.602
+ask it, hey, implement this enormous like 3000 wine feature.
+
+00:08:43.602 --> 00:08:46.572
+And sometimes it gets this right on the first shot. But
+
+00:08:46.572 --> 00:08:49.646
+sometimes what happens is the thing that a build is not at
+
+00:08:49.646 --> 00:08:51.880
+all the thing that you wanted.
+
+00:08:51.880 --> 00:08:55.296
+And the easiest way to get the result you want is ask it to
+
+00:08:55.296 --> 00:08:58.712
+think first. So brainstorm ideas, make a plan, run it by me,
+
+00:08:58.712 --> 00:09:01.700
+ask for approval before you write code.
+
+00:09:01.700 --> 00:09:04.288
+And you don't have to use plan mode, you don't have to use
+
+00:09:04.288 --> 00:09:06.745
+any special tools to do this. All you have to do is ask
+
+00:09:06.745 --> 00:09:09.334
+Claude and it will know to do this. So just say before you
+
+00:09:09.334 --> 00:09:12.870
+write code, make a plan. That's it.
+
+00:09:13.450 --> 00:09:15.700
+This is also, I wanna think with this one, this commit push
+
+00:09:15.700 --> 00:09:17.725
+here. This is a really common incantation that I use.
+
+00:09:17.725 --> 00:09:19.975
+There's nothing special about it, but Quad is kind of smart
+
+00:09:19.975 --> 00:09:22.076
+enough to interpret this. So it'll make a commit, it'll
+
+00:09:22.076 --> 00:09:24.288
+push it to the branch, make a branch, and then make a pull
+
+00:09:24.288 --> 00:09:26.314
+request from you on GitHub. You don't have to explain
+
+00:09:26.314 --> 00:09:28.489
+anything. It'll look through the code, it'll look through
+
+00:09:28.489 --> 00:09:30.702
+the history, it will look through the git log by itself to
+
+00:09:30.702 --> 00:09:32.914
+figure out the commit format and all this stuff, and it'll
+
+00:09:32.914 --> 00:09:36.490
+make the commit and push it the right way.
+
+00:09:36.790 --> 00:09:39.418
+Again, we're not system prompting that to do this, it just
+
+00:09:39.418 --> 00:09:43.200
+knows how to do this. The model is good.
+
+00:09:44.540 --> 00:09:47.405
+As you get a little bit more advanced, you're going to want
+
+00:09:47.405 --> 00:09:50.080
+to start to plug in your teams tools. And this is where
+
+00:09:50.080 --> 00:09:52.946
+quad code starts to really shine. And there's generally two
+
+00:09:52.946 --> 00:09:55.669
+kinds of tools. So one is batch tools. And an example of
+
+00:09:55.669 --> 00:09:58.344
+this, I just made-up this like barley CLI. This isn't a
+
+00:09:58.344 --> 00:10:01.210
+real thing, but you can say use the CLI to do something and
+
+00:10:01.210 --> 00:10:03.981
+you can tell cloud code about this and you can tell it to
+
+00:10:03.981 --> 00:10:06.847
+use, for example, like Dash. Dash help to figure out how to
+
+00:10:06.847 --> 00:10:09.120
+use it. And this is efficient.
+
+00:10:09.120 --> 00:10:11.765
+If you find yourself using it a lot, you can also dump this
+
+00:10:11.765 --> 00:10:14.278
+into your Quantum D, which we'll talk about in a bit. So
+
+00:10:14.278 --> 00:10:16.659
+Quad can remember this across sessions, but this is a
+
+00:10:16.659 --> 00:10:19.216
+common pattern we follow at Anthropic and we see external
+
+00:10:19.216 --> 00:10:21.340
+customers used to.
+
+00:10:21.340 --> 00:10:23.993
+And same thing with MCP, quad code can use batch tools,
+
+00:10:23.993 --> 00:10:26.836
+they can use MCP tools. So you know, just tell it about the
+
+00:10:26.836 --> 00:10:29.632
+tools and you can add the MCP tool and you can tell it how
+
+00:10:29.632 --> 00:10:33.430
+to use it and it'll, it'll just start using it.
+
+00:10:33.430 --> 00:10:36.488
+And this extremely powerful because when you start to use
+
+00:10:36.488 --> 00:10:39.547
+code on a new code base, you can just give it all of your
+
+00:10:39.547 --> 00:10:42.606
+tools, all the tools your team already uses for this code
+
+00:10:42.606 --> 00:10:46.980
+base, and COD code can use it on your behalf.
+
+00:10:50.650 --> 00:10:53.410
+There's a few common work clothes.
+
+00:10:53.410 --> 00:10:56.540
+And this is the one that I talked about already. So kind of
+
+00:10:56.540 --> 00:10:59.618
+do a little bit of expiration, do a little bit of planning
+
+00:10:59.618 --> 00:11:02.696
+and ask, ask me for confirmation before you start to write
+
+00:11:02.696 --> 00:11:05.722
+code. These other two on the right are extremely powerful
+
+00:11:05.722 --> 00:11:08.852
+when Claudia has some way to check its work. So for example,
+
+00:11:08.852 --> 00:11:11.878
+by writing unit tests or screenshotting and puppeteer or
+
+00:11:11.878 --> 00:11:14.340
+screenshotting the iOS simulator.
+
+00:11:14.340 --> 00:11:17.411
+Then it can iterate. And this is incredible because if you
+
+00:11:17.411 --> 00:11:20.378
+give it, for example mock and you say build this web UI,
+
+00:11:20.378 --> 00:11:23.449
+it'll get a pretty good. But if you want to iterate two or
+
+00:11:23.449 --> 00:11:26.450
+three times often it gets it almost perfect.
+
+00:11:26.450 --> 00:11:29.071
+So the trick is, give it some sort of tool that it can use
+
+00:11:29.071 --> 00:11:31.648
+for feedback to check its work, and then based on that it
+
+00:11:31.648 --> 00:11:34.047
+will iterate by itself and you're going to get a much
+
+00:11:34.047 --> 00:11:35.560
+better result.
+
+00:11:35.560 --> 00:11:37.890
+So whatever your domain is, if it's unit test or
+
+00:11:37.890 --> 00:11:40.745
+integration test or screenshots for apps or web or anything,
+
+00:11:40.745 --> 00:11:43.646
+just give it away to see its result and it will iterate and
+
+00:11:43.646 --> 00:11:46.170
+get better.
+
+00:11:48.910 --> 00:11:51.434
+So these are the next steps. Teach Squad how to use your
+
+00:11:51.434 --> 00:11:54.046
+tools and figure out the right workflow. If you want quote
+
+00:11:54.046 --> 00:11:56.703
+to jump in a code, if you wanted to brainstorm a little bit,
+
+00:11:56.703 --> 00:11:59.271
+make a plan. If you wanted to iterate, kind of have some
+
+00:11:59.271 --> 00:12:01.928
+sense of that so you know how to prompt Quad to do what you
+
+00:12:01.928 --> 00:12:04.150
+want.
+
+00:12:05.980 --> 00:12:08.658
+As you go deeper beyond tools, you want to start to give
+
+00:12:08.658 --> 00:12:11.336
+Quad more context. And the more context, the smarter the
+
+00:12:11.336 --> 00:12:14.155
+decisions will be. Because as an engineer working in a code
+
+00:12:14.155 --> 00:12:16.786
+base, you have a ton of context in your head about your
+
+00:12:16.786 --> 00:12:19.417
+systems and all the history and everything else. So you
+
+00:12:19.417 --> 00:12:22.142
+there's different ways to give this to Claude, and as you
+
+00:12:22.142 --> 00:12:25.590
+give Claude more context, it will do better.
+
+00:12:25.590 --> 00:12:28.810
+There's different ways to do this. The simplest 1 is what
+
+00:12:28.810 --> 00:12:32.141
+we call quantum D, and quad dot MD is the special file name.
+
+00:12:32.141 --> 00:12:35.528
+The simplest place to put it is in the project root. So the
+
+00:12:35.528 --> 00:12:38.637
+same director you start quad in put a quad in there and
+
+00:12:38.637 --> 00:12:41.913
+that will get automatically read into context at the start
+
+00:12:41.913 --> 00:12:45.189
+of every session, and essentially the first user turn will
+
+00:12:45.189 --> 00:12:48.300
+include the quad MD.
+
+00:12:48.330 --> 00:12:51.378
+You can also have a local bottom D and this one you don't
+
+00:12:51.378 --> 00:12:54.426
+usually check into source control. So Cloud MD you should
+
+00:12:54.426 --> 00:12:57.579
+check into source control, share with your team so that you
+
+00:12:57.579 --> 00:13:00.733
+can write it once and share it with your team. This one you
+
+00:13:00.733 --> 00:13:03.830
+don't check in, it's just for you.
+
+00:13:03.830 --> 00:13:06.796
+The kinds of things you put in Quantum D, it's like common
+
+00:13:06.796 --> 00:13:09.712
+Bash commands, common MCP tools, architectural decisions,
+
+00:13:09.712 --> 00:13:12.678
+important files, anything that you would kind of typically
+
+00:13:12.678 --> 00:13:15.493
+need to know in order to work in this code base. Try to
+
+00:13:15.493 --> 00:13:18.510
+keep it pretty short because if it gets too long, it's just
+
+00:13:18.510 --> 00:13:21.325
+going to use up a bunch of context and it's usually not
+
+00:13:21.325 --> 00:13:24.191
+that useful. So just try to keep it as short as you can.
+
+00:13:24.191 --> 00:13:26.956
+And for example, in our code base, we have common bash
+
+00:13:26.956 --> 00:13:29.923
+commands, we have a style guide, we have a few core files,
+
+00:13:29.923 --> 00:13:32.200
+kind of things like that.
+
+00:13:32.200 --> 00:13:34.958
+Other other quantum D's. You can put them in other nested
+
+00:13:34.958 --> 00:13:39.040
+child directories and Claude will pull them in on demand.
+
+00:13:39.040 --> 00:13:41.342
+So these are the quantum D that will get pulled in
+
+00:13:41.342 --> 00:13:44.051
+automatically. But then also you can put in put quantum D's
+
+00:13:44.051 --> 00:13:46.625
+in nested directories and those will get put. Those will
+
+00:13:46.625 --> 00:13:48.928
+get automatically pulled when cloud works in those
+
+00:13:48.928 --> 00:13:51.470
+directories.
+
+00:13:51.490 --> 00:13:53.781
+And of course, if you're, you know, a company, maybe you
+
+00:13:53.781 --> 00:13:56.152
+want a quantum that's shared across all the different code
+
+00:13:56.152 --> 00:13:58.564
+bases and you want to manage it on behalf of your users and
+
+00:13:58.564 --> 00:14:00.895
+you can put it in your enterprise route and that will get
+
+00:14:00.895 --> 00:14:03.860
+pulled in automatically.
+
+00:14:05.830 --> 00:14:08.797
+There's a ton of ways to pull in context. I actually had a
+
+00:14:08.797 --> 00:14:11.363
+lot of trouble putting this fight together just to
+
+00:14:11.363 --> 00:14:14.029
+communicate the breadth of ways you can do this, but
+
+00:14:14.029 --> 00:14:16.846
+Quantum T has pulled in automatically. You can also use
+
+00:14:16.846 --> 00:14:19.663
+slash commands. So this is doc quad slash commands, and
+
+00:14:19.663 --> 00:14:22.480
+this can be in your home directory or it can be checked
+
+00:14:22.480 --> 00:14:25.448
+into your project. And this is for slash commands and over
+
+00:14:25.448 --> 00:14:26.720
+here.
+
+00:14:26.720 --> 00:14:29.962
+We have a few examples of the slash commands that we have
+
+00:14:29.962 --> 00:14:31.930
+in Quad code itself.
+
+00:14:31.930 --> 00:14:34.700
+And so for example, if you're in the Cloud Code repo and
+
+00:14:34.700 --> 00:14:37.276
+you see issues getting labeled, that's actually this
+
+00:14:37.276 --> 00:14:40.490
+workflow running here, it's label GitHub issues.
+
+00:14:40.490 --> 00:14:42.759
+And we have a GitHub action running the same one we talked
+
+00:14:42.759 --> 00:14:44.870
+about this morning.
+
+00:14:44.870 --> 00:14:47.176
+Where crude code will run this command and it's just a
+
+00:14:47.176 --> 00:14:49.693
+splash command, it will run and it will label the issues so
+
+00:14:49.693 --> 00:14:53.280
+humans don't have to. It just saves us a bunch of time.
+
+00:14:53.280 --> 00:14:56.379
+And of course you can mention files to pull them into
+
+00:14:56.379 --> 00:15:01.250
+context. And like I said before, quantum D's in A.

@@ -28,6 +28,7 @@ from ..headless_browser import (
     fetch_rendered_html,
     scroll_collect,
 )
+from ..playwright_step import step_limit_from_env, step_through_articles
 from ..http import HttpClient
 from ..models import SocialMention, SocialPost
 
@@ -46,11 +47,22 @@ _AUTHOR_RE = re.compile(r"<strong[^>]*>([^<]+)</strong>")
 
 
 # Read the post body only — clone the article and drop nested comment articles
-# before reading innerText, so the snapshot never captures comment-section text.
+# before reading innerText. Also drop buttons, toolbars, and SVGs to avoid
+# accidentally scraping "Like", "Reply", or "Share" labels that clutter the text.
 _POST_BODY_TEXT_JS = """
 el => {
   const clone = el.cloneNode(true);
-  clone.querySelectorAll('[role="article"]').forEach(n => n.remove());
+  // Remove nested comments but NOT shared posts.
+  // Comments usually have aria-label="Comment by..." or similar. 
+  // By checking the label, we preserve shared posts which might also use role="article".
+  clone.querySelectorAll('[role="article"]').forEach(n => {
+    const label = n.getAttribute('aria-label') || '';
+    if (/\\s*comment by/i.test(label) || /\\s*reply by/i.test(label)) {
+      n.remove();
+    }
+  });
+  // Remove action bars and buttons (Like, Reply, Share)
+  clone.querySelectorAll('[role="button"], [role="toolbar"], form, svg, [data-visualcompletion="ignore"]').forEach(n => n.remove());
   return (clone.innerText || '').trim();
 }
 """
@@ -234,8 +246,14 @@ class FacebookVendor(SocialVendor):
                 page,
                 _POST_ARTICLE_SELECTOR,
                 max_scrolls=max_scrolls,
+                settle_ms=3000,
             )
             log.info("FB scrape captured %d articles at %s", len(articles), url)
+            # Optional slow, visible step-through: walk the first N posts and delete
+            # their comment sections on the live page so the user can verify focus.
+            step_limit = step_limit_from_env()
+            if step_limit:
+                step_through_articles(page, _POST_ARTICLE_SELECTOR, limit=step_limit)
             for art in articles:
                 try:
                     records.append(_snapshot_article(art))

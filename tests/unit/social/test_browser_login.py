@@ -69,6 +69,46 @@ def test_returns_cookies_when_success_cookie_appears():
     browser.close.assert_called_once()
 
 
+def test_uses_existing_chrome_cdp_when_configured(monkeypatch):
+    jars = [
+        [{"name": "c_user", "value": "100012345"}],
+        [{"name": "c_user", "value": "100012345"}],
+    ]
+    context = MagicMock()
+    context.cookies.side_effect = jars
+    context.storage_state.return_value = {"cookies": [{"name": "c_user"}], "origins": []}
+    page = MagicMock()
+    page.query_selector.return_value = MagicMock()
+    page.url = "https://www.facebook.com/"
+    context.new_page.return_value = page
+    browser = MagicMock()
+    browser.contexts = [context]
+    chromium = MagicMock()
+    chromium.connect_over_cdp.return_value = browser
+    pw = MagicMock()
+    pw.chromium = chromium
+
+    @contextmanager
+    def fake_sync_playwright():
+        yield pw
+
+    monkeypatch.setenv("RESUME_BUILD_PLAYWRIGHT_CDP_URL", "http://127.0.0.1:9222")
+    result = open_login_window(
+        "facebook",
+        poll_seconds=0.0,
+        timeout_seconds=5.0,
+        settle_seconds=0.0,
+        playwright_module=fake_sync_playwright,
+    )
+
+    assert result.cookies["c_user"] == "100012345"
+    chromium.connect_over_cdp.assert_called_once_with("http://127.0.0.1:9222")
+    chromium.launch.assert_not_called()
+    context.new_page.assert_called_once()
+    page.close.assert_called_once()
+    browser.close.assert_not_called()
+
+
 def test_times_out_when_success_cookie_never_arrives():
     # `cookies()` keeps returning an empty jar forever.
     context = MagicMock()
@@ -77,8 +117,10 @@ def test_times_out_when_success_cookie_never_arrives():
     browser = MagicMock()
     browser.new_context.return_value = context
     context.new_page.return_value = MagicMock()
-    chromium = MagicMock(); chromium.launch.return_value = browser
-    pw = MagicMock(); pw.chromium = chromium
+    chromium = MagicMock()
+    chromium.launch.return_value = browser
+    pw = MagicMock()
+    pw.chromium = chromium
 
     @contextmanager
     def fake_sync_playwright():
@@ -137,20 +179,46 @@ def test_prefill_username_types_into_facebook_email_field():
     page.fill.assert_called_once_with("input#email", "jane.doe@example.com")
 
 
-def test_login_not_complete_until_url_matches_target_domain():
-    """Cookie + element present, but page.url on a wrong host — must NOT succeed.
-
-    Verifies that the URL substring check (``success_url_contains``) participates
-    in the success gate as a third independent signal alongside cookie + element.
-    """
+def test_login_success_uses_session_cookie_without_feed_probe():
+    """Auth capture should stop once the vendor session cookie exists."""
     context = MagicMock()
     context.cookies.return_value = [{"name": "c_user", "value": "100"}]
     context.storage_state.return_value = {"cookies": [], "origins": []}
     browser = MagicMock()
     browser.new_context.return_value = context
     page = MagicMock()
-    page.query_selector.return_value = MagicMock()  # selector present
-    page.url = "https://www.bing.com/search?q=facebook"  # WRONG host
+    page.url = "https://www.bing.com/search?q=facebook"
+    context.new_page.return_value = page
+    chromium = MagicMock()
+    chromium.launch.return_value = browser
+    pw = MagicMock()
+    pw.chromium = chromium
+
+    @contextmanager
+    def fake_sync_playwright():
+        yield pw
+
+    result = open_login_window(
+        "facebook",
+        poll_seconds=0.0,
+        timeout_seconds=0.05,
+        settle_seconds=0.0,
+        playwright_module=fake_sync_playwright,
+    )
+
+    assert result.cookies == {"c_user": "100"}
+    page.query_selector.assert_not_called()
+
+
+def test_does_not_probe_success_selector_before_cookie_exists():
+    """Login landmarks like div[role='main'] must not be treated as signed-in UI."""
+    context = MagicMock()
+    context.cookies.return_value = []
+    context.storage_state.return_value = {"cookies": [], "origins": []}
+    browser = MagicMock()
+    browser.new_context.return_value = context
+    page = MagicMock()
+    page.url = "https://www.facebook.com/"
     context.new_page.return_value = page
     chromium = MagicMock()
     chromium.launch.return_value = browser
@@ -169,6 +237,8 @@ def test_login_not_complete_until_url_matches_target_domain():
             settle_seconds=0.0,
             playwright_module=fake_sync_playwright,
         )
+
+    page.query_selector.assert_not_called()
 
 
 def test_twofa_callback_fires_when_2fa_input_appears(monkeypatch):

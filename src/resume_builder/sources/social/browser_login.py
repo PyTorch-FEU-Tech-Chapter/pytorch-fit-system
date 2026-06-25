@@ -12,7 +12,10 @@ authenticated through is the one whose cookies we keep.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
+import sys
 import time
 from dataclasses import dataclass
 
@@ -87,6 +90,14 @@ class BrowserLoginResult:
     storage_state: dict | None
 
 
+@dataclass(frozen=True)
+class _BrowserSession:
+    browser: object
+    context: object
+    page: object
+    connected_over_cdp: bool
+
+
 def open_login_window(
     vendor: str,
     *,
@@ -108,6 +119,28 @@ def open_login_window(
 
     ``playwright_module`` is for tests; production leaves it ``None``.
     """
+    with _PlaywrightEventLoopPolicy():
+        return _open_login_window_inner(
+            vendor,
+            prefill_username=prefill_username,
+            poll_seconds=poll_seconds,
+            timeout_seconds=timeout_seconds,
+            settle_seconds=settle_seconds,
+            playwright_module=playwright_module,
+            on_twofa_detected=on_twofa_detected,
+        )
+
+
+def _open_login_window_inner(
+    vendor: str,
+    *,
+    prefill_username: str | None,
+    poll_seconds: float,
+    timeout_seconds: float,
+    settle_seconds: float,
+    playwright_module,
+    on_twofa_detected,
+) -> BrowserLoginResult:
     sync_playwright = _resolve_playwright(playwright_module)
 
     cfg = _VENDOR_CONFIG.get(vendor)
@@ -116,11 +149,18 @@ def open_login_window(
 
     visual_debug = visual_debug_from_env()
     with sync_playwright() as p:
-        browser = p.chromium.launch(**launch_options(False, visual_debug))
-        context = browser.new_context()
-        page = context.new_page()
+        session = _open_browser_session(p, visual_debug)
+        context = session.context
+        page = session.page
         page.goto(cfg.url)
         highlight_selector(page, "body", label=f"{vendor} login page", debug=visual_debug)
+
+        if vendor == "linkedin" and _env_truthy("RESUME_BUILD_LINKEDIN_GOOGLE_LOGIN"):
+            page = _try_linkedin_google_signin(
+                page,
+                prefill_username=prefill_username,
+                debug=visual_debug,
+            )
 
         if prefill_username and cfg.username_selector:
             try:
@@ -142,28 +182,15 @@ def open_login_window(
                 log.debug("prefill skipped (selector %s not ready): %s", cfg.username_selector, exc)
 
         notified_twofa = False
-        highlighted_success = False
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
             cookies = _jar_to_dict(context.cookies())
-            success_selector_present = _selector_present(page, cfg.success_selector)
-            if success_selector_present and not highlighted_success:
-                highlighted_success = True
-                highlight_selector(
-                    page,
-                    cfg.success_selector,
-                    label=f"{vendor} signed-in marker",
-                    debug=visual_debug,
-                )
-            if (
-                cfg.success_cookie in cookies
-                and success_selector_present
-                and _url_matches(page, cfg.success_url_contains)
-            ):
+            has_success_cookie = cfg.success_cookie in cookies
+            if has_success_cookie:
                 time.sleep(settle_seconds)
                 cookies = _jar_to_dict(context.cookies())
                 state = context.storage_state()
-                browser.close()
+                _close_browser_session(session)
                 return BrowserLoginResult(cookies=cookies, storage_state=state)
 
             if (
@@ -186,10 +213,121 @@ def open_login_window(
 
             time.sleep(poll_seconds)
 
-        browser.close()
+        _close_browser_session(session)
         raise TimeoutError(
             f"login window timed out for {vendor} — no `{cfg.success_cookie}` cookie set."
         )
+
+
+class _PlaywrightEventLoopPolicy:
+    """Use a Windows loop policy that can spawn Playwright's driver process."""
+
+    def __enter__(self):
+        self._previous = None
+        if sys.platform == "win32":
+            self._previous = asyncio.get_event_loop_policy()
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if self._previous is not None:
+            asyncio.set_event_loop_policy(self._previous)
+        return False
+
+
+def _open_browser_session(p, visual_debug) -> _BrowserSession:
+    cdp_url = _cdp_url_from_env()
+    if cdp_url:
+        browser = p.chromium.connect_over_cdp(cdp_url)
+        context = browser.contexts[0] if browser.contexts else browser.new_context()
+        page = context.new_page()
+        return _BrowserSession(
+            browser=browser,
+            context=context,
+            page=page,
+            connected_over_cdp=True,
+        )
+
+    browser = p.chromium.launch(**launch_options(False, visual_debug))
+    context = browser.new_context()
+    page = context.new_page()
+    return _BrowserSession(
+        browser=browser,
+        context=context,
+        page=page,
+        connected_over_cdp=False,
+    )
+
+
+def _close_browser_session(session: _BrowserSession) -> None:
+    if session.connected_over_cdp:
+        # Keep the user's real Chrome open; only close the social-login tab.
+        try:
+            session.page.close()
+        except Exception:  # noqa: BLE001
+            pass
+        return
+    session.browser.close()
+
+
+def _cdp_url_from_env() -> str:
+    url = os.getenv("RESUME_BUILD_PLAYWRIGHT_CDP_URL", "").strip()
+    if url:
+        return url
+    port = os.getenv("RESUME_BUILD_PLAYWRIGHT_CDP_PORT", "").strip()
+    if port:
+        return f"http://127.0.0.1:{port}"
+    return ""
+
+
+def _try_linkedin_google_signin(page, *, prefill_username: str | None, debug):
+    selectors = (
+        "button:has-text('Continue with Google')",
+        "button:has-text('Sign in with Google')",
+        "text=Continue with Google",
+        "text=Sign in with Google",
+        "[aria-label*='Google']",
+    )
+    for selector in selectors:
+        try:
+            locator = page.locator(selector).first()
+            if locator.count() < 1:
+                continue
+            highlight_selector(
+                page,
+                selector,
+                label="linkedin google sign-in",
+                debug=debug,
+            )
+            popup = None
+            try:
+                with page.expect_popup(timeout=5_000) as popup_info:
+                    locator.click(timeout=5_000)
+                popup = popup_info.value
+            except Exception:  # noqa: BLE001
+                locator.click(timeout=5_000)
+            active_page = popup or page
+            _try_choose_google_account(active_page, prefill_username=prefill_username)
+            return active_page
+        except Exception as exc:  # noqa: BLE001
+            log.debug("linkedin google sign-in selector skipped (%s): %s", selector, exc)
+    return page
+
+
+def _try_choose_google_account(page, *, prefill_username: str | None) -> None:
+    if not prefill_username:
+        return
+    try:
+        page.get_by_text(prefill_username, exact=False).click(timeout=5_000)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("google account auto-select skipped for %s: %s", prefill_username, exc)
+
+
+def _env_truthy(name: str, *, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "y", "on"}
 
 
 def _selector_present(page, selector: str | None) -> bool:
