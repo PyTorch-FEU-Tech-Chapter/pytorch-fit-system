@@ -203,6 +203,38 @@ def _strip_html(s: str) -> str:
     return _TAG_STRIP_RE.sub(" ", s).strip()
 
 
+def _expand_see_more(page, *, max_clicks: int = 60) -> int:
+    """Click inline 'See more' expanders so full post captions land in the DOM.
+
+    FB truncates long captions at the DOM level (the rest isn't present until the
+    button is clicked), so this is required in both headed and headless modes.
+    Best-effort: snapshots the buttons once and clicks the 'See more' ones; failures
+    on individual buttons are ignored. Returns how many were clicked.
+    """
+    clicked = 0
+    try:
+        buttons = page.query_selector_all('[role="button"]') or []
+    except Exception as exc:  # noqa: BLE001 - page closed
+        log.debug("see-more scan failed: %s", exc)
+        return 0
+    for b in buttons:
+        if clicked >= max_clicks:
+            break
+        try:
+            label = (b.inner_text() or "").strip().lower()
+        except Exception:  # noqa: BLE001 - element detached
+            continue
+        if label != "see more":
+            continue
+        try:
+            b.click(timeout=800)
+            clicked += 1
+            page.wait_for_timeout(120)
+        except Exception as exc:  # noqa: BLE001 - non-expanding / detached button
+            log.debug("see-more click skipped: %s", exc)
+    return clicked
+
+
 class FacebookVendor(SocialVendor):
     name = "facebook"
 
@@ -286,6 +318,12 @@ class FacebookVendor(SocialVendor):
             except Exception as exc:  # noqa: BLE001
                 log.warning("FB feed didn't render at %s (continuing best-effort): %s", url, exc)
             scroll_collect(page, anchor_selector, max_scrolls=max_scrolls, settle_ms=3000)
+            # Expand "See more" so full captions are in the DOM before we read them.
+            # This is DOM-level truncation, not a render artifact — it must be clicked
+            # whether headed or headless.
+            expanded = _expand_see_more(page)
+            if expanded:
+                log.info("FB expanded %d 'See more' caption(s)", expanded)
             # Optional slow, visible step-through for debugging (highlights comments).
             step_limit = step_limit_from_env()
             if step_limit:
