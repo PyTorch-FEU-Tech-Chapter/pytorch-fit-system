@@ -324,7 +324,8 @@ class FacebookVendor(SocialVendor):
             expanded = _expand_see_more(page)
             if expanded:
                 log.info("FB expanded %d 'See more' caption(s)", expanded)
-            # Optional slow, visible step-through for debugging (highlights comments).
+            # Optional slow, visible step-through for debugging: non-destructive overlay
+            # highlights (post / comments / images / text / shared) + a live HUD.
             step_limit = step_limit_from_env()
             if step_limit:
                 step_through_articles(page, _POST_ARTICLE_SELECTOR, limit=step_limit)
@@ -389,8 +390,8 @@ class FacebookVendor(SocialVendor):
                 settle_ms=3000,
             )
             log.info("FB scrape captured %d articles at %s", len(articles), url)
-            # Optional slow, visible step-through: walk the first N posts and delete
-            # their comment sections on the live page so the user can verify focus.
+            # Optional slow, visible step-through: walk the first N posts with overlay
+            # highlights + a live HUD so the user can verify focus (non-destructive).
             step_limit = step_limit_from_env()
             if step_limit:
                 step_through_articles(page, _POST_ARTICLE_SELECTOR, limit=step_limit)

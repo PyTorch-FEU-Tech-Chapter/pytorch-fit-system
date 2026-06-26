@@ -18,7 +18,7 @@ def _apply_visual_env(visual: bool, delay_ms: int | None) -> None:
 
 
 def _apply_step_env(step: bool, step_limit: int | None) -> None:
-    """Turn on the slow, visible per-post step-through (deletes comments live).
+    """Turn on the slow, visible per-post step-through (non-destructive overlay).
 
     Uses ``setdefault`` for the tunables so explicit env vars / flags still win, and
     keeps the long step pause separate from the global slow-mo so scrolling stays
@@ -48,8 +48,9 @@ def scrape(
         False,
         "--step",
         help="Slow, visible step-through: walk the first few posts one at a time "
-        "(~5s/step) and DELETE their comment sections on the live page so you can "
-        "verify what text the scraper focuses on. Implies --visual. Tune with "
+        "(~5s/step), painting overlay highlights (post / comments / images / text / "
+        "shared) plus a live HUD so you can verify what the scraper focuses on. "
+        "Non-destructive — the page DOM is never changed. Implies --visual. Tune with "
         "RESUME_BUILD_PLAYWRIGHT_STEP_LIMIT (default 3) and _STEP_DELAY_MS (default 5000).",
     ),
     step_limit: int | None = typer.Option(

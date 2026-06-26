@@ -1,4 +1,4 @@
-"""playwright_step: slow, visible per-post walk that deletes comment DOM."""
+"""playwright_step: slow, visible per-post walk that highlights (never deletes) DOM."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def test_step_through_is_noop_when_limit_zero(monkeypatch):
     assert not articles[0].evaluate.called
 
 
-def test_step_through_deletes_comments_per_article(monkeypatch):
+def test_step_through_highlights_comments_without_deleting(monkeypatch):
     monkeypatch.setenv("RESUME_BUILD_PLAYWRIGHT_VISUAL", "1")
     page = MagicMock()
     article = MagicMock()
@@ -69,14 +69,16 @@ def test_step_through_deletes_comments_per_article(monkeypatch):
 
     step_through_articles(page, "sel", limit=1)
 
-    # One of the per-article evaluate calls must carry the comment-deletion JS,
-    # keyed off the authoritative aria-label="Comment by ..." signal.
+    # Comments are found by the authoritative aria-label="Comment by ..." signal and
+    # drawn via the overlay box-drawer — never removed from the DOM.
     joined = " ".join(str(c.args[0]) for c in article.evaluate.call_args_list).lower()
     assert "comment by" in joined
     assert "reply by" in joined
+    assert "__rbbox" in joined  # overlay draw, not node.remove()
+    assert ".remove()" not in joined  # non-destructive: nothing is deleted
 
 
-def test_step_through_strips_media_and_preserves_shared(monkeypatch):
+def test_step_through_highlights_media_and_preserves_shared(monkeypatch):
     monkeypatch.setenv("RESUME_BUILD_PLAYWRIGHT_VISUAL", "1")
     page = MagicMock()
     article = MagicMock()
@@ -85,9 +87,22 @@ def test_step_through_strips_media_and_preserves_shared(monkeypatch):
     step_through_articles(page, "sel", limit=1)
 
     joined = " ".join(str(c.args[0]) for c in article.evaluate.call_args_list).lower()
-    # Aggressive strip removes media, and shared posts are explicitly preserved.
+    # Media is highlighted (img/video) and shared posts are explicitly preserved.
     assert "img" in joined and "video" in joined
     assert "shared (preserved)" in joined
+
+
+def test_step_through_renders_the_hud(monkeypatch):
+    monkeypatch.setenv("RESUME_BUILD_PLAYWRIGHT_VISUAL", "1")
+    page = MagicMock()
+    article = MagicMock()
+    page.query_selector_all.return_value = [article]
+
+    step_through_articles(page, "sel", limit=1)
+
+    # The side HUD is driven through page.evaluate with the __rbHud renderer.
+    page_js = " ".join(str(c.args[0]) for c in page.evaluate.call_args_list)
+    assert "__rbHud" in page_js or "__rbBox" in page_js
 
 
 def test_step_through_handles_more_articles_than_exist(monkeypatch):

@@ -1,7 +1,32 @@
 # FB Scraper — Visual Step-Through Debug Mode
 
 **Date:** 2026-06-26
-**Status:** Approved (build)
+**Status:** Approved (build) — superseded by the overlay redesign below
+
+## Addendum (2026-06-26) — overlay redesign, non-destructive
+
+The step walk was reworked to be **fully non-destructive**. The original design
+deleted comments/media from the live DOM for visibility; per follow-up direction it
+now **highlights instead of mutates**, so what the user sees is exactly what
+production reads. Three changes:
+
+1. **New overlay layer** — `sources/social/playwright_overlay.py`. DevTools-style
+   floating rectangles positioned from each target's `getBoundingClientRect()`, drawn
+   in a dedicated overlay root (`window.__rbBox`). Nothing in the page DOM is touched.
+   Every function is opt-in (no-op unless visual debug is enabled), so the headless
+   path and non-visual unit tests see zero extra `page.evaluate` calls.
+2. **Live HUD** — a fixed side panel (`window.__rbHud`) showing `Card`, `Status`, and
+   `Next` during the step walk, and `Cards loaded` / `Scroll pass` / `Status` during
+   `scroll_collect` (so the user can see *why* the scraper waits for new cards).
+3. **Per-post sequence** is now: POST (red) → COMMENTS (orange, kept) → IMAGES (rose,
+   "reading image") → TEXT (green) → SHARED (blue). No `.remove()`, no `element.style`
+   mutation. `highlight_selector` (scroll phase) also delegates to the overlay layer.
+
+The original deletion-based design below is kept for history. The "deletion vs ignore"
+production decision is now moot for the debug surface — it never mutates.
+
+---
+
 
 ## Goal
 

@@ -73,56 +73,34 @@ def highlight_selector(
     label: str = "",
     debug: PlaywrightVisualDebug | None = None,
 ) -> None:
-    """Outline matching elements briefly so the visible browser shows the logic path."""
+    """Outline matching elements briefly so the visible browser shows the logic path.
+
+    Drawing is delegated to the non-destructive overlay layer (floating rectangles
+    positioned from each match's bounding box) instead of mutating ``element.style``,
+    so the page's own DOM is never touched. The newest (bottom-most) match is centered
+    so the highlight follows the feed downward rather than fighting the scroll.
+    """
     if not selector:
         return
     debug = debug or visual_debug_from_env()
     if not debug.enabled:
         return
 
+    # Lazy import: playwright_overlay imports from this module, so importing it at the
+    # top would be circular.
+    from .playwright_overlay import overlay_selector
+
     color = _pick_color(selector, label, debug.colors)
     highlight_ms = debug.highlight_ms or debug.delay_ms or 700
-    try:
-        page.evaluate(
-            """
-            ({ selector, color, ms, label }) => {
-              const nodes = Array.from(document.querySelectorAll(selector)).slice(0, 12);
-              // Center the LAST (newest, bottom-most) match — never the first. Centering
-              // the top element would yank the viewport back up every pass and fight the
-              // downward scroll, trapping collection on the same card. Following the newest
-              // element keeps the highlight centered AND advances the feed downward.
-              const focus = nodes[nodes.length - 1];
-              if (focus) {
-                focus.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
-              }
-              for (const node of nodes) {
-                const previous = {
-                  outline: node.style.outline,
-                  boxShadow: node.style.boxShadow,
-                  transition: node.style.transition,
-                };
-                node.style.transition = "outline 120ms ease, box-shadow 120ms ease";
-                node.style.outline = `4px solid ${color}`;
-                node.style.boxShadow = `0 0 0 6px ${color}55`;
-                if (label) {
-                  node.setAttribute("data-resume-build-debug", label);
-                }
-                window.setTimeout(() => {
-                  node.style.outline = previous.outline;
-                  node.style.boxShadow = previous.boxShadow;
-                  node.style.transition = previous.transition;
-                  if (label) {
-                    node.removeAttribute("data-resume-build-debug");
-                  }
-                }, ms);
-              }
-              return nodes.length;
-            }
-            """,
-            {"selector": selector, "color": color, "ms": highlight_ms, "label": label},
-        )
-    except Exception:
-        return
+    overlay_selector(
+        page,
+        selector,
+        color=color,
+        label=label,
+        ms=highlight_ms,
+        scroll_last=True,
+        debug=debug,
+    )
     pause(page, debug=debug, ms=min(highlight_ms, debug.delay_ms or highlight_ms))
 
 

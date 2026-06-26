@@ -23,6 +23,7 @@ from .playwright_debug import (
     pause,
     visual_debug_from_env,
 )
+from .playwright_overlay import ensure_overlay, hud_update
 from .browser_login import _cdp_url_from_env
 
 log = logging.getLogger(__name__)
@@ -106,9 +107,10 @@ def scroll_collect(
         if visual_debug.enabled and visual_debug.delay_ms
         else settle_ms
     )
+    ensure_overlay(page, debug=visual_debug)
     seen = 0
     flat = 0
-    for _ in range(max_scrolls):
+    for cycle in range(max_scrolls):
         highlight_selector(
             page,
             item_selector,
@@ -120,6 +122,17 @@ def scroll_collect(
         except Exception as exc:  # noqa: BLE001 - page/browser closed mid-scroll
             log.info("scroll stopped early (page closed?): %s", exc)
             return []
+        # Live HUD: the user can see WHY the scraper waits — count hasn't grown yet,
+        # so it holds instead of racing ahead of the lazy-loaded feed.
+        hud_update(
+            page,
+            [
+                ("Cards loaded", len(items)),
+                ("Scroll pass", f"{cycle + 1}/{max_scrolls}"),
+                ("Status", "growing" if len(items) > seen else "waiting for new cards"),
+            ],
+            debug=visual_debug,
+        )
         if len(items) > seen:
             seen = len(items)
             flat = 0

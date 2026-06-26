@@ -1,16 +1,18 @@
 """Visible, slow, per-post step-through for the social scraper.
 
-Unlike ``playwright_debug`` (passive highlighting), this module *mutates* the live
-DOM: it walks the first N collected posts one at a time and aggressively **deletes**
-everything that won't be read — comments, action chrome, and media — so the only
-thing left inside each post is the text the scraper actually extracts. This is a
-visualization aid: it makes "what does the scraper focus on?" literally visible.
+A DevTools-style *visual debugger*: it walks the first N collected posts one at a
+time and, for each, paints a sequence of overlay rectangles so the user can watch
+exactly what the scraper focuses on — and a side HUD panel reports progress. Unlike
+the old behaviour, it is fully **non-destructive**: nothing in the page DOM is
+deleted or restyled. Highlighting is done in a separate overlay layer
+(``playwright_overlay``), so what the user sees is exactly what production reads.
 
-Four stages per post:
-  1. POST     — outline the whole post (red): "this is all I look at".
-  2. COMMENTS — flash + delete the comment section (orange): ignored.
-  3. TEXT     — strip media/chrome too, outline what remains (green): the read text.
-  4. SHARED   — if this is a reshare, outline the shared post (blue) as PRESERVED.
+Five stages per post:
+  1. POST     (red)    — outline the whole post: "this is all I look at".
+  2. COMMENTS (orange) — outline nested comment articles: highlighted but NOT collected.
+  3. IMAGES   (rose)   — outline each image/video being read.
+  4. TEXT     (green)  — outline the post body: the text that is actually collected.
+  5. SHARED   (blue)   — if this is a reshare, outline the shared post as preserved.
 
 Enabled only when ``RESUME_BUILD_PLAYWRIGHT_STEP_LIMIT`` is a positive integer — off
 (0) by default. The long per-step pause is decoupled from the global ``slow_mo`` so
@@ -23,95 +25,59 @@ import logging
 import os
 
 from .playwright_debug import PlaywrightVisualDebug, pause, visual_debug_from_env
+from .playwright_overlay import (
+    POST_COLOR,
+    TEXT_COLOR,
+    clear_overlays,
+    ensure_overlay,
+    hud_update,
+    overlay_box,
+)
 
 log = logging.getLogger(__name__)
 
-_POST_COLOR = "#ff2d75"     # red    — the whole post being scraped
-_COMMENT_COLOR = "#ff7a18"  # orange — comments about to be deleted
-_TEXT_COLOR = "#22c55e"     # green  — the text that remains after stripping
-_SHARED_COLOR = "#3b82f6"   # blue   — a reshared post, preserved (never deleted)
-
-# Outline + label a single element (persists through the pause; the next step
-# overwrites it). Scrolls the element into view so the user can follow along.
-_HIGHLIGHT_EL_JS = """
-(el, { color, label }) => {
-  try { el.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" }); } catch (e) {}
-  el.style.transition = "outline 120ms ease, box-shadow 120ms ease";
-  el.style.outline = `4px solid ${color}`;
-  el.style.boxShadow = `0 0 0 6px ${color}55`;
-  if (label) el.setAttribute("data-resume-build-step", label);
-  return true;
-}
-"""
-
-# Flash the comment / chrome nodes that are about to be removed, so the deletion is
-# visible rather than instantaneous. Shared posts are preserved: only articles whose
-# aria-label marks them as a comment/reply are targeted (chrome is buttons/svg/etc.).
-_FLASH_DOOMED_JS = """
-(el, { color }) => {
+# Outline each nested comment article (orange). Shared posts are preserved: only
+# articles whose aria-label marks them as a comment/reply are targeted. Returns the
+# number of comment articles highlighted. Draws via the shared overlay box-drawer.
+_BOX_COMMENTS_JS = """
+el => {
+  if (!window.__rbBox) return 0;
   const comments = Array.from(el.querySelectorAll('[role="article"]')).filter(n => {
     const label = n.getAttribute('aria-label') || '';
     return /^\\s*comment by/i.test(label) || /^\\s*reply by/i.test(label);
   });
-  const chrome = Array.from(el.querySelectorAll(
-    '[role="button"], [role="toolbar"], form, svg, [data-visualcompletion="ignore"]'));
-  for (const n of [...comments, ...chrome]) {
-    n.style.outline = `4px solid ${color}`;
-    n.style.boxShadow = `0 0 0 6px ${color}55`;
-  }
+  comments.forEach(n => window.__rbBox(n, '#ff7a18', 'comment (skipped)', false));
   return comments.length;
 }
 """
 
-# Remove the comment articles + action chrome from the live DOM. Returns how many
-# comment articles were deleted (shared posts are never matched, so never removed).
-_DELETE_COMMENTS_JS = """
+# Outline each image/video being read (rose). Media inside a preserved shared post is
+# left un-highlighted so the shared context reads as one unit. Returns the count.
+_BOX_MEDIA_JS = """
 el => {
-  let removed = 0;
-  el.querySelectorAll('[role="article"]').forEach(n => {
-    const label = n.getAttribute('aria-label') || '';
-    if (/^\\s*comment by/i.test(label) || /^\\s*reply by/i.test(label)) {
-      n.remove();
-      removed++;
-    }
-  });
-  el.querySelectorAll(
-    '[role="button"], [role="toolbar"], form, svg, [data-visualcompletion="ignore"]'
-  ).forEach(n => n.remove());
-  return removed;
-}
-"""
-
-# Strip non-text media so only the readable text is left inside the post. Media inside
-# a preserved shared post is intentionally left alone so its context survives.
-_STRIP_MEDIA_JS = """
-el => {
+  if (!window.__rbBox) return 0;
   const shared = Array.from(el.querySelectorAll('[role="article"]')).find(n => {
     const label = n.getAttribute('aria-label') || '';
     return !/^\\s*comment by/i.test(label) && !/^\\s*reply by/i.test(label);
   });
-  let removed = 0;
-  el.querySelectorAll('img, video, image, [role="img"], svg').forEach(n => {
-    if (shared && shared.contains(n)) return;  // keep the reshared post's media
-    n.remove();
-    removed++;
-  });
-  return removed;
+  const media = Array.from(el.querySelectorAll('img, video, [role="img"]'))
+    .filter(n => !(shared && shared.contains(n)));
+  media.forEach(n => window.__rbBox(n, '#f43f5e', 'reading image', false));
+  return media.length;
 }
 """
 
-# Outline a nested reshared post (a nested article that is NOT a comment) so the user
-# sees it is preserved, not deleted. Returns true when a shared post is present.
-_MARK_SHARED_JS = """
-(el, { color }) => {
+# Outline a nested reshared post (a nested article that is NOT a comment) in blue so
+# the user sees it is preserved, not skipped. Returns true when a shared post exists.
+_BOX_SHARED_JS = """
+el => {
+  if (!window.__rbBox) return false;
   const shared = Array.from(el.querySelectorAll('[role="article"]')).find(n => {
     const label = n.getAttribute('aria-label') || '';
     return !/^\\s*comment by/i.test(label) && !/^\\s*reply by/i.test(label);
   });
   if (!shared) return false;
-  shared.style.outline = `4px solid ${color}`;
-  shared.style.boxShadow = `0 0 0 6px ${color}55`;
-  shared.setAttribute('data-resume-build-step', 'SHARED (preserved)');
+  window.__rbBox(shared, '#3b82f6', 'SHARED (preserved)', false);
   return true;
 }
 """
@@ -134,7 +100,7 @@ def step_through_articles(
     limit: int | None = None,
     debug: PlaywrightVisualDebug | None = None,
 ) -> int:
-    """Slowly walk the first ``limit`` posts, stripping each down to its text live.
+    """Slowly walk the first ``limit`` posts, painting what the scraper reads.
 
     Returns the number of posts stepped through. A no-op when ``limit`` resolves to 0.
     """
@@ -144,6 +110,7 @@ def step_through_articles(
 
     debug = debug or visual_debug_from_env()
     delay_ms = step_delay_ms_from_env()
+    ensure_overlay(page, debug=debug)
 
     try:
         articles = page.query_selector_all(selector) or []
@@ -151,13 +118,15 @@ def step_through_articles(
         log.info("step-through skipped (page closed?): %s", exc)
         return 0
 
+    total = min(limit, len(articles))
     stepped = 0
     for index, article in enumerate(articles[:limit]):
         try:
-            _step_one(page, article, index, debug=debug, delay_ms=delay_ms)
+            _step_one(page, article, index, total=total, debug=debug, delay_ms=delay_ms)
             stepped += 1
         except Exception as exc:  # noqa: BLE001 - one bad card shouldn't abort the walk
             log.debug("step-through failed on article %d: %s", index, exc)
+    _hud(page, debug, card=f"{stepped}/{total}", status="Done", action="extract all posts")
     log.info("step-through walked %d post(s)", stepped)
     return stepped
 
@@ -167,33 +136,46 @@ def _step_one(
     article,
     index: int,
     *,
+    total: int,
     debug: PlaywrightVisualDebug,
     delay_ms: int,
 ) -> None:
     n = index + 1
+    clear_overlays(page, debug=debug)  # fresh canvas per post
 
     # 1. The whole post — "this is all I look at".
-    article.evaluate(_HIGHLIGHT_EL_JS, {"color": _POST_COLOR, "label": f"POST #{n} — ito lang ang titingin"})
+    _hud(page, debug, card=f"{n}/{total}", status="Reading post", action="scan comments")
+    overlay_box(article, color=POST_COLOR, label=f"POST #{n} — ito ang sini-scrape", scroll=True, debug=debug)
     pause(page, debug=debug, ms=delay_ms)
 
-    # 2. Comments hit -> flash, then delete from the DOM so they're visibly ignored.
-    article.evaluate(_FLASH_DOOMED_JS, {"color": _COMMENT_COLOR})
-    pause(page, debug=debug, ms=delay_ms)
-    removed = article.evaluate(_DELETE_COMMENTS_JS)
-    log.debug("post #%d: deleted %s comment article(s)", n, removed)
+    # 2. Comments — highlighted but never collected (kept in the DOM).
+    comments = article.evaluate(_BOX_COMMENTS_JS)
+    _hud(page, debug, card=f"{n}/{total}", status=f"Skipping {comments} comment(s)", action="scan media")
     pause(page, debug=debug, ms=delay_ms)
 
-    # 3. Strip media/chrome too -> only the readable TEXT remains.
-    stripped = article.evaluate(_STRIP_MEDIA_JS)
-    log.debug("post #%d: stripped %s media node(s)", n, stripped)
-    article.evaluate(_HIGHLIGHT_EL_JS, {"color": _TEXT_COLOR, "label": "natitirang TEXT — ito lang kinukuha"})
+    # 3. Images/videos being read.
+    media = article.evaluate(_BOX_MEDIA_JS)
+    _hud(page, debug, card=f"{n}/{total}", status=f"Reading {media} image(s)", action="collect text")
     pause(page, debug=debug, ms=delay_ms)
 
-    # 4. Shared post (if any) — preserved, never deleted.
-    has_shared = article.evaluate(_MARK_SHARED_JS, {"color": _SHARED_COLOR})
-    if has_shared:
+    # 4. The post body text — what actually gets saved.
+    overlay_box(article, color=TEXT_COLOR, label="TEXT na kinokolekta", scroll=False, debug=debug)
+    _hud(page, debug, card=f"{n}/{total}", status="Collecting text", action="next card")
+    pause(page, debug=debug, ms=delay_ms)
+
+    # 5. Shared post (if any) — preserved, never skipped.
+    if article.evaluate(_BOX_SHARED_JS):
         log.debug("post #%d: shared post preserved", n)
+        _hud(page, debug, card=f"{n}/{total}", status="Shared post (kept)", action="next card")
         pause(page, debug=debug, ms=delay_ms)
+
+
+def _hud(page, debug, *, card: str, status: str, action: str) -> None:
+    hud_update(
+        page,
+        [("Card", card), ("Status", status), ("Next", action)],
+        debug=debug,
+    )
 
 
 def _int_env(name: str, default: int) -> int:

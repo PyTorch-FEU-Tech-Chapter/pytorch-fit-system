@@ -56,5 +56,9 @@ def test_highlight_selector_outlines_and_pauses_when_visual_debug_enabled(monkey
 
     highlight_selector(page, "input#email", label="email")
 
-    page.evaluate.assert_called_once()
+    # Delegates to the overlay layer: bootstrap + draw (>=1 evaluate), then one pause.
+    assert page.evaluate.called
     page.wait_for_timeout.assert_called_once()
+    # Non-destructive: the draw JS uses the overlay box-drawer, not node.style mutation.
+    drawn_js = " ".join(str(c.args[0]) for c in page.evaluate.call_args_list)
+    assert "__rbBox" in drawn_js
