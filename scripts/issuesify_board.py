@@ -28,6 +28,10 @@ REPO = "JohnAndrewBalbarosa/pytorch-fit-system"
 HERE = Path(__file__).resolve().parent
 CONFIG = HERE / "board_tasks.json"
 
+# Windows console defaults to cp1252 and crashes printing task titles with → / emoji.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 # Project single-select field name -> task json key. Status (built-in, drives the default Board
 # view) and Stage (custom) are both set from `stage` so any view groups correctly.
 FIELD_KEY = {

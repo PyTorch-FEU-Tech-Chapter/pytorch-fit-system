@@ -20,6 +20,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CONFIG = HERE / "board_tasks.json"
 
+# Windows console defaults to cp1252 and crashes printing task titles with → / emoji.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 
 def gh(args: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(
