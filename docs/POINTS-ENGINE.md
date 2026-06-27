@@ -191,3 +191,125 @@ legacy engine's adapter discipline:
 7. **Referral anti-gaming** — self-referral / fake-account prevention.
 8. **Opportunity awarding** — automatic to top-N vs officer-confirmed (HITL)?
 9. **Ingestion default mode** — does a link default to deterministic with AI fallback, or AI-first?
+
+---
+
+## 10. Skills taxonomy (hybrid, HITL) — CONFIRMED (v1)
+
+> ✅ **STATUS: CONFIRMED** with the user. Defines how the platform knows *which skills exist* so
+> points can be skill-tagged (§11 per-skill leaderboards) and members can be matched to
+> competitions ([`COMPETITION-INTEL.md`](COMPETITION-INTEL.md)). Discovery runs over curated
+> achievement data — privacy still follows SPECIFICATION §6, and the approval step is the
+> human-in-the-loop gate of ORG-OPERATIONS §4.
+
+The skill set is **hybrid**, hindi purong fixed at hindi rin purong auto. Two sources feed it:
+
+| Source | What it is | How it enters the canon |
+|---|---|---|
+| **PRESET seed** | a small curated list of **~20 core skills** (e.g. Python, JavaScript, ML, Web, DSA, …) | hand-seeded by officers; canonical from day one |
+| **EMERGENT** | skills **discovered** from member achievements/projects that the preset didn't anticipate | enters as a **candidate**, then an admin/officer **approves** it before it becomes canonical |
+
+> Framing: the preset keeps us from a cold start; emergence keeps us from going stale. Walang skill
+> na basta-basta nagiging official — kailangan dumaan sa tao muna (HITL).
+
+### 10.1 Discovery → candidate → approval (HITL)
+
+```mermaid
+flowchart TD
+    ACH[Member achievements /<br/>projects] --> JOB[Emergent-discovery job<br/>periodic]
+    JOB --> NORM[Alias normalization<br/>JS -> JavaScript, etc.]
+    NORM --> CAND[(Skill candidates)]
+    SEED[PRESET seed<br/>~20 core skills] --> CANON
+    CAND --> REVIEW[[HITL: admin/officer approves<br/>see ORG-OPS §4]]
+    REVIEW -->|approve| CANON[(Canonical skill set)]
+    REVIEW -->|reject / merge alias| CAND
+    CANON --> CACHE[(Cached skill set<br/>"~30 skills based on our users")]
+```
+
+### 10.2 Caching & the discovery job
+
+- The **approved/canonical skill set is CACHED** — e.g. *"~30 skills based on our users"* — and the
+  app **reads from cache**, hindi nire-recompute kada request. Per-skill leaderboards (§11) and
+  competition matching read this cache.
+- An **emergent-discovery job runs periodically** to propose new candidates from fresh achievement
+  data. It only ever *proposes*; it never auto-promotes. Cache is invalidated/refreshed when an
+  officer approves (or merges) a candidate.
+- **Alias normalization** collapses surface variants into one canonical skill **before** anything
+  becomes a candidate — `JS` → `JavaScript`, `py` → `Python`, `react.js` → `React`. This keeps the
+  cache count honest and prevents duplicate per-skill boards for the same real skill.
+
+> **Note (Taglish):** ang "~30" ay derived sa users natin, kaya gagalaw 'yan over time — that's the
+> point of the discovery job. Hindi hardcoded; cached lang para mabilis.
+
+---
+
+## 11. Leaderboards: overall + categorical (per-skill) — CONFIRMED (v1)
+
+> ✅ **STATUS: CONFIRMED** with the user. Extends §3 (the overall board) with a second layer.
+> Both layers are **merit** — walang equity adjustment sa kahit alin.
+
+There are now **two leaderboard layers**, both cut-throat merit:
+
+| Layer | Ranks on | Scope |
+|---|---|---|
+| **Overall** (existing, §3) | raw total points | whole chapter, head-to-head |
+| **Categorical (per-skill)** | **skill-tagged** points only | one board *per approved skill* (§10) |
+
+The categorical boards rank members **within each approved skill** using only the points tagged to
+that skill. A member can sit mid-pack overall but top a specific per-skill board — exactly the
+signal competition matching needs ([`COMPETITION-INTEL.md`](COMPETITION-INTEL.md)).
+
+```mermaid
+flowchart TD
+    SCORE[(career_scores<br/>per-member points)] --> OVR[Overall leaderboard<br/>raw total points · §3]
+    SCORE --> TAG{Points are<br/>skill-tagged?}
+    TAG -->|yes| BUCKET[Bucket by canonical skill<br/>from cached skill set · §10]
+    CANON[(Cached skill set<br/>approved skills)] --> BUCKET
+    BUCKET --> PS1[Per-skill board: Python]
+    BUCKET --> PS2[Per-skill board: JavaScript]
+    BUCKET --> PS3[Per-skill board: ML]
+    BUCKET --> PSN[... one board per approved skill]
+    OVR --> AWARD[Opportunities · §3]
+    PS1 & PS2 & PS3 & PSN --> MATCH[Skill-based competition matching<br/>see COMPETITION-INTEL.md]
+```
+
+- **Both are merit.** The per-skill board is just a *narrower* cut-throat ranking, not a softer one.
+- **Per-skill uses skill-tagged points.** This assumes points carry a skill tag at award time —
+  tracked as an open question below.
+- A member appears on **every** per-skill board they have tagged points for, plus the overall board.
+
+---
+
+## 12. Low vs high bracket — differentiated handling — CONFIRMED (v1)
+
+> ✅ **STATUS: CONFIRMED** with the user. Sharpens the two-track stance already in §3/§5 and in
+> ORG-OPS §10.1. This is the clarification of *what each bracket actually gets* — and it is still
+> **NOT equity-by-points**.
+
+Same points data, **two tracks**, deliberately different treatment:
+
+| Bracket | What they get | Why |
+|---|---|---|
+| **LOW** | the **growth DIAGNOSTIC** (§5) — recommended lessons / events / hackathons to **climb** | a *path to grow*, **not** an equity handout — they earn their way up |
+| **HIGH** | **MATCHED to competitions by skill** (§11 per-skill standings → who we field) | they are the ones the org **fields/competes with** |
+
+```mermaid
+flowchart TD
+    SCORE[(career_scores)] --> CUT{Bracket cutoff}
+    CUT -->|low bracket| GROW[Growth diagnostic · §5<br/>pretest→posttest GAIN]
+    GROW --> REC[Recommended lessons /<br/>events / hackathons]
+    REC --> CLIMB[Path to climb — earn the points]
+    CUT -->|high bracket| PSB[Per-skill standings · §11]
+    PSB --> FIELD[Matched to competitions by skill<br/>COMPETITION-INTEL.md]
+    FIELD --> COMPETE[Org fields these members]
+```
+
+> **Lock this framing (madaling ma-misread):** the org gives the low bracket a **real path to
+> grow** — lessons, events, hackathons, GAIN tracking — while the actual **opportunities still go
+> to high performers** on merit. Pantay ang *chance to grow*; hindi pantay (at hindi dapat) ang
+> distribution of opportunities. Walang redistribution, walang handouts — diagnostic guidance lang
+> para sa low bracket, competition seats para sa high bracket.
+
+> Cross-refs: the LOW track is the GAIN engine of §5; the HIGH track consumes the per-skill boards
+> of §11 and the competition intelligence of [`COMPETITION-INTEL.md`](COMPETITION-INTEL.md). The
+> bracket **cutoff** itself is still an open question (§9 item 5).

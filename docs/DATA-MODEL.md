@@ -399,3 +399,430 @@ The application layer must translate between these when reading from or writing 
 6. **Growth track visibility.** `growth_recommendations` is currently private (member + admin only). Consider whether moderators should also have read access for coaching purposes, or whether a separate "coaching view" is needed.
 
 7. **`dispatch_records` revision history.** Currently there is one dispatch record per `(activity, channel)`. If a draft is rejected and rewritten multiple times, history is lost. A `dispatch_revisions` child table would preserve the full draft history.
+
+---
+
+## Skills & Competition Intelligence (0004-0005)
+
+> Layer: Org-Operations extension — Layer 3 (Normalized, skills taxonomy) +
+> Layer 5 (Analytics, per-skill leaderboard + competition matching).
+> Migrations: `supabase/migrations/0004_skills.sql`, `0005_competition_intel.sql`.
+
+---
+
+### ERD (Mermaid)
+
+```mermaid
+erDiagram
+    MEMBER_PROFILES {
+        uuid id PK
+        text nickname
+        text avatar_url
+    }
+
+    POINT_EVENTS {
+        uuid id PK
+        uuid member_id FK
+        point_source source
+        numeric weighted_points
+        timestamptz earned_at
+    }
+
+    SKILLS {
+        uuid id PK
+        text slug
+        text display_name
+        text category
+        text description
+        skill_status status
+        skill_source source
+    }
+
+    SKILL_ALIASES {
+        uuid id PK
+        uuid skill_id FK
+        text alias
+    }
+
+    MEMBER_SKILLS {
+        uuid id PK
+        uuid member_id FK
+        uuid skill_id FK
+        numeric skill_points
+        timestamptz last_updated_at
+    }
+
+    POINT_EVENT_SKILLS {
+        uuid id PK
+        uuid point_event_id FK
+        uuid skill_id FK
+    }
+
+    SKILLS_REFRESH_LOG {
+        uuid id PK
+        text discovery_type
+        integer skills_discovered
+        integer skills_approved
+        uuid run_by FK
+        timestamptz run_at
+    }
+
+    COMPETITIONS {
+        uuid id PK
+        text title
+        text source_url
+        text organizer_name
+        organizer_type organizer_type
+        date start_date
+        date end_date
+        text prize_description
+        competition_status status
+        uuid intake_submission_id FK
+        uuid created_by FK
+    }
+
+    COMPETITION_REQUIRED_SKILLS {
+        uuid id PK
+        uuid competition_id FK
+        uuid skill_id FK
+        skill_importance importance
+    }
+
+    COMPETITION_WINNERS {
+        uuid id PK
+        uuid competition_id FK
+        text display_name
+        integer placement
+        integer year
+        text source_url
+    }
+
+    WINNER_SKILLS {
+        uuid id PK
+        uuid winner_id FK
+        uuid skill_id FK
+    }
+
+    JUDGES {
+        uuid id PK
+        text display_name
+        text public_handle
+    }
+
+    JUDGE_PROFILES {
+        uuid id PK
+        uuid judge_id FK
+        text organization
+        text background
+        text[] focus_areas
+        text source_url
+        timestamptz scraped_at
+    }
+
+    COMPETITION_JUDGES {
+        uuid id PK
+        uuid competition_id FK
+        uuid judge_id FK
+    }
+
+    MEMBER_PROFILES         ||--o{ MEMBER_SKILLS              : "has skill portfolio"
+    MEMBER_PROFILES         ||--o{ POINT_EVENTS               : "earns (from 0002)"
+
+    SKILLS                  ||--o{ SKILL_ALIASES              : "aliased by"
+    SKILLS                  ||--o{ MEMBER_SKILLS              : "linked to member"
+    SKILLS                  ||--o{ POINT_EVENT_SKILLS         : "tagged on events"
+    SKILLS                  ||--o{ COMPETITION_REQUIRED_SKILLS: "required by"
+    SKILLS                  ||--o{ WINNER_SKILLS              : "held by winner"
+
+    POINT_EVENTS            ||--o{ POINT_EVENT_SKILLS         : "tagged with skills"
+
+    COMPETITIONS            ||--o{ COMPETITION_REQUIRED_SKILLS: "requires skills"
+    COMPETITIONS            ||--o{ COMPETITION_WINNERS        : "has winners"
+    COMPETITIONS            ||--o{ COMPETITION_JUDGES         : "judged by"
+
+    COMPETITION_WINNERS     ||--o{ WINNER_SKILLS              : "known for skills"
+
+    JUDGES                  ||--o{ JUDGE_PROFILES             : "profiled by"
+    JUDGES                  ||--o{ COMPETITION_JUDGES         : "judges"
+```
+
+---
+
+### Table Catalog
+
+#### Migration 0004 — Skills Taxonomy, HITL Approval, Per-Skill Leaderboard
+
+##### `skills`
+
+Canonical skill registry. Serves as the **skills cache** for the entire platform.
+Consumers read `WHERE status = 'approved'` to get the live approved set.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | `gen_random_uuid()` |
+| `slug` | text UNIQUE | URL-safe key. `^[a-z0-9-]+$`. E.g. `pytorch`, `javascript` |
+| `display_name` | text | Human-readable label (1–120 chars) |
+| `category` | text (nullable) | Optional grouping, e.g. `machine-learning`, `web-frontend` |
+| `description` | text | Optional longer description |
+| `status` | skill_status | `candidate \| approved \| rejected`. Preset skills enter as `approved` |
+| `source` | skill_source | `preset \| emergent`. Presets seeded by admin; emergent discovered by AI |
+| `created_at` | timestamptz | |
+| `updated_at` | timestamptz | |
+
+**HITL approval**: Only `is_admin()` or `is_officer()` may UPDATE `status`.
+Transition `candidate → approved` or `candidate → rejected` is a human review step.
+Application layer (Edge Function) enforces valid transition direction.
+
+**Skills cache strategy**: The `skills` table (approved rows) IS the cache.
+Call `REFRESH` path is via the `skills_refresh_log` table: read the most recent
+`emergent_scan` row to check how fresh the candidate list is.
+
+##### `skill_aliases`
+
+Many-to-one alias strings → one canonical skill.
+Globally unique alias constraint: one string resolves to exactly one skill.
+Normalization contract: Edge Functions must lowercase-trim before alias lookup.
+
+##### `member_skills`
+
+Links a `member_profiles` row to an approved `skills` row.
+`skill_points` is a **denormalized cache** (updated by Edge Function after `point_event_skills` inserts).
+The authoritative source is `point_event_skills JOIN point_events GROUP BY (member_id, skill_id)`.
+Application layer must filter `skill_id` to approved skills on INSERT.
+
+##### `point_event_skills`
+
+**Additive join table** — does NOT alter `point_events` (0002 schema untouched).
+Tags a `point_event` with one or more skills. Enables a single achievement to
+credit multiple skills (e.g. winning a hackathon credits both `pytorch` and `competitive-programming`).
+
+Lifecycle:
+1. service_role inserts `point_events` row (0002 contract).
+2. service_role inserts `point_event_skills` rows for that event.
+3. Edge Function updates `member_skills.skill_points` cache.
+4. `skill_leaderboard` refreshed CONCURRENTLY on schedule.
+
+##### `skills_refresh_log`
+
+Append-only audit log. Captures when the emergent-discovery pipeline ran,
+how many skills were surfaced, and how many were approved.
+Callers read `MAX(run_at) WHERE discovery_type = 'emergent_scan'` to determine
+how fresh the candidate list is without querying raw extraction tables.
+
+##### `skill_leaderboard` (materialized view)
+
+Per-skill merit ranking, partitioned by `skill_id`. Mirrors the overall
+`leaderboard` (0002) in structure and tiebreaker order.
+
+| Column | Exposed |
+|---|---|
+| `skill_id`, `skill_slug`, `skill_display_name` | Taxonomy identifier |
+| `member_id` | UUID only — not PII |
+| `nickname` | Public handle |
+| `avatar_url` | Public avatar |
+| `skill_points` | Aggregated weighted score for this skill |
+| `source_diversity` | Distinct point sources for this skill |
+| `first_earned_at`, `last_earned_at` | Tiebreaker signals |
+| `rank` | `RANK()` PARTITION BY `skill_id` — gaps on ties |
+
+**Tiebreaker order** (identical to 0002 overall leaderboard):
+`skill_points DESC` → `first_earned_at ASC` → `last_earned_at DESC` → `nickname ASC`.
+
+UNIQUE index on `(skill_id, member_id)` supports `REFRESH MATERIALIZED VIEW CONCURRENTLY`.
+No RLS on matviews — structural safety only (public-safe columns, no PII).
+
+---
+
+#### Migration 0005 — Competition Intelligence
+
+##### `competitions`
+
+Master competition record. May optionally link to an `intake_submissions` row
+when the competition was submitted through the standard pipeline (0001).
+`source_url` is the canonical public announcement URL used for deduplication.
+`status` enum: `upcoming | active | completed | cancelled`.
+
+##### `competition_required_skills`
+
+Maps competitions to the skills needed for strong candidates.
+`importance` enum: `required | preferred | bonus`.
+Used by `competition_skill_match` view for weighted scoring.
+
+##### `competition_winners`
+
+Public competition result records (display name, placement, year, source URL).
+Data is sourced from publicly announced results. No private data.
+Serves as a historical reference dataset for understanding winner skill profiles.
+
+##### `winner_skills`
+
+Maps prior winners to skills they were known for (public reference only).
+Data entered manually by officers from publicly available winner information.
+
+##### `judges`
+
+Judge identity: `display_name` + optional `public_handle` (published professional link).
+One judge may appear in multiple competitions over time.
+
+##### `judge_profiles`
+
+**Sensitive — officer/admin only.**
+Scraped or manually entered PUBLIC PROFESSIONAL INTEL about judges
+(organization, background, focus areas, source URL).
+Used as competitive preparation reference: understanding judges' focus areas
+helps members target presentations and solutions.
+
+**Privacy constraint**: ONLY data the judge has themselves published publicly.
+Never: personal contact details, salary, private messages, personal life data.
+Access: `is_officer()` or `is_admin()` only. Data-retention policy is an open question (see below).
+
+##### `competition_judges`
+
+Links competitions to judges (M:N). Authenticated users can read; officers/admins write.
+
+##### `competition_skill_match` (view)
+
+"Who do we send?" signal. Scores members vs a competition's required skills.
+
+| Column | Notes |
+|---|---|
+| `competition_id`, `competition_title` | Competition context |
+| `member_id`, `nickname`, `avatar_url` | Public-safe member identity |
+| `total_required_skills` | Count of required skills for the competition |
+| `matched_skills` | Count of those skills the member has |
+| `match_pct` | `(matched / total) × 100` — 0–100 scale |
+| `leaderboard_points` | Member's overall weighted points (from 0002 matview) |
+| `leaderboard_rank` | Member's overall rank (high-bracket signal) |
+
+**Scope**: Only `upcoming` and `active` competitions included. Query with `WHERE competition_id = $x`.
+**Security invoker**: RLS on `member_skills` naturally scopes results — regular members see only
+their own match row; officers/admins see the full cross-member matrix.
+Only `authenticated` users may SELECT (not `anon`).
+
+---
+
+### RLS Policy Summary (0004–0005)
+
+| Table | anon | member (own) | officer | admin |
+|---|---|---|---|---|
+| `skills` (approved rows) | SELECT | SELECT | SELECT all + UPDATE status | SELECT all + INSERT + UPDATE + DELETE |
+| `skill_aliases` | SELECT | SELECT | — | SELECT + INSERT + UPDATE + DELETE |
+| `member_skills` | — | SELECT own | SELECT all | SELECT all |
+| `point_event_skills` | — | SELECT own events | — | SELECT all |
+| `skills_refresh_log` | — | — | SELECT | SELECT + INSERT |
+| `skill_leaderboard` (matview) | SELECT | SELECT | SELECT | SELECT |
+| `competitions` | SELECT | SELECT | SELECT + INSERT + UPDATE | SELECT + INSERT + UPDATE + DELETE |
+| `competition_required_skills` | SELECT | SELECT | SELECT + INSERT + UPDATE | SELECT + INSERT + UPDATE + DELETE |
+| `competition_winners` | SELECT | SELECT | SELECT + INSERT + UPDATE | SELECT + INSERT + UPDATE + DELETE |
+| `winner_skills` | SELECT | SELECT | SELECT + INSERT | SELECT + INSERT + DELETE |
+| `judges` | — | SELECT | SELECT + INSERT + UPDATE | SELECT + INSERT + UPDATE + DELETE |
+| `judge_profiles` | — | — | SELECT | SELECT + INSERT + UPDATE |
+| `competition_judges` | — | SELECT | SELECT + INSERT | SELECT + INSERT + DELETE |
+| `competition_skill_match` (view) | — | SELECT (own only via RLS) | SELECT (all) | SELECT (all) |
+
+### Key RLS Decisions (0004–0005)
+
+1. **`skills` UPDATE restricted to officers/admins.** Regular members cannot change skill status.
+   This is the HITL gate: emergent skills stay as `candidate` until a human approves them.
+   Column-level enforcement of valid status transitions (e.g. no `approved → candidate` rollback
+   without justification) is enforced in the Edge Function, not the DB.
+
+2. **`point_event_skills` is append-only.** Mirrors the `point_events` immutability contract from 0002.
+   No client INSERT/UPDATE/DELETE. All mutations via service_role only.
+
+3. **`member_skills` has no client write policy.** The cache is managed exclusively by Edge Functions
+   after `point_event_skills` inserts. Members cannot self-assign skills.
+
+4. **`judge_profiles` is officer/admin only.** The strictest non-admin restriction in the system.
+   Even authenticated regular members cannot read this table. This reflects the privacy sensitivity
+   of aggregated professional intel, even when sourced from public data.
+
+5. **`competition_skill_match` view uses security invoker.** No explicit RLS on the view itself,
+   but RLS on `member_skills` scopes results naturally: a regular member calling the view sees only
+   their own match data (because they can only read their own `member_skills` rows).
+
+6. **`skill_leaderboard` is public (anon + authenticated).** Structurally safe: only UUID, nickname,
+   avatar, and aggregate metrics. No PII. Mirrors the `leaderboard` matview policy from 0002.
+
+7. **`competition_winners` and `winner_skills` are anon-readable.** These are public records
+   (announced competition results). No privacy concern.
+
+8. **`judges` table is authenticated-only (not anon).** Judge names and handles are public
+   information but accessing them requires being logged in. This reduces scraping surface area
+   and aligns with the platform's data-access posture.
+
+---
+
+### Index Strategy (0004–0005)
+
+| Table | Index | Rationale |
+|---|---|---|
+| `skills` | `(status) WHERE status = 'approved'` | Primary read path (approved cache) |
+| `skills` | `(category) WHERE category IS NOT NULL` | Taxonomy browser grouping |
+| `member_skills` | `(skill_id, skill_points DESC)` | Per-skill leaderboard aggregation |
+| `member_skills` | `(member_id)` | Member's full skill list |
+| `point_event_skills` | `(skill_id)` | Skill aggregation queries |
+| `point_event_skills` | `(point_event_id)` | Reverse: skills per event |
+| `skill_leaderboard` | UNIQUE `(skill_id, member_id)` | Required for CONCURRENTLY refresh |
+| `skill_leaderboard` | `(skill_id, rank)` | "Top N in skill X" queries |
+| `competitions` | `(status)` | Active/upcoming filter |
+| `competitions` | `(start_date) WHERE NOT NULL` | Date-range queries |
+| `competition_required_skills` | `(competition_id)` | Skill list for a competition |
+| `competition_required_skills` | `(skill_id)` | All competitions requiring a skill |
+| `competition_required_skills` | `(competition_id, importance)` | Importance-filtered matching |
+| `competition_winners` | `(competition_id, year DESC)` | Most-recent winners first |
+| `judge_profiles` | `(judge_id, scraped_at DESC)` | Most-recent profile per judge |
+| `judge_profiles` | GIN on `focus_areas` | Focus-area containment queries |
+
+---
+
+### Open Questions (0004–0005)
+
+1. **Judge data retention policy.** `judge_profiles` contains scraped professional data. How long
+   should it be retained? Should there be an `expires_at` column or a periodic purge job? If a
+   judge requests removal, what is the deletion process? GDPR/privacy law may apply depending on
+   jurisdiction.
+
+2. **Alias normalization contract.** `skill_aliases.alias` is stored as entered. Should the DB
+   enforce lowercase storage via a CHECK constraint or trigger, or should the Edge Function
+   normalize before INSERT? Inconsistent casing could cause alias misses.
+
+3. **Emergent-skill discovery thresholds.** At what frequency or member-data volume should the
+   AI pipeline trigger an emergent scan? What minimum occurrence count should a candidate skill
+   need before being surfaced to the HITL reviewer (e.g. "appears in ≥ 5 member profiles")?
+   Threshold is currently undefined.
+
+4. **`member_skills.skill_points` cache staleness.** If the Edge Function that updates the cache
+   fails after a `point_event_skills` insert, the cache goes stale. Is there a reconciliation job
+   or a scheduled recompute to detect and fix stale rows? Consider a `is_stale` flag or a
+   periodic full-recompute Edge Function.
+
+5. **`skill_leaderboard` refresh schedule.** Same open question as the overall `leaderboard` (0002
+   open question 1). Should it refresh after every `point_event_skills` insert, on a schedule,
+   or on demand? The two matviews may need to refresh together to keep overall and per-skill
+   rankings consistent.
+
+6. **`competition_skill_match` view performance.** The view uses a CTE + two joins over
+   `member_skills` and `competition_required_skills`. For large member sets this may be slow.
+   If performance degrades, consider materializing it similarly to `leaderboard`, refreshed
+   after `member_skills` cache updates.
+
+7. **`competition_winners` — platform member linkage.** Currently `display_name` is a free-text
+   public name, with no FK to `member_profiles`. If a winner is also a platform member, there is
+   no way to link them. Consider adding an optional `member_id uuid REFERENCES member_profiles(id)`
+   column to enable "this past winner is one of our members" features.
+
+8. **`competitions.source_url` deduplication.** There is no UNIQUE constraint on `source_url`.
+   Two officers could create duplicate competition records for the same URL. Consider adding a
+   UNIQUE constraint or a deduplication check in the Edge Function / UI layer.
+
+9. **Skill importance weighting in `competition_skill_match`.** The view currently counts all
+   required skills equally when computing `matched_skills`. A more nuanced algorithm would weight
+   `required` skills more than `preferred` or `bonus` skills. The SQL for this is straightforward
+   but the scoring formula needs confirmation from the org before implementation.
+
+10. **`judge_profiles` multi-source versioning.** A judge may have multiple `judge_profiles` rows
+    (one per source URL or per scrape date). The current schema allows this (no UNIQUE constraint
+    on `judge_id`). Should there be a "latest profile" concept, or is a timeline of profiles the
+    intended design? The `idx_judge_profiles_scraped_at` index supports the "latest first" read
+    pattern but the schema does not enforce single-profile-per-judge.
