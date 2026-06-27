@@ -14,7 +14,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. The only mode-aware module; wires concrete stages per mode and runs the build.\nWhere: src/resume_builder/pipeline.py\nEvidence: drives the full role→collect→extract→synthesize→render flow; covered by stage tests.",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Domain models (pydantic contracts)",
@@ -23,7 +25,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Canonical shapes shared by every stage (RoleSpec, Repo, Evidence, Resume, ...).\nWhere: src/resume_builder/models.py\nNote: maps directly to the new normalized DB schema (spec §18).",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Role picker — static + AI",
@@ -32,7 +36,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Resolve a role id (static) or a free-form prompt (AI) into a RoleSpec.\nWhere: src/resume_builder/role/\nEvidence: tests/unit/test_role_picker.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Extractors — static regex + AI relevance",
@@ -41,7 +47,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Score/filter repos by role; static keyword scoring + AI relevance with bullets.\nWhere: src/resume_builder/extractors/\nEvidence: test_static_extractor.py, test_ai_stages.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Synthesizers — static + AI assembly",
@@ -50,7 +58,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Assemble role + evidence + documents into the Resume model.\nWhere: src/resume_builder/synthesizers/\nEvidence: test_static_synth.py, test_ai_stages.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Role-aware filtering (Harvard principles)",
@@ -59,7 +69,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Drop off-target projects/achievements (LLM verdict + keyword fallback); never pads sections.\nWhere: pipeline.py, principles.py\nEvidence: test_project_filter.py, test_principles.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Review orchestrator (resume audit)",
@@ -68,7 +80,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Findings-only LLM review of an existing resume.\nWhere: src/resume_builder/review_orchestrator.py\nEvidence: test_review_orchestrator.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "LLM adapter + registry (4 providers)",
@@ -77,7 +91,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Provider-agnostic interface + registry: anthropic, openai, claude-session (no key), null.\nWhere: src/resume_builder/llm/\nEvidence: test_llm_base.py, test_claude_session_provider.py. Blueprint for the new AI adapter layer (spec §15).",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Sources — GitHub + Document",
@@ -86,7 +102,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. GitHub repos via gh CLI; local resume parsing (PDF/DOCX/TeX/MD).\nWhere: src/resume_builder/sources/github.py, document.py\nEvidence: test_github_source.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Social aggregator (parallel + dedupe + TTL cache)",
@@ -95,7 +113,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Registry of vendors, parallel dispatch, cross-vendor dedupe, per-vendor TTL cache; one bad vendor never fails the build.\nWhere: src/resume_builder/sources/social/aggregator.py\nEvidence: test_aggregator.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Social vendors (Facebook/LinkedIn/Twitter/Instagram)",
@@ -104,7 +124,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Concrete handlers behind the SocialVendor interface.\nWhere: src/resume_builder/sources/social/vendors/\nEvidence: test_facebook_own_posts.py, test_facebook_headless.py, test_twitter_vendor.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Social auth + sessions + visible browser login",
@@ -113,7 +135,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Login prompts/challenges, session persistence, visible-first sign-in.\nWhere: social/auth.py, browser_login.py\nEvidence: test_auth.py, test_browser_login.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Cookie fallbacks (curl_cffi / manual / resolve)",
@@ -122,7 +146,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. HTTP/cookie fallback paths for scraping.\nWhere: social/http.py, browser_cookies.py\nEvidence: test_curl_parser.py, test_resolve_cookies.py (test_manual_cookies import needs a fix — see Quality column).",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Headless browser pool + scroll-collect",
@@ -131,7 +157,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Playwright session pooling + lazy-load scroll collection.\nWhere: social/headless_browser.py\nEvidence: test_headless_browser.py, test_scroll_collect.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Visual scraper debugger (overlay/step/picker)",
@@ -140,7 +168,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Non-destructive overlay highlights, slow per-post step-through, click-to-pick selector, live HUD.\nWhere: social/playwright_overlay.py, playwright_step.py, playwright_picker.py, playwright_debug.py\nEvidence: test_playwright_overlay/step/picker/debug.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Clean per-vendor export + debug DOM trace",
@@ -149,7 +179,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Clean per-vendor JSON (url/posted_at/text/media_urls only; filename = vendor) + gitignored debug DOM-traversal trace, with fixtures.\nWhere: social/clean_export.py, social/trace.py, tests/fixtures/social/\nEvidence: test_clean_export.py, test_trace.py (10 tests pass).",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Renderers (LaTeX/HTML/Markdown/JSON/PDF)",
@@ -158,7 +190,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Five output formats behind a Renderer interface + registry; pure (Resume in, file out).\nWhere: src/resume_builder/renderers/\nEvidence: test_renderers.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "FastAPI web prototype + OAuth identity",
@@ -167,7 +201,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Prototype dashboard + routes; GitHub/Google/Microsoft OAuth identity (read:user, user:email).\nWhere: src/resume_builder/web/app.py, auth.py\nEvidence: test_web_prototype.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "CDO advisor (resume analysis)",
@@ -176,7 +212,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Resume injection/compliance analysis endpoint.\nWhere: src/resume_builder/web/cdo_advisor.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Typer CLI + commands (build/review/scrape/auth)",
@@ -185,7 +223,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. resume-build CLI: build, review, list-roles, list-vendors, login/logout, scrape, scrape-all.\nWhere: src/resume_builder/cli.py, commands/\nNote: test_cli.py import needs a fix (see Quality column).",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Config-driven roles / regex / templates",
@@ -194,7 +234,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. Add roles, keyword categories, and resume templates with no code changes.\nWhere: config/roles.json, regex_patterns.json, templates/",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Unit + integration test suite (172 passing)",
@@ -203,7 +245,9 @@
       "group": "Legacy Engine",
       "body": "✅ Delivered. 172 passing tests across role/extract/synth/render/llm/web/social.\nWhere: tests/\nKnown gap: 2 legacy test modules fail to import (test_cli, test_manual_cookies) — tracked in Quality column.",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Legacy Engine",
+      "hitl": "No"
     },
     {
       "title": "Per-folder module READMEs + Mermaid",
@@ -212,7 +256,9 @@
       "group": "Docs & Ops",
       "body": "✅ Delivered. A README with a Mermaid diagram in every source folder for abstraction/modularity.\nWhere: src/**/README.md",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Docs & Ops",
+      "hitl": "No"
     },
     {
       "title": "Department docs + PlantUML",
@@ -221,7 +267,9 @@
       "group": "Docs & Ops",
       "body": "✅ Delivered. 5 department docs each with a PlantUML diagram + contracts.\nWhere: docs/departments/",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Docs & Ops",
+      "hitl": "No"
     },
     {
       "title": "Master specification (NotebookLM)",
@@ -230,7 +278,9 @@
       "group": "Docs & Ops",
       "body": "✅ Delivered. The platform source of truth, import-ready for NotebookLM.\nWhere: docs/SPECIFICATION.md",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Docs & Ops",
+      "hitl": "No"
     },
     {
       "title": "Delegation backlog + board sync automation",
@@ -239,7 +289,9 @@
       "group": "Docs & Ops",
       "body": "✅ Delivered. Backlog doc + idempotent board sync (JSON = source of truth, --prune).\nWhere: docs/TASKS.md, scripts/board_tasks.json, scripts/sync_board.py",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Docs & Ops",
+      "hitl": "No"
     },
     {
       "title": "P1.1 Finalize platform architecture + ADRs",
@@ -248,7 +300,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: lock the Next.js + Supabase architecture and record decisions.\n📦 Scope: stack choices, module boundaries, ADRs, technical roadmap.\n✔ Acceptance: ADRs merged; diagram in docs/.\n👤 HITL: Architect sign-off.\n🔗 Depends: docs/SPECIFICATION.md",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.2 Design normalized DB schema (Layers 1-3) + ERD",
@@ -257,7 +311,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: model auth + raw + normalized layers as the single source of truth.\n📦 Scope: tables for experiences/projects/skills/... + relationship tables; ERD.\n✔ Acceptance: ERD reviewed; covers spec §5.\n👤 HITL: schema review.\n🔗 Depends: P1.1",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.3 Write SQL migrations + seed data",
@@ -266,7 +322,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: reproducible schema via migrations.\n📦 Scope: forward migrations + seed/sample data.\n✔ Acceptance: migrate up/down clean on a fresh DB.\n👤 HITL: migration dry-run reviewed.\n🔗 Depends: P1.2",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.4 Author RLS policies for all user-scoped tables",
@@ -275,7 +333,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: enforce privacy at the database (not just UI).\n📦 Scope: per-row policies for every user-scoped table; owner-only on raw/normalized.\n✔ Acceptance: deny-by-default verified with RLS tests.\n👤 HITL: security review of every policy.\n🔗 Depends: P1.2",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.5 Supabase Auth (Google/GitHub/Email) + role bootstrap",
@@ -284,7 +344,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: sign-in + role assignment.\n📦 Scope: providers, session, roles (anonymous→admin per spec §12).\n✔ Acceptance: login works; default role applied.\n👤 HITL: auth flow review.\n🔗 Depends: P1.1",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.6 Next.js app scaffold on Vercel",
@@ -293,7 +355,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: deployable app shell.\n📦 Scope: routing, layout, env wiring, Vercel project.\n✔ Acceptance: preview deploy green.\n👤 HITL: deploy preview reviewed.\n🔗 Depends: P1.1",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.7 Raw-input capture UI (manual + import)",
@@ -302,7 +366,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: let users add career raw data.\n📦 Scope: manual entry + file/import into Layer-2 raw tables.\n✔ Acceptance: data lands in raw tables under RLS.\n👤 HITL: UX review.\n🔗 Depends: P1.5, P1.4",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.8 AI extraction pipeline (clean->dedup->classify->tag)",
@@ -311,7 +377,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: turn raw inputs into structured signals.\n📦 Scope: cleaning, dedup, classification, tagging (spec §8). Port ideas from the legacy pipeline.\n✔ Acceptance: sampled outputs reviewed for accuracy.\n👤 HITL: output samples human-reviewed.\n🔗 Depends: P1.2, Q.25",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.9 Skill/experience/industry extraction into normalized tables",
@@ -320,7 +388,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: populate Layer-3 normalized tables.\n📦 Scope: skill/experience/industry extraction + writes.\n✔ Acceptance: spot-check accuracy on a sample.\n👤 HITL: spot-check accuracy.\n🔗 Depends: P1.8",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P1.10 Resume Generator (NCD -> generated_resume)",
@@ -329,7 +399,9 @@
       "group": "Foundation",
       "body": "🎯 Goal: generate role-targeted resumes from the database.\n📦 Scope: select normalized data by target role → generated_resume (Layer 4).\n✔ Acceptance: a generated resume reviewed end-to-end.\n👤 HITL: generated resume reviewed.\n🔗 Depends: P1.9",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P2.11 Public profile (curated fields only) + nickname scheme",
@@ -338,7 +410,9 @@
       "group": "Profiles & Analytics",
       "body": "🎯 Goal: shareable public profile that leaks nothing private.\n📦 Scope: nickname (e.g. Angela #7A82F), summary, top skills, score; never email/phone/raw.\n✔ Acceptance: privacy audit shows no private fields.\n👤 HITL: privacy review.\n🔗 Depends: P1.10, P1.4",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P2.12 Career score + career metrics",
@@ -347,7 +421,9 @@
       "group": "Profiles & Analytics",
       "body": "🎯 Goal: per-user career signals.\n📦 Scope: define + compute career_score and metrics (Layer 5).\n✔ Acceptance: metric definitions signed off.\n👤 HITL: metric definition sign-off.\n🔗 Depends: P1.9",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P2.13 Aggregated/anonymous platform analytics + leaderboards",
@@ -356,7 +432,9 @@
       "group": "Profiles & Analytics",
       "body": "🎯 Goal: platform-wide insights without identifying anyone.\n📦 Scope: trends, popular skills, leaderboards — anonymized.\n✔ Acceptance: anonymity audit passes.\n👤 HITL: anonymity audit.\n🔗 Depends: P2.12",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Points & Leaderboard",
+      "hitl": "Yes"
     },
     {
       "title": "P2.14 Resume templates system",
@@ -365,7 +443,9 @@
       "group": "Profiles & Analytics",
       "body": "🎯 Goal: multiple resume looks from one database.\n📦 Scope: template registry + selection (Layer 4).\n✔ Acceptance: 2+ templates render the same resume.\n👤 HITL: design review.\n🔗 Depends: P1.10",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "P3.15 Portfolio builder",
@@ -374,7 +454,9 @@
       "group": "Intelligence",
       "body": "🎯 Goal: a portfolio view generated from the NCD.\n📦 Scope: projects/achievements showcase.\n✔ Acceptance: review.\n👤 HITL: review.\n🔗 Depends: P1.10",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "AI & ML",
+      "hitl": "Yes"
     },
     {
       "title": "P3.16 Job matching",
@@ -383,7 +465,9 @@
       "group": "Intelligence",
       "body": "🎯 Goal: match users to roles/jobs.\n📦 Scope: relevance scoring against role/industry.\n✔ Acceptance: relevance eval on a sample.\n👤 HITL: relevance eval.\n🔗 Depends: P1.9",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "AI & ML",
+      "hitl": "Yes"
     },
     {
       "title": "P3.17 AI recommendations + missing-skills + roadmap",
@@ -392,7 +476,9 @@
       "group": "Intelligence",
       "body": "🎯 Goal: actionable career guidance.\n📦 Scope: recommendations, gap detection, learning roadmap.\n✔ Acceptance: human eval of suggestions.\n👤 HITL: human eval of suggestions.\n🔗 Depends: P2.12",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "AI & ML",
+      "hitl": "Yes"
     },
     {
       "title": "P4.18 Backend API (verification, AI queue, scheduled jobs)",
@@ -401,7 +487,9 @@
       "group": "Scale",
       "body": "🎯 Goal: move heavy/async work off the serverless path.\n📦 Scope: verification, AI queue, scheduled jobs, notifications (spec §13).\n✔ Acceptance: architecture review.\n👤 HITL: architecture review.\n🔗 Depends: Foundation complete",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "DevOps",
+      "hitl": "Yes"
     },
     {
       "title": "P4.19 Migrate scraping to backend background jobs",
@@ -410,7 +498,9 @@
       "group": "Scale",
       "body": "🎯 Goal: scrape on a schedule, server-side.\n📦 Scope: port the legacy scraper concepts into background jobs.\n✔ Acceptance: review.\n👤 HITL: review.\n🔗 Depends: P4.18",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "DevOps",
+      "hitl": "Yes"
     },
     {
       "title": "ML.20 Define ML task(s): industry/skill/career-score classifiers",
@@ -419,7 +509,9 @@
       "group": "Model Training",
       "body": "🎯 Goal: pick chapter-owned PyTorch models worth training.\n📦 Scope: frame industry detection / skill tagging / career scoring as ML tasks.\n✔ Acceptance: problem framing reviewed.\n👤 HITL: problem framing reviewed.\n🔗 Depends: P1.9 (data available)",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "AI & ML",
+      "hitl": "Yes"
     },
     {
       "title": "ML.21 Dataset: collect + label from normalized data (privacy-safe)",
@@ -428,7 +520,9 @@
       "group": "Model Training",
       "body": "🎯 Goal: a labeled dataset that respects privacy.\n📦 Scope: sampling, labeling, consent handling.\n✔ Acceptance: labeling + consent reviewed.\n👤 HITL: labeling + consent reviewed.\n🔗 Depends: ML.20, P1.4",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "AI & ML",
+      "hitl": "Yes"
     },
     {
       "title": "ML.22 Train PyTorch model(s) + track experiments",
@@ -437,7 +531,9 @@
       "group": "Model Training",
       "body": "🎯 Goal: trained baseline model(s).\n📦 Scope: training loop, experiment tracking, checkpoints.\n✔ Acceptance: metrics reviewed by a human.\n👤 HITL: metrics reviewed.\n🔗 Depends: ML.21",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "AI & ML",
+      "hitl": "Yes"
     },
     {
       "title": "ML.23 Evaluate (held-out set, bias/fairness check)",
@@ -446,7 +542,9 @@
       "group": "Model Training",
       "body": "🎯 Goal: trustworthy evaluation before any deploy.\n📦 Scope: held-out eval + bias/fairness checks.\n✔ Acceptance: eval sign-off.\n👤 HITL: eval sign-off before deploy.\n🔗 Depends: ML.22",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "AI & ML",
+      "hitl": "Yes"
     },
     {
       "title": "ML.24 Serve model behind the AI adapter",
@@ -455,7 +553,9 @@
       "group": "Model Training",
       "body": "🎯 Goal: use the trained model in production behind the adapter.\n📦 Scope: inference endpoint + adapter integration (spec §15).\n✔ Acceptance: inference review.\n👤 HITL: inference review.\n🔗 Depends: ML.23, Q.25",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "AI & ML",
+      "hitl": "Yes"
     },
     {
       "title": "Q.25 AI model adapter layer (Gemini/OpenAI/Claude/Ollama/LM Studio)",
@@ -464,7 +564,9 @@
       "group": "Quality & Security",
       "body": "🎯 Goal: never depend on one AI.\n📦 Scope: one interface in front of all providers (spec §15). Port the legacy LLM registry.\n✔ Acceptance: interface review; swap providers via config.\n👤 HITL: interface review.\n🔗 Depends: P1.1",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "Q.26 Test suite: AI output validation, DB consistency, RLS tests",
@@ -473,7 +575,9 @@
       "group": "Quality & Security",
       "body": "🎯 Goal: confidence in the platform.\n📦 Scope: AI output checks, DB consistency, RLS deny-by-default tests.\n✔ Acceptance: coverage target + RLS pass.\n👤 HITL: coverage + RLS pass.\n🔗 Depends: P1.4",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "Q.27 Regression harness for AI outputs",
@@ -482,7 +586,9 @@
       "group": "Quality & Security",
       "body": "🎯 Goal: catch AI quality drift.\n📦 Scope: baseline + diff harness for generated outputs.\n✔ Acceptance: baseline approved.\n👤 HITL: baseline approved.\n🔗 Depends: P1.10",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "Q.28 Security: threat model + access-control docs",
@@ -491,7 +597,9 @@
       "group": "Quality & Security",
       "body": "🎯 Goal: documented security posture.\n📦 Scope: threat model, access-control matrix, privacy review.\n✔ Acceptance: threat model review.\n👤 HITL: threat model review.\n🔗 Depends: P1.4",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "Q.29 CI/CD + monitoring",
@@ -500,7 +608,9 @@
       "group": "Quality & Security",
       "body": "🎯 Goal: automated checks + observability.\n📦 Scope: CI pipeline, deploy, monitoring/alerts.\n✔ Acceptance: pipeline green on main.\n👤 HITL: pipeline green.\n🔗 Depends: P1.6",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "Q.30 Fix 2 broken legacy test imports (test_cli, test_manual_cookies)",
@@ -509,7 +619,9 @@
       "group": "Quality & Security",
       "body": "🎯 Goal: green collection on the full suite.\n📦 Scope: test_cli.py imports _apply_visual_env/app and test_manual_cookies imports _VENDOR_COOKIES — names that moved during refactor. Update imports.\n✔ Acceptance: pytest collects with 0 errors.\n👤 HITL: QA review.\n🔗 Depends: none (quick win)",
       "start": "2026-06-27",
-      "target": "2026-07-03"
+      "target": "2026-07-03",
+      "department": "Platform Core",
+      "hitl": "Yes"
     },
     {
       "title": "ORG.S1 Org-ops pipeline scaffold (interfaces + middleman, SoC)",
@@ -518,7 +630,9 @@
       "group": "Org Operations",
       "body": "✅ Delivered. TypeScript contracts for the full pipeline. Where: platform/org-ops/",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Org Operations",
+      "hitl": "No"
     },
     {
       "title": "ORG.S2 Confirmed pipeline design (reverse-prompted)",
@@ -527,7 +641,9 @@
       "group": "Org Operations",
       "body": "✅ Delivered. Locked design + decisions. Where: docs/ORG-OPERATIONS.md §8b",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Org Operations",
+      "hitl": "No"
     },
     {
       "title": "ORG.S3 Routing rules table schema + example",
@@ -536,7 +652,9 @@
       "group": "Org Operations",
       "body": "✅ Delivered. Configurable doc-type/scope→departments. Where: platform/org-ops/routing.ts, config/routing-rules.example.json",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Org Operations",
+      "hitl": "No"
     },
     {
       "title": "ORG.S4 Approval middleman (parallel + unanimous)",
@@ -545,7 +663,9 @@
       "group": "Org Operations",
       "body": "✅ Delivered. Registry + parallel dispatch + unanimous gate. Where: platform/org-ops/approval.ts",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Org Operations",
+      "hitl": "No"
     },
     {
       "title": "ORG.S5 Officer scoring — response-time (speed) calc",
@@ -554,7 +674,9 @@
       "group": "Org Operations",
       "body": "✅ Delivered. Pure speed metric from timestamps. Where: platform/org-ops/scoring.ts",
       "start": "2026-06-27",
-      "target": "2026-06-27"
+      "target": "2026-06-27",
+      "department": "Org Operations",
+      "hitl": "No"
     },
     {
       "title": "ORG.1 LinkIngestor (RAG over submitted link)",
@@ -563,7 +685,9 @@
       "group": "Org Operations",
       "body": "🎯 Read+understand the submitted URL into ActivityContext.\n📦 fetch URL + retrieval + LLM extraction.\n🔗 Blocked: RAG infra. Stub: platform/org-ops/ingest.ts",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "No"
     },
     {
       "title": "ORG.2 DepartmentBriefGenerator (per-dept briefs)",
@@ -572,7 +696,9 @@
       "group": "Org Operations",
       "body": "🎯 Compacted brief+draft per department/paper.\n👤 officers finalize; AI assists.\n🔗 Depends: Q.25 adapter. Stub: briefs.ts",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "Yes"
     },
     {
       "title": "ORG.3 DocumentInjector — real template rendering",
@@ -581,7 +707,9 @@
       "group": "Org Operations",
       "body": "🎯 data (JSON/SQL)+template→document.\n🔗 BLOCKED on the document template + output format. Stub: documents.ts",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "No"
     },
     {
       "title": "ORG.4 Department approval UI (HITL, parallel)",
@@ -590,7 +718,9 @@
       "group": "Org Operations",
       "body": "🎯 UI for each dept to approve/edit/reject in parallel.\n👤 HITL. Depends: ORG.10, P1.5",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "Yes"
     },
     {
       "title": "ORG.5 Routing-rules admin UI + storage (Supabase)",
@@ -599,7 +729,9 @@
       "group": "Org Operations",
       "body": "🎯 Admin-editable rules table.\n📦 CRUD + persistence. Depends: P1.2",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "No"
     },
     {
       "title": "ORG.6 Email pipeline + recipient resolution + HITL send",
@@ -608,7 +740,9 @@
       "group": "Org Operations",
       "body": "🎯 Draft+resolve who to email; human confirms before send.\n🔗 Needs email surface (Gmail/org mail). Stub: downstream.ts",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "Yes"
     },
     {
       "title": "ORG.7 FB Page posting pipeline + HITL",
@@ -617,7 +751,9 @@
       "group": "Org Operations",
       "body": "🎯 Draft+publish to FB Page; human confirms before post.\n🔗 Needs FB Page API token. Stub: downstream.ts",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "Yes"
     },
     {
       "title": "ORG.8 Officer scoring — vote-based quality + HITL confirm",
@@ -626,7 +762,9 @@
       "group": "Org Operations",
       "body": "🎯 Aggregate peer votes into quality; human confirms.\n🔗 Needs voting model. Stub: scoring.ts",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "Yes"
     },
     {
       "title": "ORG.9 Intake endpoint (anyone submits link/details)",
@@ -635,7 +773,9 @@
       "group": "Org Operations",
       "body": "🎯 Public/auth submission that starts the pipeline.\n📦 form/endpoint→IntakeSubmission. Depends: P1.6",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Points & Leaderboard",
+      "hitl": "No"
     },
     {
       "title": "ORG.10 Departments/roles/voting data model (Supabase+RLS)",
@@ -644,7 +784,53 @@
       "group": "Org Operations",
       "body": "🎯 Tables for departments, officer roles, votes.\n👤 RLS reviewed.\n🔗 Depends: P1.2, P1.4",
       "start": "2026-07-04",
-      "target": "2026-07-17"
+      "target": "2026-07-17",
+      "department": "Org Operations",
+      "hitl": "Yes"
+    },
+    {
+      "title": "ORG.S6 Repo hygiene — untrack Chrome CDP cache (1901 files)",
+      "stage": "In Review",
+      "role": "DevOps",
+      "group": "Docs & Ops",
+      "body": "🤖 AI-built this session — needs your review.\n✅ Untracked .careerlens-chrome-cdp/ (1900 files) + stray submission .docx; files kept on disk. Added .gitignore guards (.careerlens-chrome-cdp/, *-chrome-cdp/).\nWhere: .gitignore (git index only; no commit made).\n🗺️ Roadmap: unblocks clean diffs/PR reviews before any new platform work.\n🟢 Best case (≤1wk): you commit the index change; board + repo stay clean.\n🔴 Worst case: junk was already pushed to the remote → needs a history rewrite (git filter-repo) to fully purge.",
+      "start": "2026-06-27",
+      "target": "2026-07-03",
+      "department": "Docs & Ops",
+      "hitl": "No"
+    },
+    {
+      "title": "ORG.S7 Points/Leaderboard/Growth requirements docs",
+      "stage": "In Review",
+      "role": "Architect",
+      "group": "Org Operations",
+      "body": "🤖 AI-built this session — needs your sign-off.\n✅ Captured the confirmed two-track model (cut-throat merit leaderboard + diagnostic growth track, explicitly NOT equity-by-points), heap priority, clustered opportunity graph + tiebreaker, referral, link→JSON ingestion (deterministic vs AI), client-side browser-extension scraping.\nWhere: docs/ORG-OPERATIONS.md §10, docs/POINTS-ENGINE.md, docs/CLIENT-SCRAPING.md.\n🗺️ Roadmap: spec basis that drives ORG.S8 (schema) + ORG.S9 (engine) + ORG.7/scraping.\n🟢 Best case (≤1wk): you sign off → build proceeds unblocked.\n🔴 Worst case: open questions (source weights, low-bracket cutoff, gain→difficulty) stay unresolved → engine tuning blocked.",
+      "start": "2026-06-27",
+      "target": "2026-07-03",
+      "department": "Points & Leaderboard",
+      "hitl": "No"
+    },
+    {
+      "title": "ORG.S8 Points/referral/growth data model (Supabase + RLS)",
+      "stage": "In Review",
+      "role": "Database",
+      "group": "Org Operations",
+      "body": "🤖 AI-built this session — needs schema review.\n✅ 3 migrations + ERD. Append-only point_events ledger (service-role writes only), merit leaderboard matview (member_id + nickname only, no PII), anti-self-referral DB guards, growth = diagnostic only (no point redistribution).\nWhere: supabase/migrations/0001_org_activities.sql, 0002_points_leaderboard.sql, 0003_referrals_growth.sql, docs/DATA-MODEL.md.\n🗺️ Roadmap: the org-ops DB foundation; pairs with ORG.10 (departments/voting).\n🟢 Best case (≤1wk): applied to a real Supabase project; RLS deny-by-default verified.\n🔴 Worst case: column-level privilege escalation (role/is_officer) needs an app-layer guard before go-live; matview refresh strategy untested at scale.",
+      "start": "2026-06-27",
+      "target": "2026-07-03",
+      "department": "Points & Leaderboard",
+      "hitl": "No"
+    },
+    {
+      "title": "ORG.S9 Points engine (heap + merit leaderboard + growth diagnostic)",
+      "stage": "In Review",
+      "role": "AI",
+      "group": "Org Operations",
+      "body": "🤖 AI-built this session — needs review + tests.\n✅ Pure-logic TypeScript (no I/O): generic PriorityQueue (heap), source-weighted ledger aggregation, cut-throat merit ranking with a deterministic tiebreaker, growth recommendations that never change rank.\nWhere: platform/org-ops/points/ (heap.ts, scoring.ts, leaderboard.ts, growth.ts, index.ts, README.md).\n🗺️ Roadmap: wire to the Supabase data-access layer (reads ORG.S8 ledger) + add unit tests.\n🟢 Best case (≤1wk): tsconfig + vitest added, unit tests green, wired behind a repository.\n🔴 Worst case: repo has NO TS toolchain yet → code is unverified (uncompiled, untested) until that exists.",
+      "start": "2026-06-27",
+      "target": "2026-07-03",
+      "department": "Points & Leaderboard",
+      "hitl": "No"
     }
   ],
   "date_fields": [

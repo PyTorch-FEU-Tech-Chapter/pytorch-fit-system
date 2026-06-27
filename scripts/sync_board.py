@@ -32,7 +32,11 @@ CONFIG = HERE / "board_tasks.json"
 
 
 def gh(args: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(["gh", *args], capture_output=True, text=True)
+    # encoding must be explicit: gh emits UTF-8 (emoji/box-drawing in bodies), but Windows
+    # subprocess defaults to the locale codec (cp1252) and crashes on bytes like 0x8f.
+    return subprocess.run(
+        ["gh", *args], capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
 
 
 def gh_json(args: list[str]):

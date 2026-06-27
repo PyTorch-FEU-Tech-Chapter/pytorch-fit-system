@@ -34,3 +34,10 @@ Thumbs.db
 
 # Superpowers brainstorming artifacts
 .superpowers/
+
+# Chrome CDP user-data cache directories (never commit)
+.careerlens-chrome-cdp/
+*-chrome-cdp/
+
+# stray submission doc, kept on disk only
+/AI Campus Hackathon – Day 1 Submission (1).docx
