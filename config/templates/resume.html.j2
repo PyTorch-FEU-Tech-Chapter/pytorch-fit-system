@@ -110,8 +110,8 @@
       {% if resume.contact.email %}<span>{{ resume.contact.email }}</span>{% endif %}
       {% if resume.contact.phone %}<span class="sep">·</span><span>{{ resume.contact.phone }}</span>{% endif %}
       {% if resume.contact.location %}<span class="sep">·</span><span>{{ resume.contact.location }}</span>{% endif %}
-      {% if resume.contact.github %}<span class="sep">·</span><a href="{{ resume.contact.github }}">{{ resume.contact.github | replace("https://", "") | replace("http://", "") }}</a>{% endif %}
-      {% if resume.contact.linkedin %}<span class="sep">·</span><a href="{{ resume.contact.linkedin }}">{{ resume.contact.linkedin | replace("https://www.", "") | replace("https://", "") }}</a>{% endif %}
+      {% if resume.contact.github %}<span class="sep">·</span><a href="{{ resume.contact.github if resume.contact.github.startswith('http') else 'https://github.com/' ~ resume.contact.github }}">github.com/{{ resume.contact.github | replace("https://github.com/", "") | replace("https://", "") | replace("http://", "") }}</a>{% endif %}
+      {% if resume.contact.linkedin %}<span class="sep">·</span><a href="{{ resume.contact.linkedin if resume.contact.linkedin.startswith('http') else 'https://www.linkedin.com/in/' ~ resume.contact.linkedin }}">linkedin.com/in/{{ resume.contact.linkedin | replace("https://www.linkedin.com/in/", "") | replace("https://", "") }}</a>{% endif %}
       {% if resume.contact.website %}<span class="sep">·</span><a href="{{ resume.contact.website }}">{{ resume.contact.website | replace("https://", "") | replace("http://", "") }}</a>{% endif %}
     </div>
   </header>
@@ -204,7 +204,7 @@
     <div class="edu">
       <div class="row">
         <span class="school">{{ e.school }}</span>
-        {% if e.start or e.end %}<span class="when">{{ e.start or "" }} – {{ e.end or "" }}</span>{% endif %}
+        {% if e.start and e.end %}<span class="when">{{ e.start }} – {{ e.end }}</span>{% elif e.end %}<span class="when">Expected {{ e.end }}</span>{% elif e.start %}<span class="when">{{ e.start }} – Present</span>{% endif %}
       </div>
       {% if e.degree or e.field %}<div class="degree">{{ e.degree }}{% if e.field %} · {{ e.field }}{% endif %}</div>{% endif %}
       {% if e.notes %}<ul class="bullets">{% for n in e.notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}

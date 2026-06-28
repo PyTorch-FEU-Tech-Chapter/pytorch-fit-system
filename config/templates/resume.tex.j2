@@ -17,7 +17,7 @@
 \begin{center}
   {\LARGE \textbf{<< resume.contact.name | tex_escape >>}}\\[2pt]
   << resume.contact.email | tex_escape >>(* if resume.contact.phone *) $\cdot$ << resume.contact.phone | tex_escape >>(* endif *)(* if resume.contact.location *) $\cdot$ << resume.contact.location | tex_escape >>(* endif *)\\
-  (* if resume.contact.github *)<< resume.contact.github | tex_escape >>(* endif *)(* if resume.contact.linkedin *) $\cdot$ << resume.contact.linkedin | tex_escape >>(* endif *)(* if resume.contact.website *) $\cdot$ << resume.contact.website | tex_escape >>(* endif *)
+  (* if resume.contact.github *)<< (resume.contact.github if resume.contact.github.startswith('http') else 'github.com/' ~ resume.contact.github) | tex_escape >>(* endif *)(* if resume.contact.linkedin *) $\cdot$ << (resume.contact.linkedin if resume.contact.linkedin.startswith('http') else 'linkedin.com/in/' ~ resume.contact.linkedin) | tex_escape >>(* endif *)(* if resume.contact.website *) $\cdot$ << resume.contact.website | tex_escape >>(* endif *)
 \end{center}
 
 \noindent\textit{Target role:} \textbf{<< resume.role.label | tex_escape >>}
@@ -84,7 +84,7 @@
 (* if resume.education *)
 \section*{Education}
 (* for e in resume.education *)
-\textbf{<< e.school | tex_escape >>}(* if e.degree *) --- << e.degree | tex_escape >>(* endif *)(* if e.field *) in << e.field | tex_escape >>(* endif *)(* if e.start or e.end *) \hfill \textit{<< (e.start or "") | tex_escape >> -- << (e.end or "") | tex_escape >>}(* endif *)
+\textbf{<< e.school | tex_escape >>}(* if e.degree *) --- << e.degree | tex_escape >>(* endif *)(* if e.field *) in << e.field | tex_escape >>(* endif *)(* if e.start and e.end *) \hfill \textit{<< e.start | tex_escape >> -- << e.end | tex_escape >>}(* elif e.end *) \hfill \textit{Expected << e.end | tex_escape >>}(* elif e.start *) \hfill \textit{<< e.start | tex_escape >> -- Present}(* endif *)
 (* if e.notes *)
 \begin{itemize}
 (* for n in e.notes *)
