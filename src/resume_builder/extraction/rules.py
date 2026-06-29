@@ -5,6 +5,8 @@ import re
 import lxml.html
 
 from ..industry import ExtractionRule
+from ..llm.base import LLMProvider
+from .skeleton import build_skeleton, template_fingerprint
 
 _SEL_RE = re.compile(
     r"^(?P<tag>[a-zA-Z0-9]+)?(?:#(?P<id>[\w-]+))?(?:\.(?P<cls>[\w-]+))?(?:\[role=(?P<role>[\w-]+)\])?$"
@@ -89,3 +91,40 @@ def apply_rules(html: str, rule: ExtractionRule) -> str:
         if pats:
             text = "\n".join(ln for ln in text.splitlines() if any(p.search(ln) for p in pats))
     return text.strip()
+
+
+_ENGINE_SYSTEM = (
+    "You reduce a web page to its main content for downstream resume tagging. Given a DOM "
+    "SKELETON (tags + #id/.class/[role], text stripped), return keep_selectors, drop_selectors, "
+    "and keep_regex that retain the primary article/project/README content and DROP headers, "
+    "navbars, footers, cookie/CTA banners, and repeated site chrome. Selectors use a simple "
+    "subset only: tag, .class, #id, [role=value], or tag.class. Be concise."
+)
+
+
+class ExtractionRuleEngine:
+    """AI rule generator with a per-template-fingerprint cache."""
+
+    def __init__(self, llm: LLMProvider, cache: dict | None = None) -> None:
+        self._llm = llm
+        self._cache: dict = cache if cache is not None else {}
+
+    def rules_for(self, source_id: str, html: str) -> ExtractionRule:
+        fp = template_fingerprint(html)
+        cached = self._cache.get(fp)
+        if cached is not None:
+            return cached
+        skeleton = build_skeleton(html)
+        prompt = (
+            f"source_id: {source_id}\n\nDOM SKELETON:\n{skeleton}\n\n"
+            "Return the extraction rule."
+        )
+        try:
+            rule = self._llm.structured(
+                prompt, schema=ExtractionRule, system=_ENGINE_SYSTEM, max_tokens=1024
+            )
+            rule.source_id = source_id
+        except Exception:
+            rule = ExtractionRule(source_id=source_id)
+        self._cache[fp] = rule
+        return rule
