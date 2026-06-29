@@ -1,9 +1,7 @@
-# {{ resume.contact.name or "Your Name" }}
+# {{ resume.role.label or "Your Target Role" }}
 
-{% if resume.contact.email %}{{ resume.contact.email }}{% endif %}{% if resume.contact.phone %} · {{ resume.contact.phone }}{% endif %}{% if resume.contact.location %} · {{ resume.contact.location }}{% endif +%}
-{% if resume.contact.github %}[GitHub]({{ resume.contact.github if resume.contact.github.startswith('http') else 'https://github.com/' ~ resume.contact.github }}){% endif %}{% if resume.contact.linkedin %} · [LinkedIn]({{ resume.contact.linkedin if resume.contact.linkedin.startswith('http') else 'https://www.linkedin.com/in/' ~ resume.contact.linkedin }}){% endif %}{% if resume.contact.website %} · [Website]({{ resume.contact.website }}){% endif +%}
-
-> Target role: **{{ resume.role.label }}**
+**{{ resume.contact.name or "Your Name" }}**{% if resume.contact.location %} · {{ resume.contact.location }}{% endif +%}
+{% if resume.contact.email %}{{ resume.contact.email }}{% endif %}{% if resume.contact.phone %} · {{ resume.contact.phone }}{% endif %}{% if resume.contact.github %}{% if resume.contact.email or resume.contact.phone %} · {% endif %}[GitHub]({{ resume.contact.github if resume.contact.github.startswith('http') else 'https://github.com/' ~ resume.contact.github }}){% endif %}{% if resume.contact.linkedin %} · [LinkedIn]({{ resume.contact.linkedin if resume.contact.linkedin.startswith('http') else 'https://www.linkedin.com/in/' ~ resume.contact.linkedin }}){% endif %}{% if resume.contact.website %} · [Website]({{ resume.contact.website }}){% endif +%}
 
 ---
 
@@ -43,8 +41,14 @@
 ### {{ p.name }}{% if p.url %} — [{{ p.url }}]({{ p.url }}){% endif +%}
 {% if p.tech %}*{{ p.tech | join(" · ") }}*
 {% endif %}
+{% for q in p.quantitative_impact %}
+{{ q }}
+{% endfor %}
 {% if p.description %}{{ p.description }}
 {% endif %}
+{% for ql in p.qualitative_impact %}
+{{ ql }}
+{% endfor %}
 {% for b in p.bullets %}
 - {{ b }}
 {% endfor %}

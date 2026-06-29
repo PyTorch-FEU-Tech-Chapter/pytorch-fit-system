@@ -49,11 +49,13 @@ class SocialAggregator:
         registry: dict[str, VendorFactory] | None = None,
         cache_dir: Path | None = None,
         max_workers: int = 4,
+        use_cache: bool = True,
     ) -> None:
         self._registry = dict(registry or {})
         self._cache_dir = cache_dir or _default_cache_dir()
         self._cache_dir.mkdir(parents=True, exist_ok=True)
         self._max_workers = max_workers
+        self.use_cache = use_cache
 
     # ---- public ----
 
@@ -93,9 +95,10 @@ class SocialAggregator:
     def _collect_one(
         self, name: str, config: ScrapeConfig
     ) -> tuple[list[SocialPost], list[SocialMention]]:
-        cached = self._read_cache(name, config.cache_ttl_seconds)
-        if cached is not None:
-            return cached
+        if self.use_cache:
+            cached = self._read_cache(name, config.cache_ttl_seconds)
+            if cached is not None:
+                return cached
 
         vendor = self._registry[name]()
         handle = config.handles.get(name, "")
@@ -114,7 +117,8 @@ class SocialAggregator:
             except Exception as exc:  # noqa: BLE001
                 log.warning("%s.search_mentions failed: %s", name, exc)
 
-        self._write_cache(name, posts, mentions)
+        if self.use_cache:
+            self._write_cache(name, posts, mentions)
         return posts, mentions
 
     @staticmethod

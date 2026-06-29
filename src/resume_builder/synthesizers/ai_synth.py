@@ -13,6 +13,7 @@ when AI omits them, so the renderers always get a complete model.
 from __future__ import annotations
 
 from ..llm import LLMProvider
+from ..metrics import ProjectMetric, metrics_by_repo
 from ..models import (
     ContactInfo,
     Evidence,
@@ -28,16 +29,23 @@ from .static_synth import StaticSynthesizer
 _MAX_DOC_CHARS = 6000
 _SYSTEM = (
     "You are a top-tier resume writer. Produce a complete, ATS-friendly resume tailored to the "
-    "target role. Use impact-focused, metric-bearing bullets where possible. Include only "
+    "target role. Write impact-focused bullets. CRITICAL — numbers/metrics policy: use ONLY the "
+    "measurable metrics explicitly provided for a project (in the 'Authoritative metrics' block); "
+    "treat those as ground truth and never alter them. NEVER invent, estimate, or extrapolate any "
+    "number, percentage, scale, or quantity that is not provided. If a project has no provided "
+    "metric, write a strong QUALITATIVE bullet with no fabricated numbers. Include only "
     "experience/projects that are real (present in the provided materials). Skills list should "
     "be ordered by role-relevance. Be concise — no fluff.\n\n"
 ) + HARVARD_PRINCIPLES
 
 
 class AISynthesizer(Synthesizer):
-    def __init__(self, llm: LLMProvider) -> None:
+    def __init__(
+        self, llm: LLMProvider, metrics: list[ProjectMetric] | None = None
+    ) -> None:
         self._llm = llm
         self._fallback = StaticSynthesizer()
+        self._metrics_by_repo = metrics_by_repo(metrics or [])
 
     def build(
         self,
@@ -75,12 +83,14 @@ class AISynthesizer(Synthesizer):
         docs_blob = "\n\n---\n\n".join(
             f"file: {d.filename}\n{d.text[:_MAX_DOC_CHARS]}" for d in documents
         ) or "(no documents provided)"
+        metrics_blob = self._metrics_block()
         return (
             f"Target role: {role.label}\n"
             f"Keywords: {', '.join(role.keywords)}\n"
             f"Must-have skills: {', '.join(role.must_have_skills)}\n"
             f"Summary hint: {role.summary_hint or ''}\n\n"
             f"Known contact info: {contact.model_dump_json()}\n\n"
+            f"Authoritative metrics (use these EXACT numbers; invent no others):\n{metrics_blob}\n\n"
             f"Role-relevant GitHub projects:\n{ev_blob}\n\n"
             f"Candidate documents (resume, bio, notes):\n{docs_blob}\n\n"
             "Compose the final Resume. Include `role`, `contact`, `summary`, `skills`, "
@@ -93,6 +103,18 @@ class AISynthesizer(Synthesizer):
             "a programming language. "
             "Use generated_on = today."
         )
+
+
+    def _metrics_block(self) -> str:
+        """Render the per-repo authoritative metric facts for prompt injection."""
+        if not self._metrics_by_repo:
+            return "(none provided — write qualitative bullets, no invented numbers)"
+        lines: list[str] = []
+        for repo in sorted(self._metrics_by_repo):
+            lines.append(f"- {repo}:")
+            for m in self._metrics_by_repo[repo]:
+                lines.append(f"    - {m.as_fact()}")
+        return "\n".join(lines)
 
 
 def _merge_contact(primary: ContactInfo, fallback: ContactInfo) -> ContactInfo:

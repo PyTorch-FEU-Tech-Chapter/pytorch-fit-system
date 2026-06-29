@@ -48,6 +48,9 @@ packages = ["src/resume_builder"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+markers = [
+    "integration: tests that need external tooling (e.g. a headless browser)",
+]
 
 [tool.ruff]
 line-length = 100

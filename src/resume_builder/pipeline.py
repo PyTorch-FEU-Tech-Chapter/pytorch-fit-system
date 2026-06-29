@@ -17,7 +17,18 @@ from .config import Settings, get_settings
 from .extractors import AIExtractor, Extractor, StaticExtractor
 from .llm import LLMProvider, get_provider
 from .llm.null_provider import NullProvider
-from .models import Mode, RawDocument, Repo, Resume, ResumeAchievement, ResumeProject, RoleSpec
+from .metrics import load_metrics
+from .industry import IndustryClassifier, IndustryResumePlan, WebPageInput, plan_industry_resumes
+from .models import (
+    Evidence,
+    Mode,
+    RawDocument,
+    Repo,
+    Resume,
+    ResumeAchievement,
+    ResumeProject,
+    RoleSpec,
+)
 from .principles import HARVARD_PRINCIPLES
 from .renderers import get_renderer
 from .role import AIRolePicker, RolePicker, StaticRolePicker
@@ -284,6 +295,13 @@ class PipelineResult:
 
 
 @dataclass
+class IndustryPipelineResult:
+    resumes: list[Resume]
+    output_paths: list[Path]
+    industries: list[str]
+
+
+@dataclass
 class BuildInputs:
     gh_user: str
     role_selection: str
@@ -291,6 +309,16 @@ class BuildInputs:
     formats: list[str]
     output_dir: Path
     social_config_path: str | Path | None = None
+
+
+@dataclass
+class BuildIndustryInputs:
+    gh_user: str
+    docs_path: str | Path | None
+    formats: list[str]
+    output_dir: Path
+    social_config_path: str | Path | None = None
+    web_pages: list[WebPageInput] | None = None
 
 
 class Pipeline:
@@ -329,8 +357,39 @@ class Pipeline:
         paths = self._render_all(resume, inputs.formats, inputs.output_dir)
         return PipelineResult(resume=resume, output_paths=paths)
 
+    def run_industry_auto(self, inputs: BuildIndustryInputs) -> IndustryPipelineResult:
+        """Build one resume per AI-discovered, GitHub-backed industry."""
+
+        repos = self.github.collect(user=inputs.gh_user, include_readme=True)
+        documents: list[RawDocument] = (
+            self.docs.collect(inputs.docs_path) if inputs.docs_path else []
+        )
+        social_result = self._collect_social(inputs.social_config_path, use_cache=False)
+        achievements = _achievements_from_social(social_result) if social_result else []
+
+        classification = IndustryClassifier(self.llm).classify(
+            repos=repos,
+            achievements=achievements,
+            web_pages=inputs.web_pages or [],
+        )
+        plans = plan_industry_resumes(classification, repos, achievements)
+
+        resumes: list[Resume] = []
+        output_paths: list[Path] = []
+        for plan in plans:
+            resume = self._resume_from_industry_plan(plan, repos, documents)
+            out_dir = inputs.output_dir / plan.role.id
+            output_paths.extend(self._render_all(resume, inputs.formats, out_dir))
+            resumes.append(resume)
+
+        return IndustryPipelineResult(
+            resumes=resumes,
+            output_paths=output_paths,
+            industries=[plan.industry for plan in plans],
+        )
+
     def _collect_social(
-        self, path: str | Path | None
+        self, path: str | Path | None, *, use_cache: bool = True
     ) -> CollectResult | None:
         if not path:
             return None
@@ -339,12 +398,33 @@ class Pipeline:
         except Exception as exc:  # noqa: BLE001
             log.warning("social config %s could not be loaded: %s", path, exc)
             return None
-        return self.social.collect(config)
+        previous_cache = self.social.use_cache
+        self.social.use_cache = use_cache
+        try:
+            return self.social.collect(config)
+        finally:
+            self.social.use_cache = previous_cache
 
     def render_only(
         self, resume: Resume, formats: list[str], output_dir: Path
     ) -> list[Path]:
         return self._render_all(resume, formats, output_dir)
+
+    def _resume_from_industry_plan(
+        self,
+        plan: IndustryResumePlan,
+        repos: list[Repo],
+        documents: list[RawDocument],
+    ) -> Resume:
+        evidence = [_project_to_evidence(project) for project in plan.projects]
+        resume = self.synthesizer.build(plan.role, repos, evidence, documents)
+        resume.role = plan.role
+        resume.projects = plan.projects
+        resume.achievements = plan.achievements
+        resume.skills = _merge_resume_skills(plan, resume.skills)
+        if not resume.summary:
+            resume.summary = plan.role.summary_hint or f"Project-backed {plan.industry} profile."
+        return resume
 
     # ---- factories ----
 
@@ -360,7 +440,7 @@ class Pipeline:
 
     def _make_synthesizer(self) -> Synthesizer:
         if self.mode == Mode.AI:
-            return AISynthesizer(self.llm)
+            return AISynthesizer(self.llm, metrics=load_metrics(self.settings.metrics_path))
         return StaticSynthesizer()
 
     @staticmethod
@@ -379,3 +459,38 @@ class Pipeline:
             log.info("Wrote %s", path)
             out.append(path)
         return out
+
+
+def _project_to_evidence(project: ResumeProject) -> Evidence:
+    bullets = [
+        *project.quantitative_impact,
+        *project.qualitative_impact,
+        *project.bullets,
+    ]
+    source_id = (project.display_url or project.name).replace("github/", "", 1)
+    return Evidence(
+        source_kind="repo",
+        source_id=source_id,
+        snippet=project.description,
+        matched_terms=[*project.industry_tags, *project.skill_subtags, *project.tech],
+        score=10.0,
+        rationale=f"Tagged for {', '.join(project.industry_tags)}",
+        bullets=bullets[:3],
+    )
+
+
+def _merge_resume_skills(plan: IndustryResumePlan, existing: list[str]) -> list[str]:
+    values: list[str] = []
+    for project in plan.projects:
+        values.extend(project.skill_subtags)
+        values.extend(project.tech)
+    values.extend(plan.role.must_have_skills)
+    values.extend(existing)
+    out: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        key = value.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            out.append(value.strip())
+    return out[:18]

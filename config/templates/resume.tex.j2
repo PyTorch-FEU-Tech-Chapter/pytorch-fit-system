@@ -14,13 +14,12 @@
 
 \begin{document}
 
+% Job title is the dominant header element; the name is a secondary, muted line.
 \begin{center}
-  {\LARGE \textbf{<< resume.contact.name | tex_escape >>}}\\[2pt]
-  << resume.contact.email | tex_escape >>(* if resume.contact.phone *) $\cdot$ << resume.contact.phone | tex_escape >>(* endif *)(* if resume.contact.location *) $\cdot$ << resume.contact.location | tex_escape >>(* endif *)\\
-  (* if resume.contact.github *)<< (resume.contact.github if resume.contact.github.startswith('http') else 'github.com/' ~ resume.contact.github) | tex_escape >>(* endif *)(* if resume.contact.linkedin *) $\cdot$ << (resume.contact.linkedin if resume.contact.linkedin.startswith('http') else 'linkedin.com/in/' ~ resume.contact.linkedin) | tex_escape >>(* endif *)(* if resume.contact.website *) $\cdot$ << resume.contact.website | tex_escape >>(* endif *)
+  {\LARGE \textbf{<< resume.role.label | tex_escape >>}}\\[3pt]
+  {\large << resume.contact.name | tex_escape >>}(* if resume.contact.location *) $\cdot$ << resume.contact.location | tex_escape >>(* endif *)\\[1pt]
+  << resume.contact.email | tex_escape >>(* if resume.contact.phone *) $\cdot$ << resume.contact.phone | tex_escape >>(* endif *)(* if resume.contact.github *) $\cdot$ << (resume.contact.github if resume.contact.github.startswith('http') else 'github.com/' ~ resume.contact.github) | tex_escape >>(* endif *)(* if resume.contact.linkedin *) $\cdot$ << (resume.contact.linkedin if resume.contact.linkedin.startswith('http') else 'linkedin.com/in/' ~ resume.contact.linkedin) | tex_escape >>(* endif *)(* if resume.contact.website *) $\cdot$ << resume.contact.website | tex_escape >>(* endif *)
 \end{center}
-
-\noindent\textit{Target role:} \textbf{<< resume.role.label | tex_escape >>}
 
 (* if resume.summary *)
 \section*{Summary}
@@ -49,9 +48,15 @@
 (* if resume.projects *)
 \section*{Projects}
 (* for p in resume.projects *)
-\textbf{<< p.name | tex_escape >>}(* if p.url *) --- \href{<< p.url >>}{<< p.url | tex_escape >>}(* endif *)\\
+\textbf{<< p.name | tex_escape >>}(* if p.display_url *) --- \href{<< p.url or "#" >>}{(* if p.source_icon == "github" *)GitHub (* elif p.source_icon == "linkedin" *)LinkedIn (* elif p.source_icon == "facebook" *)Facebook (* else *)Source (* endif *)<< p.display_url | replace("github/", "/") | tex_escape >>}(* elif p.url *) --- \href{<< p.url >>}{<< p.url | tex_escape >>}(* endif *)\\
 (* if p.tech *)\textit{<< p.tech | join(", ") | tex_escape >>}\\(* endif *)
+(* for q in p.quantitative_impact *)
+<< q | tex_escape >>\\
+(* endfor *)
 << p.description | tex_escape >>
+(* for ql in p.qualitative_impact *)
+\\<< ql | tex_escape >>
+(* endfor *)
 (* if p.bullets *)
 \begin{itemize}
 (* for b in p.bullets *)
@@ -67,7 +72,7 @@
 \section*{Achievements}
 \begin{itemize}
 (* for a in resume.achievements *)
-  \item \textbf{<< a.title | tex_escape >>}(* if a.date *) \textit{(<< a.date | tex_escape >>)}(* endif *) --- \textit{<< a.source | tex_escape >>}(* if a.snippet *): << a.snippet | tex_escape >>(* endif *)
+  \item \textbf{<< a.title | tex_escape >>}(* if a.date *) \textit{(<< a.date | tex_escape >>)}(* endif *) --- \textit{<< a.source | tex_escape >>}(* if a.snippet *): << a.snippet | tex_escape >>(* endif *)(* for q in a.quantitative_impact *) << q | tex_escape >>(* endfor *)(* for ql in a.qualitative_impact *) << ql | tex_escape >>(* endfor *)
 (* endfor *)
 \end{itemize}
 (* endif *)

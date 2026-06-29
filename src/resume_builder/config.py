@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     gh_user: str | None = None
     config_dir: Path = DEFAULT_CONFIG_DIR
+    # Per-project measurable-impact metrics the synthesizer grounds bullets on.
+    metrics_path: Path = PROJECT_ROOT / "metrics.csv"
 
     @field_validator("config_dir", mode="before")
     @classmethod

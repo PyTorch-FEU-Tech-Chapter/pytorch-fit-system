@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -97,6 +97,18 @@ class ResumeProject(BaseModel):
     description: str = ""
     bullets: list[str] = Field(default_factory=list)
     tech: list[str] = Field(default_factory=list)
+    industry_tags: list[str] = Field(default_factory=list)
+    skill_subtags: list[str] = Field(default_factory=list)
+    quantitative_impact: list[str] = Field(default_factory=list)
+    qualitative_impact: list[str] = Field(default_factory=list)
+    source_icon: str | None = Field(
+        default=None,
+        description="Renderer hint for compact source display, e.g. github.",
+    )
+    display_url: str | None = Field(
+        default=None,
+        description="Compact human-facing link text such as github/owner/repo.",
+    )
 
 
 class ResumeExperience(BaseModel):
@@ -134,6 +146,12 @@ class ResumeAchievement(BaseModel):
     url: str | None = None
     date: str | None = None
     snippet: str = ""
+    industry_tags: list[str] = Field(default_factory=list)
+    skill_subtags: list[str] = Field(default_factory=list)
+    quantitative_impact: list[str] = Field(default_factory=list)
+    qualitative_impact: list[str] = Field(default_factory=list)
+    source_icon: str | None = None
+    display_url: str | None = None
 
 
 class Resume(BaseModel):

@@ -47,9 +47,18 @@ def test_json_renderer_roundtrip():
 
 def test_markdown_renderer_contains_sections(templates_dir):
     out = MarkdownRenderer(templates_dir).render(_resume())
-    assert "# Drew" in out
+    # Header now leads with the job title; the name is secondary, bolded info.
+    assert "# Cybersecurity Blue Team" in out
+    assert "**Drew**" in out
     assert "## Projects" in out
     assert "soc-playbook" in out
+
+
+def test_html_header_leads_with_job_title(templates_dir):
+    out = get_renderer("html", templates_dir).render(_resume())
+    # Job title is the dominant <h1>; name is a secondary, muted line.
+    assert '<h1 class="role-title">Cybersecurity Blue Team</h1>' in out
+    assert '<span class="name">Drew</span>' in out
 
 
 def test_latex_renderer_escapes_specials(templates_dir):
