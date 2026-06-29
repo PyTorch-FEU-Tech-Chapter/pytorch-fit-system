@@ -113,8 +113,7 @@ class ExtractionRuleEngine:
         fp = template_fingerprint(html)
         cached = self._cache.get(fp)
         if cached is not None:
-            cached.source_id = source_id
-            return cached
+            return cached.model_copy(update={"source_id": source_id})
         skeleton = build_skeleton(html)
         prompt = (
             f"source_id: {source_id}\n\nDOM SKELETON:\n{skeleton}\n\n"

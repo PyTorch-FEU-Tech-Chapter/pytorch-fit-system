@@ -93,3 +93,32 @@ def test_blob_fetch_exception_skips_only_that_file():
 
     sources = collect_repo_markdown("owner/repo", gh_json)
     assert {s.title for s in sources} == {"docs/A.md"}  # README skipped, docs/A.md survived
+
+
+def test_large_source_is_capped_and_flagged():
+    big = "A" * 5000
+    tree = {"tree": [{"path": "README.md", "type": "blob"}]}
+
+    def gh_json(args):
+        joined = " ".join(args)
+        if "git/trees" in joined:
+            return tree
+        if joined.endswith("contents/README.md"):
+            return {"content": _b64(big)}
+        return None
+
+    sources = collect_repo_markdown("owner/repo", gh_json, cap_chars=100)
+    assert len(sources[0].text) <= 100 and sources[0].truncated is True
+
+
+def test_max_files_bounds_collection():
+    tree = {"tree": [{"path": f"docs/D{i}.md", "type": "blob"} for i in range(5)]}
+
+    def gh_json(args):
+        joined = " ".join(args)
+        if "git/trees" in joined:
+            return tree
+        return {"content": _b64("body")}
+
+    sources = collect_repo_markdown("owner/repo", gh_json, max_files=3)
+    assert len(sources) == 3

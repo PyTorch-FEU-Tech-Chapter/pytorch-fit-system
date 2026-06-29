@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .fetch import SourceFetcher
-from .models import DEFAULT_CAP_CHARS, CleanedSource
+from .models import DEFAULT_CAP_CHARS, CleanedSource, apply_token_cap
 from .rules import ExtractionRuleEngine, apply_rules
 
 
@@ -15,11 +15,11 @@ def extract_website(
     html, degraded = fetcher.fetch(url)
     rule = engine.rules_for(url, html)
     text = apply_rules(html, rule)
-    truncated = len(text) > cap_chars
+    capped, truncated = apply_token_cap(text, cap_chars)
     return CleanedSource(
         source_id=url,
         kind="website",
-        text=text[:cap_chars],
+        text=capped,
         truncated=truncated,
         degraded=degraded or not text.strip(),
     )

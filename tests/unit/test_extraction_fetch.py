@@ -31,3 +31,12 @@ def test_headless_failure_keeps_static():
     f = SourceFetcher(http_get=lambda u: _THIN, headless_fetch=boom)
     html, degraded = f.fetch("http://x")
     assert html == _THIN and degraded is True
+
+
+def test_injected_get_raising_does_not_propagate():
+    def boom(_u):
+        raise RuntimeError("get failed")
+
+    f = SourceFetcher(http_get=boom, headless_fetch=None)
+    html, degraded = f.fetch("http://x")
+    assert html == "" and degraded is True

@@ -5,7 +5,7 @@ import logging
 import re
 from typing import Callable
 
-from .models import CleanedSource
+from .models import DEFAULT_CAP_CHARS, CleanedSource, apply_token_cap
 
 log = logging.getLogger(__name__)
 
@@ -24,8 +24,14 @@ def collect_repo_markdown(
     full_name: str,
     gh_json: Callable[[list[str]], object],
     ref: str = "HEAD",
+    cap_chars: int = DEFAULT_CAP_CHARS,
+    max_files: int = 50,
 ) -> list[CleanedSource]:
-    """Collect every README.* + docs/*.md in a repo as light-normalized CleanedSources."""
+    """Collect every README.* + docs/*.md in a repo as light-normalized CleanedSources.
+
+    Each source's text is capped to ``cap_chars`` characters (spec §6 bounding).
+    Collection stops after ``max_files`` files to bound total work.
+    """
     try:
         tree = gh_json(["api", f"repos/{full_name}/git/trees/{ref}?recursive=1"]) or {}
     except Exception as exc:  # noqa: BLE001
@@ -33,6 +39,8 @@ def collect_repo_markdown(
         return []
     out: list[CleanedSource] = []
     for node in (tree.get("tree", []) if isinstance(tree, dict) else []):
+        if len(out) >= max_files:
+            break
         path = node.get("path", "")
         if node.get("type") != "blob" or not _MD_KEEP.search(path):
             continue
@@ -44,13 +52,16 @@ def collect_repo_markdown(
             continue
         if not raw.strip():
             continue
+        text = _strip_md_noise(raw)
+        capped, truncated = apply_token_cap(text, cap_chars)
         out.append(
             CleanedSource(
                 source_id=f"{full_name}:{path}",
                 kind="github_readme",
                 title=path,
-                text=_strip_md_noise(raw),
+                text=capped,
                 section_hints=[path],
+                truncated=truncated,
             )
         )
     return out

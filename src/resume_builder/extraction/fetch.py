@@ -43,7 +43,11 @@ class SourceFetcher:
         self._get = http_get or _default_get
 
     def fetch(self, url: str) -> tuple[str, bool]:
-        html = self._get(url)
+        try:
+            html = self._get(url)
+        except Exception as exc:  # noqa: BLE001 — any get() failure degrades, never raises
+            log.warning("fetch get() raised for %s: %s", url, exc)
+            html = ""
         if _visible_text_len(html) >= _THIN_TEXT_MIN:
             return html, False
         if self._headless is not None:

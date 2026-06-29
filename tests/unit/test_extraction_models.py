@@ -1,4 +1,4 @@
-from resume_builder.extraction.models import CleanedSource, DEFAULT_CAP_CHARS
+from resume_builder.extraction.models import CleanedSource, DEFAULT_CAP_CHARS, apply_token_cap
 
 
 def test_cleaned_source_defaults():
@@ -10,3 +10,9 @@ def test_cleaned_source_defaults():
 
 def test_cap_chars_constant():
     assert DEFAULT_CAP_CHARS == 12000
+
+
+def test_apply_token_cap_under_and_over():
+    assert apply_token_cap("hello", 100) == ("hello", False)
+    clipped, truncated = apply_token_cap("x" * 50, 10)
+    assert clipped == "x" * 10 and truncated is True

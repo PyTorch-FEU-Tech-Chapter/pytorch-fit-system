@@ -17,3 +17,8 @@ class CleanedSource(BaseModel):
     section_hints: list[str] = Field(default_factory=list)
     truncated: bool = False
     degraded: bool = False
+
+
+def apply_token_cap(text: str, cap_chars: int = DEFAULT_CAP_CHARS) -> tuple[str, bool]:
+    """Clip text to the per-source char cap. Returns (clipped_text, truncated)."""
+    return text[:cap_chars], len(text) > cap_chars
