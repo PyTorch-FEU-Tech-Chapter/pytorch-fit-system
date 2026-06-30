@@ -60,10 +60,13 @@ middleman that gathers every retrieved input** and routes it. All retrieval flow
   - `document` — **user-uploaded PDF/DOCX/TXT** from the UI. **Text-based → NO OCR**; extract text
     directly via the existing `DocumentSource` (pypdf / python-docx). A "PDF upload / scanner"
     control on the UI side feeds these in.
-- **Routing after compile:**
-  - `project` + `post` → the parallel per-project / per-post **tagging** agents (industries + skills).
-  - `document` → candidate context (contact / experience / education / skills) consumed by P4 synth;
-    may also surface taggable achievements.
+- **Routing after compile — ALL source types fan out to parallel tagging agents:**
+  - `project` + `post` + `document` → each source (including each uploaded document) gets **its own
+    parallel tagging agent** that summarizes it and emits tagged JSON (industries + skills +
+    quant/qual + component bullets). Documents are a first-class taggable source, not passive context.
+  - `document` ADDITIONALLY: its raw extracted text stays available to P4 synth for candidate
+    context (contact / experience / education) — dual-use (tagged in P3 AND raw context in P4).
+  - Reconciliation/KPI counts every dispatched source (projects + posts + documents) as sent-vs-returned.
 - **Why middleman:** one place owns retrieval + normalization into a common shape, so tagging and
   assembly depend on the envelope, not on each source's quirks. Uploaded docs become a first-class
   source alongside GitHub and social — no special-casing downstream.
