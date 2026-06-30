@@ -127,6 +127,11 @@ flowchart TD
 | `rules.py` | CSS-subset `apply_rules` + `ExtractionRuleEngine` (AI rule gen with fingerprint cache) |
 | `github_traversal.py` | Three-depth GitHub collectors + `gather_repo_sources` user-facing selector |
 | `web.py` | `extract_website` — single-call orchestrator for the website path |
+| `crawler.py` | `AgenticCrawler` (observe → infer → validate → revise → crawl loop) + `RobotsPolicy` + `PlaywrightPageFetcher` |
+| `crawler_dom.py` | `build_dom_inventory` (DOM observation w/ link names), `apply_tag_rules` (deterministic execution of AI tag actions), `fingerprint` (strict class-vocabulary cache key), `safe_same_domain_url` |
+| `crawler_models.py` | Crawler pydantic models: `HtmlTagRule`/`NodeAction`, `LearnedLayout`, `LinkCandidate`/`LinkSelection`, `ExtractedPage`, `CrawlRun` |
+| `crawler_store.py` | `LayoutStore` — memory-first learned-layout cache, local JSON persistence, run writer |
+| `domain_fallbacks.py` | Registered per-domain scraper adapters used only after AI + readability fail |
 
 ## Contracts / key signatures
 
