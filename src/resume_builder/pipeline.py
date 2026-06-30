@@ -400,6 +400,68 @@ class Pipeline:
             industries=[plan.industry for plan in plans],
         )
 
+    def _classify_with_p3(
+        self,
+        repos: list[Repo],
+        achievements: list[ResumeAchievement],
+    ) -> IndustryClassification:
+        """Use the P3 interpretation engine to classify repos and social posts into industries.
+
+        Each non-archived repo becomes one CleanedSource (source_id = bare repo.full_name).
+        Each achievement becomes a RetrievedSource post (source_id = str index).
+        After tagging, classification.projects are split: repo-keyed entries stay as projects;
+        digit-keyed entries (from posts) are converted to TaggedAchievement records.
+        """
+        repo_full_names = {repo.full_name for repo in repos if not repo.archived}
+
+        cleaned = [
+            CleanedSource(
+                source_id=repo.full_name,
+                kind="github_readme",
+                text=(repo.readme or repo.description or repo.name),
+            )
+            for repo in repos
+            if not repo.archived
+        ]
+
+        post_sources = [
+            RetrievedSource(
+                source_id=str(i),
+                kind="post",
+                text=(a.snippet or a.title),
+                origin=a.source,
+            )
+            for i, a in enumerate(achievements)
+        ]
+
+        classification, _report, _profile = interpret(
+            self.llm, projects=cleaned, posts=post_sources
+        )
+
+        # Split: repo-keyed TaggedProjects stay as projects; digit-keyed ones were posts
+        repo_projects = []
+        post_achievements: list[TaggedAchievement] = []
+        for tp in classification.projects:
+            if tp.repo_full_name in repo_full_names:
+                repo_projects.append(tp)
+            else:
+                post_achievements.append(
+                    TaggedAchievement(
+                        source_id=tp.repo_full_name,
+                        industries=tp.industries,
+                        skill_subtags=tp.skill_subtags,
+                        focused_snippet=tp.summary,
+                        quantitative_impact=tp.quantitative_impact,
+                        qualitative_impact=tp.qualitative_impact,
+                    )
+                )
+
+        return IndustryClassification(
+            normalized_industries=classification.normalized_industries,
+            projects=repo_projects,
+            achievements=post_achievements,
+        )
+
     def _collect_social(
         self, path: str | Path | None, *, use_cache: bool = True
     ) -> CollectResult | None:
