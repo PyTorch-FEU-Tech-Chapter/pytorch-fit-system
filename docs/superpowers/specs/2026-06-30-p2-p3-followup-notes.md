@@ -3,6 +3,28 @@
 Captured mid-build so they are not lost. These refine the already-merged P2 and shape the
 not-yet-built P3 (Interpretation & Tagging). Not implemented yet — inputs for the next plan.
 
+## 0. P3 → P4 integration gaps (KNOWN, from the P3 whole-branch review — fix before wiring)
+
+The P3 `interpretation` engine is merged and standalone-correct, but wiring it into `pipeline.py`
+(`run_industry_auto`/`plan_industry_resumes`) is deferred. Two contract mismatches MUST be resolved
+at wiring time or P3→P4 silently produces empty/duplicated output:
+
+1. **`repo_full_name` key mismatch.** P2 emits `CleanedSource.source_id = "owner/repo:README.md"`;
+   `ProjectTagger` forces `repo_full_name = source_id`, so it carries the `:path` suffix. But P4's
+   `plan_industry_resumes` does `repos_by_full_name.get(tagged.repo_full_name)` keyed on the **bare**
+   `owner/repo` → every P3 project would miss the lookup and be dropped. Fix at wiring: carry the bare
+   repo full_name into the tag (split on `:`), AND collapse the **multiple `CleanedSource`s per repo**
+   (readme/markdown/code each become a TaggedProject) into one project per repo (a per-repo merge step)
+   so P4 does not emit duplicate `ResumeProject`s.
+2. **Non-GitHub sources dropped by P4.** Posts/documents are tagged with `repo_full_name = "fb:1"` /
+   `"cv.pdf"`; P4's repo-keyed lookup returns `None` for these → dropped. At wiring, route post/document
+   tagged records to the achievements/context path (not the repo-project path) so their evidence
+   surfaces, per spec §2/§6.
+
+> These are the agreed "known integration gaps" — the engine merges as-is; resolve #1/#2 together with
+> the runner/tagger seam (already fixed: tagger raises, runner tracks misses) when wiring P3 into the
+> pipeline.
+
 ## 1. Scan depth becomes a USER-FACING 3-way option
 
 The earlier P2 decision (README-only default + optional deep code) is refined into an explicit
