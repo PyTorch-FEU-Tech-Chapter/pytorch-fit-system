@@ -25,8 +25,7 @@
     max-width:var(--maxw); margin:18px auto; background:var(--bg);
     padding:14mm 16mm; box-shadow:0 1px 6px rgba(20,24,29,.12);
   }
-  /* ---- header ---- */
-  /* Job title is the dominant element; the candidate name is secondary, muted info. */
+  /* ---- header: role label is the dominant element; candidate name is secondary ---- */
   header{border-bottom:2px solid var(--accent); padding-bottom:8px; margin-bottom:4px;}
   .role-title{
     font-family:"Helvetica Neue",Arial,system-ui,sans-serif;
@@ -42,9 +41,12 @@
   .contact{
     font-family:"Helvetica Neue",Arial,sans-serif; font-size:9pt;
     color:var(--muted); display:flex; flex-wrap:wrap; gap:4px 14px;
+    align-items:center;
   }
-  .contact a{color:var(--muted); text-decoration:none;}
+  .contact a{color:var(--muted); text-decoration:none; display:inline-flex; align-items:center; gap:3px;}
+  .contact a:hover{color:var(--accent);}
   .contact .sep{color:var(--faint);}
+  .contact svg{display:inline-block; flex-shrink:0;}
   /* ---- sections: simple vertical flow, each scoped by a horizontal divider ---- */
   section{margin:0; padding:9px 0 10px; border-top:1px solid var(--rule);}
   section:first-of-type{border-top:none;}
@@ -63,6 +65,7 @@
     font-family:"Helvetica Neue",Arial,sans-serif; font-weight:700;
     font-size:10.5pt; color:var(--ink);
   }
+  .ach .title a{color:var(--ink); text-decoration:none;}
   .ach .meta{
     font-family:"Helvetica Neue",Arial,sans-serif; font-size:8.5pt;
     color:var(--faint); white-space:nowrap; text-transform:uppercase; letter-spacing:.05em;
@@ -78,7 +81,8 @@
   .entry .lead a{color:var(--ink); text-decoration:none;}
   .entry .when{font-family:"Helvetica Neue",Arial,sans-serif; font-size:8.5pt; color:var(--faint); white-space:nowrap;}
   .entry .source{font-family:"Helvetica Neue",Arial,sans-serif; font-size:8.5pt; color:var(--faint); white-space:nowrap;}
-  .entry .source a{color:var(--faint); text-decoration:none;}
+  .entry .source a{color:var(--faint); text-decoration:none; display:inline-flex; align-items:center; gap:2px;}
+  .entry .source svg{display:inline-block; flex-shrink:0;}
   .entry .tech{font-size:9pt; color:var(--accent); font-style:italic; margin:1px 0 2px;}
   .entry .desc{color:var(--muted); margin:1px 0 3px;}
   .impact{color:var(--ink); margin:1px 0 3px;}
@@ -116,6 +120,7 @@
 <main class="sheet">
 
   <header>
+    {# Role label is the dominant heading; name is secondary/muted info. #}
     <h1 class="role-title">{{ (resume.role.label if resume.role and resume.role.label else None) or "Your Target Role" }}</h1>
     <div class="identity">
       <span class="name">{{ resume.contact.name or "Your Name" }}</span>{% if resume.contact.location %}<span class="sep"> · </span>{{ resume.contact.location }}{% endif %}
@@ -123,9 +128,21 @@
     <div class="contact">
       {% if resume.contact.email %}<span>{{ resume.contact.email }}</span>{% endif %}
       {% if resume.contact.phone %}<span class="sep">·</span><span>{{ resume.contact.phone }}</span>{% endif %}
-      {% if resume.contact.github %}<span class="sep">·</span><a href="{{ resume.contact.github if resume.contact.github.startswith('http') else 'https://github.com/' ~ resume.contact.github }}">github.com/{{ resume.contact.github | replace("https://github.com/", "") | replace("https://", "") | replace("http://", "") }}</a>{% endif %}
-      {% if resume.contact.linkedin %}<span class="sep">·</span><a href="{{ resume.contact.linkedin if resume.contact.linkedin.startswith('http') else 'https://www.linkedin.com/in/' ~ resume.contact.linkedin }}">linkedin.com/in/{{ resume.contact.linkedin | replace("https://www.linkedin.com/in/", "") | replace("https://", "") }}</a>{% endif %}
-      {% if resume.contact.website %}<span class="sep">·</span><a href="{{ resume.contact.website }}">{{ resume.contact.website | replace("https://", "") | replace("http://", "") }}</a>{% endif %}
+      {% if resume.contact.github %}
+        {% set _gh = declutter_link(resume.contact.github, "github") %}
+        <span class="sep">·</span>
+        <a href="{{ resume.contact.github if resume.contact.github.startswith('http') else 'https://github.com/' ~ resume.contact.github }}">{{ brand_svg("github", 11) }}<span>{{ _gh[1] or resume.contact.github }}</span></a>
+      {% endif %}
+      {% if resume.contact.linkedin %}
+        {% set _li = declutter_link(resume.contact.linkedin, "linkedin") %}
+        <span class="sep">·</span>
+        <a href="{{ resume.contact.linkedin if resume.contact.linkedin.startswith('http') else 'https://www.linkedin.com/in/' ~ resume.contact.linkedin }}">{{ brand_svg("linkedin", 11) }}<span>{{ _li[1] or resume.contact.linkedin }}</span></a>
+      {% endif %}
+      {% if resume.contact.website %}
+        {% set _ws = declutter_link(resume.contact.website, "website") %}
+        <span class="sep">·</span>
+        <a href="{{ resume.contact.website }}">{{ brand_svg("website", 11) }}<span>{{ _ws[1] or resume.contact.website }}</span></a>
+      {% endif %}
     </div>
   </header>
 
@@ -168,9 +185,14 @@
     <div class="entry">
       <div class="row">
         <span class="lead">{% if p.url %}<a href="{{ p.url }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</span>
-        {% if p.display_url %}<span class="source"><a href="{{ p.url or '#' }}">{% if p.source_icon == "github" %}GitHub{% elif p.source_icon == "linkedin" %}LinkedIn{% elif p.source_icon == "facebook" %}Facebook{% else %}Source{% endif %} {{ p.display_url | replace("github/", "/") }}</a></span>{% endif %}
+        {% if p.display_url %}
+        <span class="source">
+          <a href="{{ p.url or '#' }}">{{ brand_svg(p.source_icon or "website", 10) }}<span>{{ p.display_url | replace("github/", "") if p.source_icon == "github" else p.display_url }}</span></a>
+        </span>
+        {% endif %}
       </div>
       {% if p.tech %}<div class="tech">{{ p.tech | join(" · ") }}</div>{% endif %}
+      {# Bullet order: quantitative_impact → description → qualitative_impact → bullets #}
       {% for q in p.quantitative_impact %}<div class="impact quant">{{ q }}</div>{% endfor %}
       {% if p.description %}<div class="desc">{{ p.description }}</div>{% endif %}
       {% for ql in p.qualitative_impact %}<div class="impact qual">{{ ql }}</div>{% endfor %}
@@ -189,7 +211,12 @@
     {% set detail = detail.lstrip(" .:;-—") if detail else "" %}
     <div class="ach">
       <div class="top">
+        {# Facebook-source achievements are text only — no hyperlink. #}
+        {% if a.url and a.source != "facebook" and a.source_icon != "facebook" %}
+        <span class="title"><a href="{{ a.url }}">{{ a.title }}</a></span>
+        {% else %}
         <span class="title">{{ a.title }}</span>
+        {% endif %}
         {% if a.date or a.source %}<span class="meta">{% if a.date %}{{ a.date }}{% endif %}{% if a.date and a.source %} · {% endif %}{% if a.source %}{{ a.source }}{% endif %}</span>{% endif %}
       </div>
       {% if detail %}<div class="detail">{{ detail }}</div>{% endif %}

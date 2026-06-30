@@ -63,10 +63,15 @@ class PdfRenderer(Renderer):
             Paragraph,
             SimpleDocTemplate,
             Spacer,
+            Table,
+            TableStyle,
         )
+
+        from .brand_icons import drawing as bi_drawing, declutter as bi_declutter
 
         accent = HexColor("#243b6b")
         rule = HexColor("#c7ccd6")
+        muted = HexColor("#5b6270")
 
         buf = BytesIO()
         doc = SimpleDocTemplate(
@@ -78,42 +83,138 @@ class PdfRenderer(Renderer):
             bottomMargin=0.5 * inch,
         )
         styles = getSampleStyleSheet()
+
+        # Role label is the dominant H1; name is secondary info in the header.
         h1 = ParagraphStyle("h1", parent=styles["Heading1"], spaceAfter=2, fontSize=17)
         h2 = ParagraphStyle(
-            "h2", parent=styles["Heading2"], spaceBefore=0, spaceAfter=3,
-            fontSize=11, textColor=accent,
+            "h2",
+            parent=styles["Heading2"],
+            spaceBefore=0,
+            spaceAfter=3,
+            fontSize=11,
+            textColor=accent,
         )
-        body = ParagraphStyle("body", parent=styles["BodyText"], fontSize=9, leading=12, spaceAfter=1)
+        body = ParagraphStyle(
+            "body", parent=styles["BodyText"], fontSize=9, leading=12, spaceAfter=1
+        )
+        name_style = ParagraphStyle(
+            "name_style",
+            parent=styles["BodyText"],
+            fontSize=11,
+            leading=13,
+            spaceAfter=1,
+            textColor=muted,
+        )
+        contact_style = ParagraphStyle(
+            "contact_style",
+            parent=styles["BodyText"],
+            fontSize=8,
+            leading=10,
+            spaceAfter=0,
+            textColor=muted,
+        )
 
         story: list = []
         state = {"first": True}
 
         def section(title: str) -> None:
-            # Simple vertical flow: a horizontal rule scopes each section. The first
-            # section sits directly under the header rule, so it gets no extra divider.
             if state["first"]:
                 state["first"] = False
             else:
                 story.append(Spacer(1, 5))
-                story.append(HRFlowable(width="100%", thickness=0.6, color=rule, spaceAfter=4))
+                story.append(
+                    HRFlowable(width="100%", thickness=0.6, color=rule, spaceAfter=4)
+                )
             story.append(Paragraph(title, h2))
 
-        # --- header ---
-        story.append(Paragraph(resume.contact.name or "Resume", h1))
-        contact_bits = [
-            resume.contact.email,
-            resume.contact.phone,
-            resume.contact.location,
-            resume.contact.github,
-            resume.contact.linkedin,
-            resume.contact.website,
-        ]
-        contact_line = " &middot; ".join(b for b in contact_bits if b)
-        if contact_line:
-            story.append(Paragraph(contact_line, body))
-        if resume.role and resume.role.label:
-            story.append(Paragraph(f"<i>{resume.role.label}</i>", body))
-        story.append(HRFlowable(width="100%", thickness=1.2, color=accent, spaceBefore=3, spaceAfter=4))
+        # ------------------------------------------------------------------ header
+        # Role label → H1 (dominant heading)
+        role_label = (
+            (resume.role.label if resume.role and resume.role.label else "") or "Resume"
+        )
+        story.append(Paragraph(role_label, h1))
+
+        # Name + location → secondary muted line
+        name_parts = [p for p in [resume.contact.name, resume.contact.location] if p]
+        if name_parts:
+            story.append(Paragraph(" &middot; ".join(name_parts), name_style))
+
+        # Contact links: each branded link → [icon Drawing | handle Paragraph] in a Table row
+        _icon_w = 12    # points — icon cell width
+        _text_w = 88    # points — handle text cell width
+        _sep_w = 8      # points — separator cell width
+
+        contact_cells: list = []
+        contact_col_widths: list[float] = []
+
+        def _add_plain(text: str, width: float) -> None:
+            contact_cells.append(Paragraph(text, contact_style))
+            contact_col_widths.append(width)
+
+        def _add_sep() -> None:
+            contact_cells.append(Paragraph("&middot;", contact_style))
+            contact_col_widths.append(_sep_w)
+
+        def _add_link(provider: str, raw_val: str, default_base: str) -> None:
+            d = bi_drawing(provider, size=9)
+            _, handle = bi_declutter(raw_val, provider)
+            if not handle:
+                return
+            href = (
+                raw_val
+                if raw_val.startswith("http")
+                else default_base + handle
+            )
+            link_p = Paragraph(
+                f'<link href="{href}">{handle}</link>', contact_style
+            )
+            if contact_cells:
+                _add_sep()
+            if d is not None:
+                contact_cells.append(d)
+                contact_col_widths.append(_icon_w)
+            contact_cells.append(link_p)
+            contact_col_widths.append(_text_w)
+
+        if resume.contact.email:
+            _add_plain(resume.contact.email, width=130)
+        if resume.contact.phone:
+            if contact_cells:
+                _add_sep()
+            _add_plain(resume.contact.phone, width=85)
+        if resume.contact.github:
+            _add_link("github", resume.contact.github, "https://github.com/")
+        if resume.contact.linkedin:
+            _add_link("linkedin", resume.contact.linkedin, "https://www.linkedin.com/in/")
+        if resume.contact.website:
+            _add_link("website", resume.contact.website, "https://")
+
+        if contact_cells:
+            tbl = Table(
+                [contact_cells],
+                colWidths=contact_col_widths,
+                hAlign="LEFT",
+            )
+            tbl.setStyle(
+                TableStyle(
+                    [
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                    ]
+                )
+            )
+            story.append(tbl)
+
+        story.append(
+            HRFlowable(
+                width="100%", thickness=1.2, color=accent, spaceBefore=3, spaceAfter=4
+            )
+        )
+
+        # ------------------------------------------------------------------ sections
 
         if resume.summary:
             section("Summary")
@@ -139,12 +240,20 @@ class PdfRenderer(Renderer):
             for p in resume.projects:
                 head = f"<b>{p.name}</b>"
                 if p.url:
-                    head += f' <font size=8>&lt;{p.url}&gt;</font>'
+                    head += f" <font size=8>&lt;{p.url}&gt;</font>"
                 story.append(Paragraph(head, body))
                 if p.tech:
-                    story.append(Paragraph(f"<i>{' &middot; '.join(p.tech)}</i>", body))
+                    story.append(
+                        Paragraph(f"<i>{' &middot; '.join(p.tech)}</i>", body)
+                    )
+                # Bullet order: quantitative_impact first, then description,
+                # then qualitative_impact, then component bullets.
+                for q in p.quantitative_impact:
+                    story.append(Paragraph(q, body))
                 if p.description:
                     story.append(Paragraph(p.description, body))
+                for ql in p.qualitative_impact:
+                    story.append(Paragraph(ql, body))
                 for b in p.bullets:
                     story.append(Paragraph(f"&bull; {b}", body))
                 story.append(Spacer(1, 2))
@@ -179,8 +288,8 @@ class PdfRenderer(Renderer):
                 if e.field:
                     line += f" in {e.field}"
                 story.append(Paragraph(line, body))
-                for n in e.notes:
-                    story.append(Paragraph(f"&bull; {n}", body))
+                for note in e.notes:
+                    story.append(Paragraph(f"&bull; {note}", body))
 
         doc.build(story)
         return buf.getvalue()

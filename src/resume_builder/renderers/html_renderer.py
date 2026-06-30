@@ -11,9 +11,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup
 
 from ..models import Resume
 from .base import Renderer
+from . import brand_icons
+
+
+def _brand_svg_safe(provider: str, size: int = 12) -> Markup:
+    """Jinja global: return brand SVG as Markup so autoescape won't double-escape it."""
+    return Markup(brand_icons.svg(provider, size))
 
 
 class HtmlRenderer(Renderer):
@@ -26,6 +33,9 @@ class HtmlRenderer(Renderer):
             trim_blocks=True,
             lstrip_blocks=True,
         )
+        # Register brand icon helpers as template globals
+        self._env.globals["brand_svg"] = _brand_svg_safe
+        self._env.globals["declutter_link"] = brand_icons.declutter
         self._template_name = template_name
 
     def render(self, resume: Resume) -> str:

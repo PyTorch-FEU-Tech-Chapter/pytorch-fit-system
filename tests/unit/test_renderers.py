@@ -120,3 +120,131 @@ def test_html_is_single_column_with_section_dividers(templates_dir):
     assert "grid-template-columns" not in html
     assert 'class="sidebar"' not in html and 'class="main"' not in html
     assert "border-top:1px solid var(--rule)" in html
+
+
+# ---------------------------------------------------------------------------
+# Brand icon tests — added as part of resume formatting fixes
+# ---------------------------------------------------------------------------
+
+def _resume_with_social() -> Resume:
+    """Minimal resume with github + linkedin contacts and a facebook-source achievement."""
+    from resume_builder.models import ResumeAchievement
+    return Resume(
+        role=RoleSpec(id="sec", label="Security Engineer", keywords=[]),
+        contact=ContactInfo(
+            name="Alex",
+            email="alex@example.com",
+            github="https://github.com/alexuser",
+            linkedin="https://www.linkedin.com/in/alexuser",
+        ),
+        summary="Security professional.",
+        skills=["Python"],
+        achievements=[
+            ResumeAchievement(
+                title="Gave a talk at PyCon",
+                source="facebook",
+                url="https://www.facebook.com/events/1234567890/",
+                snippet="Presented security research.",
+            ),
+            ResumeAchievement(
+                title="Open Source Award",
+                source="github",
+                url="https://github.com/alexuser/award",
+                snippet="Recognised for OSS contributions.",
+            ),
+        ],
+    )
+
+
+def test_html_brand_icons_in_contact(templates_dir):
+    """HTML contact section must contain brand SVG icons with just the handle as display text."""
+    from resume_builder.renderers.html_renderer import HtmlRenderer
+    import re
+    html = HtmlRenderer(templates_dir).render(_resume_with_social())
+    # Brand SVG icon is injected for github
+    assert "<svg" in html
+    assert "<path" in html
+    # Handle text should appear as visible content (without the domain)
+    assert "alexuser" in html
+    # The github full URL should only appear in href attributes, not as visible link text
+    # (i.e., the display span should not contain "https://github.com")
+    visible_spans = re.findall(r'<span>([^<]+)</span>', html)
+    for span_text in visible_spans:
+        assert "https://github.com" not in span_text, (
+            f"Found raw GitHub URL in visible span text: {span_text!r}"
+        )
+
+
+def test_html_role_label_before_name(templates_dir):
+    """Role label (h1.role-title) must appear before the candidate name in the HTML."""
+    from resume_builder.renderers.html_renderer import HtmlRenderer
+    html = HtmlRenderer(templates_dir).render(_resume_with_social())
+    role_pos = html.find("role-title")
+    name_pos = html.find('class="name"')
+    assert role_pos != -1, "role-title class not found in HTML"
+    assert name_pos != -1, "name class not found in HTML"
+    assert role_pos < name_pos, "role-title should appear before .name in the document"
+
+
+def test_html_facebook_achievement_has_no_link(templates_dir):
+    """Facebook-source achievements must NOT be wrapped in <a href>."""
+    from resume_builder.renderers.html_renderer import HtmlRenderer
+    html = HtmlRenderer(templates_dir).render(_resume_with_social())
+    # The facebook achievement URL should NOT appear as an href
+    assert 'href="https://www.facebook.com/events/1234567890/"' not in html
+    # But the title text should still appear
+    assert "Gave a talk at PyCon" in html
+
+
+def test_html_non_facebook_achievement_has_link(templates_dir):
+    """Non-facebook achievements WITH a url should be linked."""
+    from resume_builder.renderers.html_renderer import HtmlRenderer
+    html = HtmlRenderer(templates_dir).render(_resume_with_social())
+    assert 'href="https://github.com/alexuser/award"' in html
+
+
+def test_pdf_with_brand_contacts_smoke(templates_dir):
+    """PDF render with branded contact links must return valid PDF bytes."""
+    from resume_builder.renderers.pdf_renderer import PdfRenderer
+    pdf = PdfRenderer(templates_dir).render(_resume_with_social())
+    assert isinstance(pdf, bytes) and len(pdf) > 0
+    assert pdf[:4] == b"%PDF"
+
+
+def test_md_github_link_text_uses_handle(templates_dir):
+    """Markdown GitHub link text must be github/<handle>, not the full URL."""
+    md = MarkdownRenderer(templates_dir).render(_resume_with_social())
+    assert "github/alexuser" in md
+    # The raw domain should NOT appear as link text (it's fine in href though)
+    # We check the markdown link syntax: [display](url)
+    import re
+    link_texts = re.findall(r"\[([^\]]+)\]\(", md)
+    for text in link_texts:
+        if "github" in text.lower():
+            assert "https://github.com" not in text, (
+                f"GitHub link display text should not be a raw URL, got: {text!r}"
+            )
+
+
+def test_json_renderer_includes_contact_links():
+    """JSON output must include a top-level contact_links array."""
+    import json as _json
+    resume = Resume(
+        role=RoleSpec(id="r", label="R", keywords=[]),
+        contact=ContactInfo(
+            name="T",
+            github="https://github.com/tuser",
+            linkedin="https://www.linkedin.com/in/tuser",
+        ),
+        summary="",
+    )
+    out = JsonRenderer().render(resume)
+    data = _json.loads(out)
+    assert "contact_links" in data
+    assert isinstance(data["contact_links"], list)
+    providers = {item["provider"] for item in data["contact_links"]}
+    assert "github" in providers
+    assert "linkedin" in providers
+    # Handles should be resolved
+    gh_entry = next(x for x in data["contact_links"] if x["provider"] == "github")
+    assert gh_entry["handle"] == "tuser"
