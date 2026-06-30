@@ -2,7 +2,13 @@
 from __future__ import annotations
 
 from .fetch import SourceFetcher
-from .github_traversal import collect_repo_markdown
+from .github_traversal import (
+    SCAN_DEPTHS,
+    collect_repo_code,
+    collect_repo_markdown,
+    collect_repo_readme,
+    gather_repo_sources,
+)
 from .models import CHARS_PER_TOKEN, DEFAULT_CAP_CHARS, DEFAULT_TOKEN_CAP, CleanedSource, apply_token_cap
 from .rules import ExtractionRuleEngine, apply_rules
 from .web import extract_website
@@ -15,7 +21,11 @@ __all__ = [
     "SourceFetcher",
     "ExtractionRuleEngine",
     "apply_rules",
+    "collect_repo_readme",
     "collect_repo_markdown",
+    "collect_repo_code",
+    "gather_repo_sources",
+    "SCAN_DEPTHS",
     "extract_website",
     "apply_token_cap",
 ]

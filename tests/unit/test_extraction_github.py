@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import base64
 
-from resume_builder.extraction.github_traversal import collect_repo_markdown
+import pytest
+
+from resume_builder.extraction.github_traversal import (
+    collect_repo_code,
+    collect_repo_markdown,
+    collect_repo_readme,
+    gather_repo_sources,
+)
 
 
 def _b64(text: str) -> str:
@@ -122,3 +129,53 @@ def test_max_files_bounds_collection():
 
     sources = collect_repo_markdown("owner/repo", gh_json, max_files=3)
     assert len(sources) == 3
+
+
+def _mixed_gh_json():
+    """Tree with a root README, a nested README, a doc, a code file, and a vendored file."""
+    tree = {
+        "tree": [
+            {"path": "README.md", "type": "blob"},
+            {"path": "sub/README.md", "type": "blob"},
+            {"path": "docs/ARCH.md", "type": "blob"},
+            {"path": "src/main.py", "type": "blob"},
+            {"path": "node_modules/lib/index.js", "type": "blob"},  # vendored -> skipped by code
+        ]
+    }
+
+    def gh_json(args):
+        joined = " ".join(args)
+        if "git/trees" in joined:
+            return tree
+        return {"content": _b64(f"body of {joined.rsplit('contents/', 1)[-1]}")}
+
+    return gh_json
+
+
+def test_collect_repo_readme_returns_only_root_readme():
+    sources = collect_repo_readme("owner/repo", _mixed_gh_json())
+    assert [s.title for s in sources] == ["README.md"]  # not sub/README.md, not docs
+
+
+def test_collect_repo_code_keeps_source_skips_vendored():
+    sources = collect_repo_code("owner/repo", _mixed_gh_json())
+    titles = {s.title for s in sources}
+    assert titles == {"src/main.py"}  # code kept; node_modules skipped; markdown not code
+    assert all(s.kind == "github_code" for s in sources)
+
+
+def test_gather_depth_readme_markdown_code():
+    readme = gather_repo_sources("owner/repo", _mixed_gh_json(), depth="readme")
+    assert {s.title for s in readme} == {"README.md"}
+
+    markdown = gather_repo_sources("owner/repo", _mixed_gh_json(), depth="markdown")
+    assert {s.title for s in markdown} == {"README.md", "sub/README.md", "docs/ARCH.md"}
+
+    code = gather_repo_sources("owner/repo", _mixed_gh_json(), depth="code")
+    titles = {s.title for s in code}
+    assert {"README.md", "docs/ARCH.md", "src/main.py"} <= titles  # markdown + code combined
+
+
+def test_gather_invalid_depth_raises():
+    with pytest.raises(ValueError):
+        gather_repo_sources("owner/repo", _mixed_gh_json(), depth="everything")
