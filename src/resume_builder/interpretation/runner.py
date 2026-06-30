@@ -36,7 +36,11 @@ class ParallelTagRunner:
             futures = {pool.submit(self._tag_with_retry, s): s for s in sources}
             for fut in as_completed(futures):
                 source = futures[fut]
-                tagged = fut.result()
+                try:
+                    tagged = fut.result()
+                except Exception as exc:  # noqa: BLE001 — collection must never raise
+                    log.error("unexpected error collecting result for %s: %s", source.source_id, exc)
+                    tagged = None
                 if tagged is None:
                     failures.append(source.source_id)
                 else:

@@ -44,3 +44,8 @@ def test_run_reports_permanent_failure_without_dropping_silently():
     assert results == []
     assert report.sent == 2 and report.returned == 0 and report.failed == 2
     assert set(report.failures) == {"a", "b"}
+
+
+def test_run_empty_input():
+    results, report = ParallelTagRunner(_CountingTagger()).run([])
+    assert results == [] and report.sent == 0 and report.failed == 0
