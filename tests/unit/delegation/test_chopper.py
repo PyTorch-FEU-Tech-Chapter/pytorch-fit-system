@@ -26,3 +26,10 @@ def test_chop_degrades_on_llm_error():
     out = ResponsibilityChopper(_Boom()).chop(
         DelegationNode(id="r", level=Level.ROOT), ["A"], Level.EXEC, "Exec")
     assert out[0].responsibilities == [] and out[0].id == "r.A"
+    assert out[0].level == Level.EXEC and out[0].owner_role == "Exec"
+
+
+def test_chop_empty_titles_returns_empty():
+    out = ResponsibilityChopper(_FakeLLM()).chop(
+        DelegationNode(id="r", level=Level.ROOT), [], Level.EXEC, "Exec")
+    assert out == []

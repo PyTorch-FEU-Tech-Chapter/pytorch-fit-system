@@ -36,28 +36,29 @@ class ResponsibilityChopper:
         child_level: Level,
         owner_role: str,
     ) -> DelegationNode:
-        prompt = (
-            f"Event/parent: {parent.title}\nParent responsibilities: "
-            f"{parent.responsibilities}\n"
-            f"Child unit: {title} (level={child_level.value})\n\n"
-            "List this child's responsibilities."
-        )
+        items: list[str] = []
         try:
-            resp = self._llm.structured(
-                prompt, schema=_Responsibilities, system=_SYSTEM, max_tokens=1024
+            prompt = (
+                f"Event/parent: {parent.title}\nParent responsibilities: {parent.responsibilities}\n"
+                f"Child unit: {title} (level={child_level.value})\n\n"
+                "List this child's responsibilities."
             )
+            resp = self._llm.structured(prompt, schema=_Responsibilities, system=_SYSTEM, max_tokens=1024)
             items = list(resp.items)
-        except Exception as exc:  # noqa: BLE001
-            # a failed child degrades to empty, never breaks the batch
+        except Exception as exc:  # noqa: BLE001 — a failed child degrades to empty, never breaks the batch
             log.warning("chop failed for %s/%s: %s", parent.id, title, exc)
             items = []
-        return DelegationNode(
-            id=f"{parent.id}.{title}",
-            level=child_level,
-            owner_role=owner_role,
-            title=title,
-            responsibilities=items,
-        )
+        try:
+            return DelegationNode(
+                id=f"{parent.id}.{title}", level=child_level, owner_role=owner_role,
+                title=title, responsibilities=items,
+            )
+        except Exception as exc:  # noqa: BLE001 — node construction must never escape the worker
+            log.error("node construction failed for %s/%s: %s", parent.id, title, exc)
+            return DelegationNode(
+                id=f"{parent.id}.{title}", level=child_level, owner_role=owner_role,
+                title=title, responsibilities=[],
+            )
 
     def chop(
         self,
