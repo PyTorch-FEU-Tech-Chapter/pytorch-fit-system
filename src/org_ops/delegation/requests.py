@@ -12,7 +12,7 @@ def submit_drill_up(from_id: str, to_id: str, kind: Literal["idea", "problem"],
 
 
 class ChangeControlBoard:
-    """Any change/add from below routes to the parent for approval before it mutates the tree."""
+    """Any change/add from below routes to the parent for approval before it mutates the tree. Versioning/audit of approved changes lands with the Supabase-backed store (deferred); this in-memory board mutates the tree in place."""
 
     def __init__(self, tree: DelegationTree) -> None:
         self.tree = tree
@@ -26,8 +26,12 @@ class ChangeControlBoard:
             return req.model_copy(update={"status": "rejected", "reason": reason})
         if req.kind == "change":
             node = self.tree.nodes.get(req.node_id)
-            if node is not None and "responsibilities" in req.payload:
-                node.responsibilities = list(req.payload["responsibilities"])
+            if node is None or "responsibilities" not in req.payload:
+                return req.model_copy(update={
+                    "status": "rejected",
+                    "reason": "change requires an existing node and a 'responsibilities' payload",
+                })
+            node.responsibilities = list(req.payload["responsibilities"])
         elif req.kind == "add":
             node_id = req.payload.get("id")
             parent = self.tree.nodes.get(req.parent_id)
@@ -35,6 +39,11 @@ class ChangeControlBoard:
                 return req.model_copy(update={
                     "status": "rejected",
                     "reason": "add requires a valid 'id' payload and an existing parent",
+                })
+            if node_id in self.tree.nodes:
+                return req.model_copy(update={
+                    "status": "rejected",
+                    "reason": "add target id already exists",
                 })
             new = DelegationNode(
                 id=node_id, level=Level(req.payload.get("level", "task")),

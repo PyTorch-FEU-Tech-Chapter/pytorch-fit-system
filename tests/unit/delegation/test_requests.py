@@ -48,3 +48,19 @@ def test_ccb_add_missing_parent_degrades_without_orphan():
     done = ccb.decide(req, approve=True)
     assert done.status == "rejected"
     assert "x" not in ccb.tree.nodes  # nothing orphaned
+
+
+def test_ccb_change_missing_node_rejects_without_mutation():
+    ccb = ChangeControlBoard(_tree())
+    req = ccb.submit("nope", "root", "change", {"responsibilities": ["new"]})
+    done = ccb.decide(req, approve=True)
+    assert done.status == "rejected"
+    assert ccb.tree.nodes["root.A"].responsibilities == ["old"]  # tree unchanged
+
+
+def test_ccb_add_duplicate_id_rejects_preserving_original():
+    ccb = ChangeControlBoard(_tree())
+    req = ccb.submit("root.A", "root", "add", {"id": "root.A", "level": "exec"})
+    done = ccb.decide(req, approve=True)
+    assert done.status == "rejected"
+    assert ccb.tree.nodes["root.A"].responsibilities == ["old"]  # original node intact

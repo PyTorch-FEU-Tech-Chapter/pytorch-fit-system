@@ -46,7 +46,7 @@ class DelegationNode(BaseModel):
         return self.level == Level.TASK
 
     def to_contract(self) -> dict:
-        """The checked-by-parent JSON handed to the level below (no agreement state)."""
+        """The checked-by-parent JSON handed to the level below (no agreement state). This IS the DelegationPackager step — the checked-by-parent JSON contract handed to the level below."""
         return {
             "id": self.id, "level": self.level.value, "owner_role": self.owner_role,
             "title": self.title, "responsibilities": list(self.responsibilities),
