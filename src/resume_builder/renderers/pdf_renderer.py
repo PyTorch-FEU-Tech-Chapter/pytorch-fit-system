@@ -63,11 +63,13 @@ class PdfRenderer(Renderer):
             Paragraph,
             SimpleDocTemplate,
             Spacer,
-            Table,
-            TableStyle,
         )
 
-        from .brand_icons import drawing as bi_drawing, declutter as bi_declutter
+        from .brand_icons import (
+            badge_png_path as bi_badge_png_path,
+            declutter as bi_declutter,
+            drawing as bi_drawing,
+        )
 
         accent = HexColor("#243b6b")
         rule = HexColor("#c7ccd6")
@@ -134,98 +136,61 @@ class PdfRenderer(Renderer):
         )
         story.append(Paragraph(role_label, h1))
 
-        # Single contact line: name (bold) · email · phone · github · linkedin · facebook
+        # Single full-width contact Paragraph: no narrow cells → no mid-word wrap.
         # Location/address is intentionally omitted from the header.
-        _icon_w = 10    # points — icon cell width
-        _text_w = 72    # points — handle text cell width
-        _sep_w = 6      # points — separator cell width
 
-        contact_cells: list = []
-        contact_col_widths: list[float] = []
+        def _badge_img(provider: str, w: int = 9, h: int = 9) -> str:
+            """Return an <img> tag for the provider badge, or empty string."""
+            path = bi_badge_png_path(provider, px=h * 3)
+            if not path:
+                return ""
+            # Escape backslashes for Windows paths inside XML attribute
+            safe = path.replace("\\", "/")
+            return f'<img src="{safe}" width="{w}" height="{h}" valign="middle"/>'
 
-        def _add_plain(text: str, width: float) -> None:
-            contact_cells.append(Paragraph(text, contact_style))
-            contact_col_widths.append(width)
+        contact_parts: list[str] = []
 
-        def _add_sep() -> None:
-            contact_cells.append(Paragraph("&middot;", contact_style))
-            contact_col_widths.append(_sep_w)
-
-        def _add_link(provider: str, raw_val: str, default_base: str) -> None:
-            d = bi_drawing(provider, size=9)
-            _, handle = bi_declutter(raw_val, provider)
-            if not handle:
-                return
-            href = (
-                raw_val
-                if raw_val.startswith("http")
-                else default_base + handle
-            )
-            link_p = Paragraph(
-                f'<link href="{href}">{handle}</link>', contact_style
-            )
-            if contact_cells:
-                _add_sep()
-            if d is not None:
-                contact_cells.append(d)
-                contact_col_widths.append(_icon_w)
-            contact_cells.append(link_p)
-            contact_col_widths.append(_text_w)
-
-        def _add_nolink(provider: str, username: str) -> None:
-            """Add a branded icon + plain text (no hyperlink). Used for Facebook."""
-            if not username:
-                return
-            d = bi_drawing(provider, size=9)
-            plain_p = Paragraph(username, contact_style)
-            if contact_cells:
-                _add_sep()
-            if d is not None:
-                contact_cells.append(d)
-                contact_col_widths.append(_icon_w)
-            contact_cells.append(plain_p)
-            contact_col_widths.append(_text_w)
-
-        # Name is always the first item on the contact line (bold).
         if resume.contact.name:
-            contact_cells.append(Paragraph(f"<b>{resume.contact.name}</b>", contact_style))
-            contact_col_widths.append(100)
+            contact_parts.append(f"<b>{resume.contact.name}</b>")
 
         if resume.contact.email:
-            if contact_cells:
-                _add_sep()
-            _add_plain(resume.contact.email, width=110)
-        if resume.contact.phone:
-            if contact_cells:
-                _add_sep()
-            _add_plain(resume.contact.phone, width=78)
-        if resume.contact.github:
-            _add_link("github", resume.contact.github, "https://github.com/")
-        if resume.contact.linkedin:
-            _add_link("linkedin", resume.contact.linkedin, "https://www.linkedin.com/in/")
-        if resume.contact.facebook:
-            _add_nolink("facebook", resume.contact.facebook)
-        if resume.contact.website:
-            _add_link("website", resume.contact.website, "https://")
+            contact_parts.append(resume.contact.email)
 
-        if contact_cells:
-            tbl = Table(
-                [contact_cells],
-                colWidths=contact_col_widths,
-                hAlign="LEFT",
+        if resume.contact.phone:
+            contact_parts.append(resume.contact.phone)
+
+        def _linked_part(provider: str, raw_val: str, default_base: str) -> str | None:
+            _, handle = bi_declutter(raw_val, provider)
+            if not handle:
+                return None
+            href = raw_val if raw_val.startswith("http") else default_base + handle
+            img = _badge_img(provider)
+            return f'{img}<link href="{href}">{handle}</link>'
+
+        if resume.contact.github:
+            part = _linked_part("github", resume.contact.github, "https://github.com/")
+            if part:
+                contact_parts.append(part)
+
+        if resume.contact.linkedin:
+            part = _linked_part(
+                "linkedin", resume.contact.linkedin, "https://www.linkedin.com/in/"
             )
-            tbl.setStyle(
-                TableStyle(
-                    [
-                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                        ("TOPPADDING", (0, 0), (-1, -1), 0),
-                        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                        ("LEFTPADDING", (0, 0), (-1, -1), 2),
-                        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-                    ]
-                )
-            )
-            story.append(tbl)
+            if part:
+                contact_parts.append(part)
+
+        if resume.contact.facebook and resume.contact.facebook.strip():
+            img = _badge_img("facebook")
+            contact_parts.append(f"{img}{resume.contact.facebook}")
+
+        if resume.contact.website:
+            part = _linked_part("website", resume.contact.website, "https://")
+            if part:
+                contact_parts.append(part)
+
+        if contact_parts:
+            contact_markup = " &middot; ".join(contact_parts)
+            story.append(Paragraph(contact_markup, contact_style))
 
         story.append(
             HRFlowable(
@@ -270,35 +235,20 @@ class PdfRenderer(Renderer):
                         provider, path = bi_declutter(p.url)
                         provider = provider or "website"
                     if path:
-                        d = bi_drawing(provider, size=8)
-                        link_p = Paragraph(
-                            f'<link href="{p.url}">{path}</link>',
-                            contact_style,
-                        )
-                        _cells: list = []
-                        _widths: list[float] = []
-                        if d is not None:
-                            _cells.append(d)
-                            _widths.append(10)
-                        _cells.append(link_p)
-                        _widths.append(120)
-                        proj_tbl = Table(
-                            [_cells],
-                            colWidths=_widths,
-                            hAlign="LEFT",
-                        )
-                        proj_tbl.setStyle(
-                            TableStyle(
-                                [
-                                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                                    ("TOPPADDING", (0, 0), (-1, -1), 0),
-                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-                                ]
+                        # Full-width Paragraph prevents mid-word wrap in long paths.
+                        proj_badge = bi_badge_png_path(provider, px=24)
+                        if proj_badge:
+                            safe_proj = proj_badge.replace("\\", "/")
+                            proj_img = (
+                                f'<img src="{safe_proj}" width="8" height="8"'
+                                f' valign="middle"/>'
                             )
+                        else:
+                            proj_img = ""
+                        proj_markup = (
+                            f'{proj_img}<link href="{p.url}">{path}</link>'
                         )
-                        story.append(proj_tbl)
+                        story.append(Paragraph(proj_markup, contact_style))
                 if p.tech:
                     story.append(
                         Paragraph(f"<i>{' &middot; '.join(p.tech)}</i>", body)

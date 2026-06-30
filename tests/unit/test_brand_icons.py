@@ -1,7 +1,7 @@
 """Tests for brand_icons module."""
 from __future__ import annotations
 
-from resume_builder.renderers.brand_icons import declutter, drawing, svg
+from resume_builder.renderers.brand_icons import badge_png_path, declutter, drawing, svg
 
 
 def test_svg_github_contains_svg_tag():
@@ -134,3 +134,30 @@ def test_declutter_empty_string():
     provider, handle = declutter("")
     assert provider is None
     assert handle is None
+
+
+# ---------------------------------------------------------------------------
+# badge_png_path tests
+# ---------------------------------------------------------------------------
+
+def test_badge_png_path_github_returns_existing_nonempty_png():
+    import os
+    result = badge_png_path("github")
+    assert result is not None, "badge_png_path('github') should return a path, not None"
+    assert os.path.exists(result), f"Badge file does not exist: {result}"
+    assert os.path.getsize(result) > 0, "Badge file is empty"
+    assert result.lower().endswith(".png"), "Badge file should be a PNG"
+
+
+def test_badge_png_path_unknown_provider_returns_none():
+    assert badge_png_path("unknown_provider_xyz") is None
+
+
+def test_badge_png_path_is_idempotent():
+    """Calling twice returns the same path and the file still exists."""
+    import os
+    first = badge_png_path("linkedin")
+    second = badge_png_path("linkedin")
+    assert first == second
+    if first is not None:
+        assert os.path.exists(first)

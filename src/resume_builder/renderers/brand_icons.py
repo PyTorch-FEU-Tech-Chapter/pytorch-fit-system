@@ -1,10 +1,11 @@
 """Brand icon helpers — no new runtime dependencies.
 
-Provides SVG path data and colors for common social/link providers and two
+Provides SVG path data and colors for common social/link providers and three
 rendering surfaces:
-  * svg()       — inline SVG string for HTML templates
-  * drawing()   — reportlab Drawing for PDF embedding
-  * declutter() — strip URL noise to (provider, handle) for display text
+  * svg()            — inline SVG string for HTML templates
+  * drawing()        — reportlab Drawing for PDF embedding
+  * badge_png_path() — PIL-rendered PNG badge path for inline PDF <img> tags
+  * declutter()      — strip URL noise to (provider, handle) for display text
 """
 
 from __future__ import annotations
@@ -95,6 +96,96 @@ def drawing(provider: str, size: float = 9):
         return None
     d.add(rp)
     return d
+
+
+def badge_png_path(provider: str, px: int = 28) -> str | None:
+    """Return path to a cached PNG badge for *provider*, or None if unavailable.
+
+    Draws a rounded-square filled with ``BRAND_COLORS[provider]`` and a short
+    white glyph (github→"GH", linkedin→"in", facebook→"f", website→"@").
+    Renders at 3× resolution then downscales with LANCZOS for crispness.
+
+    Caches under ``tempfile.gettempdir()/claude_brand_badges/``.
+    Idempotent — returns the cached path immediately if the file already exists.
+    Returns None for unknown providers or when PIL/Pillow is not importable.
+    """
+    if provider not in BRAND_COLORS:
+        return None
+
+    import os
+    import tempfile
+
+    cache_dir = os.path.join(tempfile.gettempdir(), "claude_brand_badges")
+    os.makedirs(cache_dir, exist_ok=True)
+    out_path = os.path.join(cache_dir, f"{provider}_{px}.png")
+
+    if os.path.exists(out_path):
+        return out_path
+
+    try:
+        from PIL import Image, ImageDraw, ImageFont  # type: ignore[import]
+    except ImportError:
+        return None
+
+    try:
+        scale = 3
+        size = px * scale
+        color_hex = BRAND_COLORS[provider]
+        r = int(color_hex[1:3], 16)
+        g = int(color_hex[3:5], 16)
+        b = int(color_hex[5:7], 16)
+
+        glyphs: dict[str, str] = {
+            "github": "GH",
+            "linkedin": "in",
+            "facebook": "f",
+            "website": "@",
+        }
+        glyph = glyphs.get(provider, "?")
+
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+
+        radius = size // 4
+        # rounded_rectangle available since Pillow 8.2
+        draw.rounded_rectangle(
+            [0, 0, size - 1, size - 1], radius=radius, fill=(r, g, b, 255)
+        )
+
+        font = None
+        font_size = max(6, size // 2)
+        for font_name in ("arial.ttf", "Arial.ttf", "DejaVuSans.ttf", "FreeSans.ttf"):
+            try:
+                font = ImageFont.truetype(font_name, font_size)
+                break
+            except Exception:
+                continue
+        if font is None:
+            try:
+                font = ImageFont.load_default()
+            except Exception:
+                pass
+
+        if font is not None:
+            try:
+                bbox = draw.textbbox((0, 0), glyph, font=font)
+                tw = bbox[2] - bbox[0]
+                th = bbox[3] - bbox[1]
+                offset_x = bbox[0]
+                offset_y = bbox[1]
+            except AttributeError:
+                # Pillow < 8.0 fallback
+                tw, th = draw.textsize(glyph, font=font)  # type: ignore[attr-defined]
+                offset_x = offset_y = 0
+            tx = (size - tw) // 2 - offset_x
+            ty = (size - th) // 2 - offset_y
+            draw.text((tx, ty), glyph, fill=(255, 255, 255, 255), font=font)
+
+        small = img.resize((px, px), Image.LANCZOS)
+        small.save(out_path, "PNG")
+        return out_path
+    except Exception:
+        return None
 
 
 def declutter(url: str | None, provider_hint: str = "") -> tuple[str | None, str | None]:

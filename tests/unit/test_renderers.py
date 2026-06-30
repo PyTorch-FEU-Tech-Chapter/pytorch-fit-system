@@ -391,6 +391,43 @@ def test_md_contact_name_in_contact_line(templates_dir):
     assert "**John Doe**" in md
 
 
+def test_pdf_full_width_contact_and_project_links(templates_dir):
+    """PDF render with all social contacts and long project names must return valid PDF bytes.
+
+    This test guards against the mid-word-wrap regression where narrow table cells
+    caused long tokens like 'JohnAndrewBalbar' / 'osa' to split across lines.
+    """
+    from resume_builder.renderers.pdf_renderer import PdfRenderer
+    from resume_builder.models import Resume, RoleSpec, ContactInfo, ResumeProject
+
+    resume = Resume(
+        role=RoleSpec(id="r", label="Software Engineer", keywords=[]),
+        contact=ContactInfo(
+            name="JohnAndrewBalbarosa",
+            email="verylongemail@verylongdomain.com",
+            github="https://github.com/JohnAndrewBalbarosa",
+            linkedin="https://www.linkedin.com/in/johnandrewbalbarosa",
+            facebook="john.andrew.balbarosa.58",
+        ),
+        summary="A summary.",
+        skills=["Python"],
+        projects=[
+            ResumeProject(
+                name="very-long-project-name-that-would-wrap-in-narrow-cell",
+                url=(
+                    "https://github.com/JohnAndrewBalbarosa/"
+                    "very-long-project-name-that-would-wrap-in-narrow-cell"
+                ),
+                description="A project.",
+                tech=["Python"],
+            )
+        ],
+    )
+    pdf = PdfRenderer(templates_dir).render(resume)
+    assert isinstance(pdf, bytes) and len(pdf) > 0
+    assert pdf[:4] == b"%PDF"
+
+
 def test_json_renderer_includes_contact_links():
     """JSON output must include a top-level contact_links array."""
     import json as _json
