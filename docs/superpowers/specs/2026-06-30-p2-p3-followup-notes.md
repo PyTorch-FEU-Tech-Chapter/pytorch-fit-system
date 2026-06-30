@@ -33,6 +33,14 @@ In the actual interpretation pipeline, do NOT send all projects to one big call.
   step; keep each project's result intact for easy downstream parsing.
 - Benefit: scales to many repos, isolates context per project (cheaper/cleaner prompts), and avoids
   one giant prompt. Fits the per-source `CleanedSource` output of P2 one-to-one.
+- **Request/response reconciliation checker.** Track how many per-project requests were **sent** vs how
+  many **came back** (a dispatched-vs-returned counter). Two uses:
+  - **Developer KPI reporting** — surface `sent / returned / failed`, success rate, and timing so devs
+    can see throughput and reliability of the parallel fan-out.
+  - **Retry detection** — the gap (sent minus returned) names exactly which projects did not respond
+    (timeout / error / dropped); re-request only those, with a bounded retry count, then report any
+    that still fail. Never silently drop a project — an unreturned request is a tracked miss, not a
+    success.
 
 ## 3. Refactor + folder-structure segregation by functionality
 
