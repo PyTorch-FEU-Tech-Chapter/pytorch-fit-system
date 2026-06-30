@@ -18,7 +18,16 @@ from .extractors import AIExtractor, Extractor, StaticExtractor
 from .llm import LLMProvider, get_provider
 from .llm.null_provider import NullProvider
 from .metrics import load_metrics
-from .industry import IndustryClassifier, IndustryResumePlan, WebPageInput, plan_industry_resumes
+from .extraction.models import CleanedSource
+from .industry import (
+    IndustryClassification,
+    IndustryClassifier,
+    IndustryResumePlan,
+    TaggedAchievement,
+    WebPageInput,
+    plan_industry_resumes,
+)
+from .interpretation import RetrievedSource, interpret
 from .models import (
     Evidence,
     Mode,
@@ -367,11 +376,14 @@ class Pipeline:
         social_result = self._collect_social(inputs.social_config_path, use_cache=False)
         achievements = _achievements_from_social(social_result) if social_result else []
 
-        classification = IndustryClassifier(self.llm).classify(
-            repos=repos,
-            achievements=achievements,
-            web_pages=inputs.web_pages or [],
-        )
+        if isinstance(self.llm, NullProvider):
+            classification = IndustryClassifier(self.llm).classify(
+                repos=repos,
+                achievements=achievements,
+                web_pages=inputs.web_pages or [],
+            )
+        else:
+            classification = self._classify_with_p3(repos, achievements)
         plans = plan_industry_resumes(classification, repos, achievements)
 
         resumes: list[Resume] = []
