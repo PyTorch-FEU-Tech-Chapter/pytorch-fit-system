@@ -25,3 +25,13 @@ def test_gather_normalizes_all_kinds():
 def test_gather_skips_empty_text():
     projects = [CleanedSource(source_id="x", kind="github_readme", text="   ")]
     assert RetrievalMiddleman().gather(projects=projects) == []
+
+
+def test_gather_skips_empty_document():
+    docs = [RawDocument(path="/x.pdf", filename="x.pdf", doc_type=DocumentType.PDF, text="\n")]
+    assert RetrievalMiddleman().gather(documents=docs) == []
+
+
+def test_gather_skips_empty_post():
+    posts = [RetrievedSource(source_id="x", kind="post", text="  ", origin="twitter")]
+    assert RetrievalMiddleman().gather(posts=posts) == []
