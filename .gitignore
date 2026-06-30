@@ -39,5 +39,8 @@ Thumbs.db
 .careerlens-chrome-cdp/
 *-chrome-cdp/
 
+# Claude Code worktrees (temporary agent sandboxes — never commit)
+.claude/worktrees/
+
 # stray submission doc, kept on disk only
 /AI Campus Hackathon – Day 1 Submission (1).docx

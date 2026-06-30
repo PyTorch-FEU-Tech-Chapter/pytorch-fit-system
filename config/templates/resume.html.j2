@@ -185,10 +185,20 @@
     <div class="entry">
       <div class="row">
         <span class="lead">{% if p.url %}<a href="{{ p.url }}">{{ p.name }}</a>{% else %}{{ p.name }}{% endif %}</span>
+        {% if p.url %}
         {% if p.display_url %}
+        {% set _proj_provider = p.source_icon or "website" %}
+        {% set _proj_path = p.display_url | replace("github/", "") if p.source_icon == "github" else p.display_url %}
+        {% else %}
+        {% set _dt = declutter_link(p.url) %}
+        {% set _proj_provider = _dt[0] or "website" %}
+        {% set _proj_path = _dt[1] %}
+        {% endif %}
+        {% if _proj_path %}
         <span class="source">
-          <a href="{{ p.url or '#' }}">{{ brand_svg(p.source_icon or "website", 10) }}<span>{{ p.display_url | replace("github/", "") if p.source_icon == "github" else p.display_url }}</span></a>
+          <a href="{{ p.url }}">{{ brand_svg(_proj_provider, 10) }}<span>{{ _proj_path }}</span></a>
         </span>
+        {% endif %}
         {% endif %}
       </div>
       {% if p.tech %}<div class="tech">{{ p.tech | join(" · ") }}</div>{% endif %}

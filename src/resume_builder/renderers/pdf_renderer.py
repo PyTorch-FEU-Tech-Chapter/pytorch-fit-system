@@ -238,10 +238,48 @@ class PdfRenderer(Renderer):
         if resume.projects:
             section("Projects")
             for p in resume.projects:
-                head = f"<b>{p.name}</b>"
+                story.append(Paragraph(f"<b>{p.name}</b>", body))
                 if p.url:
-                    head += f" <font size=8>&lt;{p.url}&gt;</font>"
-                story.append(Paragraph(head, body))
+                    if p.display_url:
+                        provider = p.source_icon or "website"
+                        path = (
+                            p.display_url.replace("github/", "")
+                            if provider == "github"
+                            else p.display_url
+                        )
+                    else:
+                        provider, path = bi_declutter(p.url)
+                        provider = provider or "website"
+                    if path:
+                        d = bi_drawing(provider, size=8)
+                        link_p = Paragraph(
+                            f'<link href="{p.url}">{path}</link>',
+                            contact_style,
+                        )
+                        _cells: list = []
+                        _widths: list[float] = []
+                        if d is not None:
+                            _cells.append(d)
+                            _widths.append(10)
+                        _cells.append(link_p)
+                        _widths.append(120)
+                        proj_tbl = Table(
+                            [_cells],
+                            colWidths=_widths,
+                            hAlign="LEFT",
+                        )
+                        proj_tbl.setStyle(
+                            TableStyle(
+                                [
+                                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                                ]
+                            )
+                        )
+                        story.append(proj_tbl)
                 if p.tech:
                     story.append(
                         Paragraph(f"<i>{' &middot; '.join(p.tech)}</i>", body)

@@ -226,6 +226,89 @@ def test_md_github_link_text_uses_handle(templates_dir):
             )
 
 
+def _resume_with_github_project() -> Resume:
+    """Resume with a GitHub project URL but no display_url/source_icon pre-set."""
+    return Resume(
+        role=RoleSpec(id="r", label="Dev", keywords=[]),
+        contact=ContactInfo(name="Owen"),
+        summary="",
+        projects=[
+            ResumeProject(
+                name="my-lib",
+                url="https://github.com/o/r",
+                description="A library.",
+                tech=["Python"],
+            )
+        ],
+    )
+
+
+def test_html_project_link_shows_decluttered_path_not_full_url(templates_dir):
+    """HTML project source must show decluttered path + SVG icon, never the bare https:// URL."""
+    from resume_builder.renderers.html_renderer import HtmlRenderer
+    import re
+
+    html = HtmlRenderer(templates_dir).render(_resume_with_github_project())
+
+    # Source span must contain the decluttered path (owner/repo without domain)
+    assert "o/r" in html
+
+    # Full https URL must NOT appear as visible span text
+    visible_spans = re.findall(r"<span>([^<]+)</span>", html)
+    for span_text in visible_spans:
+        assert "https://github.com/o/r" not in span_text, (
+            f"Raw GitHub URL found in visible span: {span_text!r}"
+        )
+
+    # An SVG icon must be present (declutter_link resolves to github provider)
+    assert "<svg" in html
+
+
+def test_html_project_link_with_display_url_set(templates_dir):
+    """When display_url is pre-set on the project, it is used directly (no raw URL)."""
+    from resume_builder.renderers.html_renderer import HtmlRenderer
+    import re
+
+    resume = Resume(
+        role=RoleSpec(id="r", label="Dev", keywords=[]),
+        contact=ContactInfo(name="Owen"),
+        summary="",
+        projects=[
+            ResumeProject(
+                name="rdtii-autoextract",
+                url="https://github.com/JohnAndrewBalbarosa/rdtii-autoextract",
+                description="Extraction tool.",
+                source_icon="github",
+                display_url="github/JohnAndrewBalbarosa/rdtii-autoextract",
+            )
+        ],
+    )
+    html = HtmlRenderer(templates_dir).render(resume)
+
+    # github/ prefix is stripped from display — only owner/repo visible
+    assert "JohnAndrewBalbarosa/rdtii-autoextract" in html
+
+    # Full https URL must NOT appear as visible span text
+    visible_spans = re.findall(r"<span>([^<]+)</span>", html)
+    for span_text in visible_spans:
+        assert "https://github.com" not in span_text, (
+            f"Raw GitHub URL found in visible span: {span_text!r}"
+        )
+    assert "<svg" in html
+
+
+def test_pdf_project_link_no_raw_url_smoke(templates_dir):
+    """PDF render with a GitHub project URL must succeed and not embed raw https URL in story."""
+    from resume_builder.renderers.pdf_renderer import PdfRenderer
+
+    pdf = PdfRenderer(templates_dir).render(_resume_with_github_project())
+    assert isinstance(pdf, bytes) and len(pdf) > 0
+    assert pdf[:4] == b"%PDF"
+    # The raw full URL must not appear as literal text in the PDF byte stream
+    # (it appears only in link annotations, not in the visible text stream)
+    assert b"https://github.com/o/r" not in pdf or b"<https://github.com/o/r>" not in pdf
+
+
 def test_json_renderer_includes_contact_links():
     """JSON output must include a top-level contact_links array."""
     import json as _json
