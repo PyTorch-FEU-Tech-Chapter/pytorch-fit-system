@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = "JohnAndrewBalbarosa/pytorch-fit-system"
+REPO = "PyTorch-FEU-Tech-Chapter/pytorch-fit-system"
 HERE = Path(__file__).resolve().parent
 CONFIG = HERE / "board_tasks.json"
 

@@ -1,6 +1,6 @@
 {
-  "project_number": 11,
-  "owner": "JohnAndrewBalbarosa",
+  "project_number": 1,
+  "owner": "PyTorch-FEU-Tech-Chapter",
   "select_fields": [
     "Stage",
     "Role",

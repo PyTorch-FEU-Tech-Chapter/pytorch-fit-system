@@ -29,7 +29,7 @@ Only once `gh auth status` shows the `project` scope should you run any board sc
 
 ## 1. The Kanban board
 
-- **Project:** `JohnAndrewBalbarosa` Project **#11** (`scripts/board_tasks.json` → `owner` + `project_number`).
+- **Project:** `PyTorch-FEU-Tech-Chapter` (org) Project **#1** (`scripts/board_tasks.json` → `owner` + `project_number`).
 - **Source of truth:** `scripts/board_tasks.json`. Every task is one object; the scripts make the
   live board match the JSON. Edit the JSON, then run a script — never hand-edit the board for
   anything the JSON can express.
@@ -89,8 +89,8 @@ may go straight to Done by whoever verifies the mechanical result.
 
 Before starting a task, check whether it (or its prerequisites) is already shipped:
 ```bash
-gh issue list --repo JohnAndrewBalbarosa/pytorch-fit-system --state all --search "in:title <keywords>"
-gh project item-list 11 --owner JohnAndrewBalbarosa --limit 300 --format json   # current Status per item
+gh issue list --repo PyTorch-FEU-Tech-Chapter/pytorch-fit-system --state all --search "in:title <keywords>"
+gh project item-list 1 --owner PyTorch-FEU-Tech-Chapter --limit 300 --format json   # current Status per item
 ```
 If the code already exists, update the task's `stage` to reflect reality instead of redoing it.
 
