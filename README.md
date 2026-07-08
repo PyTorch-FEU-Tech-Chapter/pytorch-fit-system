@@ -1,0 +1,89 @@
+# PyTorch FIT System — AI Career Intelligence Platform
+
+> Built by the **PyTorch FEU Institute of Technology (FEU Tech) Student Chapter**.
+> 📖 **Master spec (NotebookLM source of truth):** [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md)
+> 🗂️ **Delegation backlog / board:** [`docs/TASKS.md`](docs/TASKS.md)
+
+This is **not** just an AI resume builder. It is a **Career Intelligence Platform** that collects
+a user's career information, normalizes it into a single career database, and *generates*
+everything else from it — resumes, public profiles, portfolios, analytics, and AI suggestions.
+
+## The one principle
+
+> **The source of truth is the Normalized Career Database — never the résumé.**
+
+A résumé, a PDF, a Facebook post, a LinkedIn profile — these are inputs or disposable outputs.
+The database is the truth. One database → unlimited industry-targeted resumes and views.
+
+## Architecture (MVP)
+
+```mermaid
+flowchart TD
+    FE[Next.js on Vercel] --> Auth[Supabase Auth]
+    Auth --> DB[(Supabase Postgres + RLS)]
+    DB --> NCD[Normalized Career Database]
+    NCD --> AI[AI Processing]
+    AI --> OUT[Generated: resume · profile · analytics]
+    OUT --> FE
+```
+
+Serverless for the MVP (Vercel + Supabase). A backend (verification, AI queue, scheduled jobs,
+payments) is a future phase. Full detail: [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
+
+## Data layers (summary)
+
+| Layer | Purpose | Visibility |
+|---|---|---|
+| 1 — Auth | users, profiles, roles | — |
+| 2 — Raw inputs | posts, certs, projects, history | private (RLS) |
+| 3 — Normalized | experiences, skills, projects, industries… | private (RLS) |
+| 4 — Generated | resumes, summaries, recommendations | derived / disposable |
+| 5 — Analytics | metrics, trends, leaderboards | aggregated / anonymous |
+
+## Privacy
+
+Three levels — **Private** (owner only), **Public Profile** (curated fields only), **Aggregated
+Analytics** (anonymous). Enforced with **Row Level Security** at the database, not just the UI.
+Public profiles never expose email, phone, raw posts, certificates, or full resumes.
+
+## Status — pivot in progress
+
+This repository is moving from a single-output **résumé builder** to the multi-user
+**platform** described above. Decision: **start fresh** on Next.js + Supabase rather than
+incrementally refactor the old Python CLI.
+
+### Legacy reference engine (Python)
+
+The prior résumé pipeline still lives here as a **proven blueprint** for the AI Processing layer
+— do not treat it as the running platform:
+
+- Code: [`src/resume_builder/`](src/resume_builder/README.md) (module-level READMEs + diagrams)
+- Architecture docs: [`docs/departments/`](docs/departments/README.md)
+- How it maps to the new platform: [`docs/SPECIFICATION.md` §18](docs/SPECIFICATION.md)
+
+### Scraper token-cost benchmark
+
+The saved benchmark in [`benchmarks/scraper_token_cost/`](benchmarks/scraper_token_cost/README.md)
+compares naive agent tool-calling against the `AgenticCrawler` pipeline.
+
+Measured evidence:
+
+- Captured five live `quotes.toscrape.com` pages and tokenized them with `tiktoken cl100k_base`.
+- The strict DOM fingerprint split pages 1-5 into exactly two layouts; pages 3-5 were cache hits.
+- Agent tool-calling with accumulating context is modeled as O(N^2), while best-case isolated agent calls and the pipeline are O(N).
+- The pipeline has a roughly 15x smaller per-page token slope than best-case isolated agent calls, plus a bounded O(L) layout-learning term.
+- Crossover is about six pages: below that, the agent has lower fixed overhead; above it, the pipeline wins and the gap widens.
+
+Caveat: the benchmark is explicit about what is measured versus modeled. It does not claim live
+provider billing; it locks in the complexity model and measured page/fingerprint data so future
+scraper changes cannot silently invalidate the token-cost argument.
+
+## Contributing (chapter members)
+
+1. Read [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) end to end.
+2. Find your role workstream in §17 and your open tasks in [`docs/TASKS.md`](docs/TASKS.md).
+3. Every AI-generated artifact passes a **human-in-the-loop** review before it ships.
+
+## License
+
+See repository for license details.

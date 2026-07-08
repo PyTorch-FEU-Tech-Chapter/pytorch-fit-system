@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scraper Developer Inspector</title>
+  <link rel="stylesheet" href="/static/prototype.css">
+</head>
+<body class="developer-body">
+<main class="developer-shell">
+  <section class="developer-hero">
+    <div>
+      <p class="eyebrow">Developer tool</p>
+      <h1 class="page-title">Website-agnostic scraper inspector</h1>
+      <p class="subtitle">
+        This is separate from the CareerLens user app. When a scraper runs with
+        visual mode enabled, the actual target website opens in Chrome and the
+        scraper highlights the elements it reads, clicks, waits for, and scrolls to.
+      </p>
+    </div>
+    <a class="btn" href="/">Back to CareerLens</a>
+  </section>
+
+  <section class="auth-panel">
+    <div class="section-header">
+      <h2>Run visible scraping</h2>
+      <span class="section-label">Actual website, actual scraper logic</span>
+    </div>
+    <div class="command-line">
+      <span>CLI</span>
+      <code>resume-build scrape --visual --delay-ms 900</code>
+    </div>
+    <p class="developer-copy">
+      The shared Playwright debug layer is website-agnostic. Scraper code calls the
+      same highlight helper with a selector and label, so Facebook, LinkedIn, or any
+      future source can show the developer what is being inspected without adding
+      product-facing UI.
+    </p>
+  </section>
+
+  <section class="section-grid developer-grid">
+    <div class="auth-panel">
+      <div class="section-header">
+        <h2>What gets highlighted</h2>
+        <span class="section-label">Generic middleware behavior</span>
+      </div>
+      <div class="step-list">
+        <article class="step-item">
+          <span class="step-number">1</span>
+          <div>
+            <h3>Loaded page</h3>
+            <p>The browser page body is highlighted after navigation succeeds.</p>
+            <small>label: loaded page</small>
+          </div>
+        </article>
+        <article class="step-item">
+          <span class="step-number">2</span>
+          <div>
+            <h3>Wait targets</h3>
+            <p>The element a scraper waits for is highlighted before and after readiness.</p>
+            <small>label: wait target / wait target ready</small>
+          </div>
+        </article>
+        <article class="step-item">
+          <span class="step-number">3</span>
+          <div>
+            <h3>Collected items</h3>
+            <p>Cards, posts, or result rows are highlighted while scroll batches load.</p>
+            <small>label: items collected before scroll</small>
+          </div>
+        </article>
+        <article class="step-item">
+          <span class="step-number">4</span>
+          <div>
+            <h3>Final capture</h3>
+            <p>The final selector collection is highlighted before parsing starts.</p>
+            <small>label: final collected items</small>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div class="auth-panel">
+      <div class="section-header">
+        <h2>Environment controls</h2>
+        <span class="section-label">Developer only</span>
+      </div>
+      <div class="evidence-table" role="table" aria-label="Scraper visual debug controls">
+        <div class="evidence-row evidence-head" role="row">
+          <span role="columnheader">Variable</span>
+          <span role="columnheader">Purpose</span>
+          <span role="columnheader">Default</span>
+          <span role="columnheader">Scope</span>
+        </div>
+        <div class="evidence-row" role="row">
+          <span role="cell">RESUME_BUILD_PLAYWRIGHT_VISUAL</span>
+          <span role="cell">Turns on the highlighted browser run.</span>
+          <span role="cell">0</span>
+          <strong role="cell">debug</strong>
+        </div>
+        <div class="evidence-row" role="row">
+          <span role="cell">RESUME_BUILD_PLAYWRIGHT_DELAY_MS</span>
+          <span role="cell">Slows each Playwright step so the logic is visible.</span>
+          <span role="cell">700</span>
+          <strong role="cell">debug</strong>
+        </div>
+        <div class="evidence-row" role="row">
+          <span role="cell">RESUME_BUILD_PLAYWRIGHT_HIGHLIGHT_MS</span>
+          <span role="cell">Controls how long selector outlines remain visible.</span>
+          <span role="cell">900</span>
+          <strong role="cell">debug</strong>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
