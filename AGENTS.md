@@ -75,6 +75,9 @@ bounded sample, fingerprint/cache the layout, then amortize token usage across s
    The job-finder system prompt must classify Cloudflare/"Just a moment"/additional verification
    pages and sign-in-first modals as access states, not job pages. It should emit low confidence,
    warnings, and human-handoff notes instead of inventing selectors or trying to click through.
+   In code, use the `job_finder` access guard as the first line before parser/extractor work:
+   classify the rendered page, enforce per-domain cooldown, retry only within a small bounded
+   budget, then stop on `verification_required`, `signed_out`, `rate_limited`, or `blocked`.
 
 6. **Application form DOM inventory must be separate.**
    Future form-specific inventory should collect form semantics, not generic scraper content:
