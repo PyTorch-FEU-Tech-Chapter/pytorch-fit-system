@@ -72,6 +72,9 @@ bounded sample, fingerprint/cache the layout, then amortize token usage across s
    site, do not rotate identities to defeat rate limits, and do not bypass CAPTCHA, Cloudflare,
    login walls, or additional verification. On 403/429/CAPTCHA/Cloudflare/"Additional Verification
    Required", stop the automation and hand off to the user.
+   The job-finder system prompt must classify Cloudflare/"Just a moment"/additional verification
+   pages and sign-in-first modals as access states, not job pages. It should emit low confidence,
+   warnings, and human-handoff notes instead of inventing selectors or trying to click through.
 
 6. **Application form DOM inventory must be separate.**
    Future form-specific inventory should collect form semantics, not generic scraper content:

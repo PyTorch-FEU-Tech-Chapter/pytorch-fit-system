@@ -170,6 +170,10 @@ def test_system_prompt_prioritizes_session_search_and_job_definition():
     assert "workflow.result_item_click_selector" in system
     assert "detail_panel_selector" in system
     assert "Apply/Login/Upload/Submit" in system
+    assert "Additional Verification Required" in system
+    assert "Just a moment" in system
+    assert "do not suggest bypassing" in system
+    assert "human handoff" in system
 
 
 def test_workflow_can_describe_spa_click_to_reveal_detail_panel():

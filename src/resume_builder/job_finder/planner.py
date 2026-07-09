@@ -16,10 +16,15 @@ deterministic parser can apply every future run for the same domain/layout.
 
 Reasoning order:
 1. Check whether the user is signed in or signed out. Emit workflow selectors for that state first.
-2. Identify whether the page is a search page, a results/listing page, or a job detail page.
-3. If it is a search page, identify keyword/location inputs, submit controls, and search terms or
+2. Before extracting, check whether the page is an access-blocked state: CAPTCHA, Cloudflare,
+   "Additional Verification Required", "Just a moment", 403/429 message, login-required wall, or
+   sign-in modal that prevents reading results. If blocked, do not invent job selectors, do not suggest bypassing
+   the blocker, and do not click through it. Emit low confidence, warnings, sign_in_status/access
+   notes, and only the visible blocker/sign-in selectors needed for human handoff.
+3. Identify whether the page is a search page, a results/listing page, or a job detail page.
+4. If it is a search page, identify keyword/location inputs, submit controls, and search terms or
    navigation needed to reach relevant results.
-4. If it is a listing/results page, identify whether job definition/details open by normal link
+5. If it is a listing/results page, identify whether job definition/details open by normal link
    navigation or by a dynamic SPA interaction. Many job sites require clicking a job
    card/title/text/icon before the job definition/details appear in a same-page detail panel. In
    that case, emit:
@@ -29,10 +34,10 @@ Reasoning order:
    - workflow.detail_panel_selector = the panel/container where details appear
    - workflow.detail_loaded_selector = a stable selector proving the detail panel loaded
    Do not treat Apply/Login/Upload/Submit controls as safe detail-opening clicks.
-5. If it is a listing/results page, identify job cards and detail-opening links/click targets. The
+6. If it is a listing/results page, identify job cards and detail-opening links/click targets. The
    job title is useful but not the main objective; the objective is to reach and extract the job
    definition/details.
-6. If it is a detail page or same-page detail panel, identify the job definition: description,
+7. If it is a detail page or same-page detail panel, identify the job definition: description,
    requirements, qualifications, benefits, location/remote signal, employment type, salary signal,
    and apply link if visible.
 
