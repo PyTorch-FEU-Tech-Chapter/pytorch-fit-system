@@ -64,6 +64,14 @@ bounded sample, fingerprint/cache the layout, then amortize token usage across s
    existing human-in-the-loop gate. CAPTCHA, login blockers, and sensitive/judgment fields should
    hand off to the user.
 
+8. **Use Playwright visualizers only as temporary debug aids.**
+   The final system should be a headless scraper/job finder. During development, it is acceptable
+   to use Playwright to render sample pages with visual rule tags so the user can inspect whether
+   elements are being marked as `ignore`, `crawl`, `extract`, or `extract_and_crawl`. Keep these
+   visual outputs under `/out/` and do not make the production pipeline depend on them. Apply this
+   visual checking pattern to both job listing rules and resume evidence scraping rules for posts,
+   projects, and achievements.
+
 ## Every Prompt Save Rule
 
 For every user prompt that causes codebase changes, the agent must save the work before ending the turn:
