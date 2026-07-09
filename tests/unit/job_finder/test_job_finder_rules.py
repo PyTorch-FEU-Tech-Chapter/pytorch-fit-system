@@ -166,6 +166,49 @@ def test_system_prompt_prioritizes_session_search_and_job_definition():
     assert "search terms or" in system
     assert "job definition/details" in system
     assert "job title is useful" in system
+    assert "dynamic SPA interaction" in system
+    assert "workflow.result_item_click_selector" in system
+    assert "detail_panel_selector" in system
+    assert "Apply/Login/Upload/Submit" in system
+
+
+def test_workflow_can_describe_spa_click_to_reveal_detail_panel():
+    layout = LearnedJobListingLayout(
+        domain="ph.indeed.com",
+        sample_url="https://ph.indeed.com/jobs?q=software",
+        layout_fingerprint="spa",
+        workflow=JobSearchWorkflow(
+            detail_navigation_mode="same_page_panel",
+            requires_click_to_reveal_detail=True,
+            result_item_click_selector="a[href*='/viewjob']",
+            detail_panel_selector=".jobsearch-RightPane",
+            detail_loaded_selector="#jobDescriptionText",
+            navigation_notes=["Click a job title to update the right-side detail panel."],
+        ),
+        rules=[
+            JobListingRule(
+                selector=".job_seen_beacon",
+                role=JobListingAction.JOB_CARD,
+                extract=JobListingExtraction(
+                    company=".companyName",
+                    location=".companyLocation",
+                    detail_url="a@href",
+                    description=".job-snippet",
+                ),
+            ),
+            JobListingRule(selector="a[href*='/viewjob']", role=JobListingAction.OPEN_DETAIL),
+            JobListingRule(selector=".jobsearch-RightPane", role=JobListingAction.DETAIL_PANEL),
+        ],
+    )
+
+    payload = layout.model_dump(mode="json")
+
+    assert payload["workflow"]["detail_navigation_mode"] == "same_page_panel"
+    assert payload["workflow"]["requires_click_to_reveal_detail"] is True
+    assert payload["workflow"]["result_item_click_selector"] == "a[href*='/viewjob']"
+    assert payload["workflow"]["detail_panel_selector"] == ".jobsearch-RightPane"
+    assert payload["rules"][1]["role"] == "open_detail"
+    assert payload["rules"][2]["role"] == "detail_panel"
 
 
 def test_detail_page_rules_can_extract_definition_without_job_card_title():

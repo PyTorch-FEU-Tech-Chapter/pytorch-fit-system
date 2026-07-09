@@ -52,6 +52,11 @@ bounded sample, fingerprint/cache the layout, then amortize token usage across s
    is not the main evidence: after search results exist, prioritize detail links and job-definition
    content such as responsibilities, requirements, qualifications, benefits, salary, location, and
    remote/hybrid/f2f signals.
+   Many job sites are SPAs or list-detail interfaces: clicking a job card/title/text/icon may update
+   a same-page detail panel instead of navigating to a new URL. The AI rule output must explicitly
+   describe that interaction in a parseable workflow: safe read-only click selector, detail panel
+   selector, loaded-state selector, and whether the detail is opened by link navigation, SPA route,
+   or same-page panel. Never classify Apply/Login/Upload/Submit as safe detail-opening clicks.
 
 5. **Application form DOM inventory must be separate.**
    Future form-specific inventory should collect form semantics, not generic scraper content:

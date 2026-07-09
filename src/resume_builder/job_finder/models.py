@@ -22,6 +22,8 @@ class JobListingAction(str, Enum):
     JOB_DESCRIPTION = "job_description"
     APPLY_LINK = "apply_link"
     SIGN_IN_STATUS = "sign_in_status"
+    OPEN_DETAIL = "open_detail"
+    DETAIL_PANEL = "detail_panel"
 
 
 class JobListingExtraction(BaseModel):
@@ -56,6 +58,11 @@ class JobSearchWorkflow(BaseModel):
     keyword_input_selector: str | None = None
     location_input_selector: str | None = None
     submit_search_selector: str | None = None
+    detail_navigation_mode: str = "unknown"
+    result_item_click_selector: str | None = None
+    detail_panel_selector: str | None = None
+    detail_loaded_selector: str | None = None
+    requires_click_to_reveal_detail: bool = False
     recommended_search_terms: list[str] = Field(default_factory=list)
     navigation_notes: list[str] = Field(default_factory=list)
 

@@ -19,9 +19,20 @@ Reasoning order:
 2. Identify whether the page is a search page, a results/listing page, or a job detail page.
 3. If it is a search page, identify keyword/location inputs, submit controls, and search terms or
    navigation needed to reach relevant results.
-4. If it is a listing/results page, identify job cards and detail links. The job title is useful
-   but not the main objective; the objective is to reach and extract the job definition/details.
-5. If it is a detail page, identify the job definition: description, responsibilities,
+4. If it is a listing/results page, identify whether job definition/details open by normal link
+   navigation or by a dynamic SPA interaction. Many job sites require clicking a job
+   card/title/text/icon before the job definition/details appear in a same-page detail panel. In
+   that case, emit:
+   - workflow.detail_navigation_mode = "same_page_panel" or "spa_route"
+   - workflow.requires_click_to_reveal_detail = true
+   - workflow.result_item_click_selector = the safe read-only selector to click
+   - workflow.detail_panel_selector = the panel/container where details appear
+   - workflow.detail_loaded_selector = a stable selector proving the detail panel loaded
+   Do not treat Apply/Login/Upload/Submit controls as safe detail-opening clicks.
+5. If it is a listing/results page, identify job cards and detail-opening links/click targets. The
+   job title is useful but not the main objective; the objective is to reach and extract the job
+   definition/details.
+6. If it is a detail page or same-page detail panel, identify the job definition: description,
    requirements, qualifications, benefits, location/remote signal, employment type, salary signal,
    and apply link if visible.
 
@@ -36,10 +47,14 @@ Allowed roles:
 - submit_search: search submit control.
 - job_description: detail page description region, only when current page is a job detail page.
 - apply_link: link/button leading from a job detail to an application page.
+- open_detail: safe read-only click target that opens a job detail panel or SPA route.
+- detail_panel: same-page panel/container that displays the selected job definition.
 
 Extraction mapping values are selectors relative to each job_card. Use selector@attr for
 attributes such as a@href. For detail pages, selectors may target the description/requirements
-regions directly. Prefer stable selectors from the inventory. Do not invent selectors.
+regions directly. For SPA/list-detail pages, emit both open_detail/detail_panel rules and workflow
+selectors so a browser executor can click a listing, wait for details, then parse the panel. Prefer
+stable selectors from the inventory. Do not invent selectors.
 Return one strict JSON object matching the schema."""
 
 
