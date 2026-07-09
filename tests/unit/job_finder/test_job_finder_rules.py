@@ -8,6 +8,7 @@ from resume_builder.job_finder import (
     JobListingLayoutStore,
     JobListingPlanner,
     JobListingRule,
+    JobSearchWorkflow,
     LearnedJobListingLayout,
     apply_listing_rules,
     build_listing_dom_inventory,
@@ -81,10 +82,12 @@ class _FakeLLM:
     def __init__(self) -> None:
         self.calls = 0
         self.prompts: list[str] = []
+        self.system_prompts: list[str | None] = []
 
     def structured(self, prompt, schema, system=None, max_tokens=2048):
         self.calls += 1
         self.prompts.append(prompt)
+        self.system_prompts.append(system)
         return _good_layout()
 
 
@@ -146,3 +149,70 @@ def test_store_persists_machine_readable_layout(tmp_path):
     assert JobListingLayoutStore(output_dir=tmp_path).get("abc").rules[1].role == (
         JobListingAction.JOB_CARD
     )
+
+
+def test_system_prompt_prioritizes_session_search_and_job_definition():
+    llm = _FakeLLM()
+    planner = JobListingPlanner(llm, store=JobListingLayoutStore(output_dir=None))
+
+    planner.plan_page(
+        "https://careers.example.com/jobs",
+        _LISTINGS,
+        user_preferences="search remote python backend jobs first",
+    )
+
+    system = llm.system_prompts[0] or ""
+    assert "Check whether the user is signed in or signed out" in system
+    assert "search terms or" in system
+    assert "job definition/details" in system
+    assert "job title is useful" in system
+
+
+def test_detail_page_rules_can_extract_definition_without_job_card_title():
+    html = """
+    <html><body>
+      <main class="job-detail">
+        <section class="description">You will build APIs and automation workflows.</section>
+        <section class="requirements">Python, SQL, testing, and production debugging.</section>
+        <section class="benefits">Remote work and learning budget.</section>
+        <a class="apply" href="/apply/123">Apply now</a>
+      </main>
+    </body></html>
+    """
+    layout = LearnedJobListingLayout(
+        domain="careers.example.com",
+        sample_url="https://careers.example.com/job/123",
+        layout_fingerprint="detail",
+        page_type="job_detail",
+        workflow=JobSearchWorkflow(
+            check_signed_in_first=True,
+            signed_out_selector="sign in",
+            recommended_search_terms=["python backend remote"],
+        ),
+        rules=[
+            JobListingRule(
+                selector="main.job-detail",
+                role=JobListingAction.JOB_DESCRIPTION,
+                extract=JobListingExtraction(
+                    description="section.description",
+                    requirements="section.requirements",
+                    benefits="section.benefits",
+                ),
+            ),
+            JobListingRule(selector="a.apply", role=JobListingAction.APPLY_LINK),
+        ],
+    )
+
+    listings, _next_urls, _filters, _searches = apply_listing_rules(
+        html,
+        "https://careers.example.com/job/123",
+        "https://careers.example.com",
+        layout.rules,
+    )
+
+    assert len(listings) == 1
+    assert listings[0].title is None
+    assert listings[0].description == "You will build APIs and automation workflows."
+    assert listings[0].requirements == "Python, SQL, testing, and production debugging."
+    assert listings[0].benefits == "Remote work and learning budget."
+    assert listings[0].apply_url == "https://careers.example.com/apply/123"

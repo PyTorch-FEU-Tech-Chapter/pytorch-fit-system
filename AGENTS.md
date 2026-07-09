@@ -47,6 +47,11 @@ bounded sample, fingerprint/cache the layout, then amortize token usage across s
    location, remote/hybrid/f2f signals, employment type, salary/level hints, detail URLs, filters,
    search controls, and pagination. This output must be easy for the system to parse and reuse
    automatically.
+   Before extracting, the agent should check whether the browser appears signed in or signed out,
+   then decide if it needs to run/search/navigate using search terms first. The title is useful but
+   is not the main evidence: after search results exist, prioritize detail links and job-definition
+   content such as responsibilities, requirements, qualifications, benefits, salary, location, and
+   remote/hybrid/f2f signals.
 
 5. **Application form DOM inventory must be separate.**
    Future form-specific inventory should collect form semantics, not generic scraper content:

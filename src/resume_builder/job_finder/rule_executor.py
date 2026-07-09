@@ -125,6 +125,8 @@ def apply_listing_rules(
     next_urls: list[str] = []
     filters: list[str] = []
     searches: list[str] = []
+    detail_payload: dict[str, str | None] = {}
+    apply_urls: list[str] = []
 
     for rule in rules:
         if rule.role == JobListingAction.JOB_CARD and rule.extract is not None:
@@ -134,10 +136,12 @@ def apply_listing_rules(
                     for name, value in rule.extract.model_dump().items()
                 }
                 title = data.get("title")
-                if not title:
+                if not any(
+                    data.get(key) for key in ("title", "detail_url", "description", "requirements")
+                ):
                     continue
                 detail_url = data.get("detail_url")
-                key = (title.lower(), detail_url)
+                key = ((title or "").lower(), detail_url or data.get("description"))
                 if key in seen_listings:
                     continue
                 seen_listings.add(key)
@@ -152,10 +156,27 @@ def apply_listing_rules(
                         employment_type=data.get("employment_type"),
                         experience_level=data.get("experience_level"),
                         description=data.get("description"),
+                        responsibilities=data.get("responsibilities"),
+                        requirements=data.get("requirements"),
+                        qualifications=data.get("qualifications"),
+                        benefits=data.get("benefits"),
+                        apply_url=data.get("apply_url"),
                         source_url=page_url,
                         source_selector=rule.selector,
                     )
                 )
+        elif rule.role == JobListingAction.JOB_DESCRIPTION and rule.extract is not None:
+            for key, selector in rule.extract.model_dump().items():
+                value = _extract_value(root, selector, page_url, seed_url)
+                if value:
+                    detail_payload[key] = value
+        elif rule.role == JobListingAction.APPLY_LINK:
+            for el in _select(root, rule.selector):
+                href = el.get("href")
+                if href:
+                    url = safe_same_domain_url(seed_url, href) or urljoin(page_url, href)
+                    if url not in apply_urls:
+                        apply_urls.append(url)
         elif rule.role == JobListingAction.NEXT_PAGE:
             for el in _select(root, rule.selector):
                 href = el.get("href")
@@ -167,5 +188,32 @@ def apply_listing_rules(
             filters.extend(_node_text(el) or rule.selector for el in _select(root, rule.selector))
         elif rule.role in {JobListingAction.SEARCH_INPUT, JobListingAction.SUBMIT_SEARCH}:
             searches.extend(rule.selector for _el in _select(root, rule.selector))
+
+    if detail_payload and not listings:
+        listings.append(
+            JobListing(
+                title=detail_payload.get("title"),
+                detail_url=page_url,
+                company=detail_payload.get("company"),
+                location=detail_payload.get("location"),
+                remote_signal=detail_payload.get("remote_signal"),
+                salary_signal=detail_payload.get("salary_signal"),
+                employment_type=detail_payload.get("employment_type"),
+                experience_level=detail_payload.get("experience_level"),
+                description=detail_payload.get("description"),
+                responsibilities=detail_payload.get("responsibilities"),
+                requirements=detail_payload.get("requirements"),
+                qualifications=detail_payload.get("qualifications"),
+                benefits=detail_payload.get("benefits"),
+                apply_url=detail_payload.get("apply_url")
+                or (apply_urls[0] if apply_urls else None),
+                source_url=page_url,
+                source_selector="job_description",
+            )
+        )
+    elif apply_urls:
+        for listing in listings:
+            if listing.apply_url is None:
+                listing.apply_url = apply_urls[0]
 
     return listings, next_urls, filters, searches

@@ -21,6 +21,7 @@ class JobListingAction(str, Enum):
     SUBMIT_SEARCH = "submit_search"
     JOB_DESCRIPTION = "job_description"
     APPLY_LINK = "apply_link"
+    SIGN_IN_STATUS = "sign_in_status"
 
 
 class JobListingExtraction(BaseModel):
@@ -39,6 +40,24 @@ class JobListingExtraction(BaseModel):
     experience_level: str | None = None
     detail_url: str | None = None
     description: str | None = None
+    responsibilities: str | None = None
+    requirements: str | None = None
+    qualifications: str | None = None
+    benefits: str | None = None
+    apply_url: str | None = None
+
+
+class JobSearchWorkflow(BaseModel):
+    """Reusable search/navigation guidance for one job site layout."""
+
+    check_signed_in_first: bool = True
+    signed_in_selector: str | None = None
+    signed_out_selector: str | None = None
+    keyword_input_selector: str | None = None
+    location_input_selector: str | None = None
+    submit_search_selector: str | None = None
+    recommended_search_terms: list[str] = Field(default_factory=list)
+    navigation_notes: list[str] = Field(default_factory=list)
 
 
 class JobListingRule(BaseModel):
@@ -62,13 +81,14 @@ class LearnedJobListingLayout(BaseModel):
     rules: list[JobListingRule] = Field(default_factory=list)
     include_url_patterns: list[str] = Field(default_factory=list)
     exclude_url_patterns: list[str] = Field(default_factory=list)
+    workflow: JobSearchWorkflow = Field(default_factory=JobSearchWorkflow)
     confidence: float = 0.0
     warnings: list[str] = Field(default_factory=list)
     revision: int = 0
 
 
 class JobListing(BaseModel):
-    title: str
+    title: str | None = None
     detail_url: str | None = None
     company: str | None = None
     location: str | None = None
@@ -77,6 +97,11 @@ class JobListing(BaseModel):
     employment_type: str | None = None
     experience_level: str | None = None
     description: str | None = None
+    responsibilities: str | None = None
+    requirements: str | None = None
+    qualifications: str | None = None
+    benefits: str | None = None
+    apply_url: str | None = None
     source_url: str
     source_selector: str = ""
 
@@ -89,5 +114,7 @@ class JobListingRun(BaseModel):
     next_page_urls: list[str] = Field(default_factory=list)
     filter_controls: list[str] = Field(default_factory=list)
     search_controls: list[str] = Field(default_factory=list)
+    signed_in_status: str = "unknown"
+    workflow: JobSearchWorkflow = Field(default_factory=JobSearchWorkflow)
     learned_layout: LearnedJobListingLayout | None = None
     validation_errors: list[str] = Field(default_factory=list)

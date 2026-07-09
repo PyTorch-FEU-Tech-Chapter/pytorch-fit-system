@@ -10,13 +10,26 @@ from .rule_executor import apply_listing_rules
 from .store import JobListingLayoutStore
 
 _SYSTEM = """You are the structure-learning component for a job finder.
-You observe a rendered DOM inventory for a job listing/search page and emit reusable JSON rules.
-Do not extract jobs yourself. Build selectors and extraction instructions that a deterministic
-parser can apply every future run for the same domain/layout.
+You observe a rendered DOM inventory for a job search/listing/detail page and emit reusable JSON
+rules. Do not extract jobs yourself. Build selectors and extraction instructions that a
+deterministic parser can apply every future run for the same domain/layout.
+
+Reasoning order:
+1. Check whether the user is signed in or signed out. Emit workflow selectors for that state first.
+2. Identify whether the page is a search page, a results/listing page, or a job detail page.
+3. If it is a search page, identify keyword/location inputs, submit controls, and search terms or
+   navigation needed to reach relevant results.
+4. If it is a listing/results page, identify job cards and detail links. The job title is useful
+   but not the main objective; the objective is to reach and extract the job definition/details.
+5. If it is a detail page, identify the job definition: description, responsibilities,
+   requirements, qualifications, benefits, location/remote signal, employment type, salary signal,
+   and apply link if visible.
 
 Allowed roles:
 - ignore: site chrome/noise/auth/legal/cookie widgets; remove before extraction.
-- job_card: one repeated container per job. Must include extract mapping.
+- sign_in_status: visible sign-in/signed-out/signed-in user indicators.
+- job_card: one repeated container per job. Must include extract mapping. Prefer mappings that
+  capture detail_url and job definition snippets over only the job title.
 - next_page: pagination link/button anchor to the next listing page.
 - filter_control: visible filters for location, remote, role, level, employment type, salary.
 - search_input: keyword/location search inputs.
@@ -25,7 +38,8 @@ Allowed roles:
 - apply_link: link/button leading from a job detail to an application page.
 
 Extraction mapping values are selectors relative to each job_card. Use selector@attr for
-attributes such as a@href. Prefer stable selectors from the inventory. Do not invent selectors.
+attributes such as a@href. For detail pages, selectors may target the description/requirements
+regions directly. Prefer stable selectors from the inventory. Do not invent selectors.
 Return one strict JSON object matching the schema."""
 
 
@@ -143,8 +157,8 @@ class JobListingPlanner:
             errors.append(
                 f"expected at least {self.min_listings} job listing(s), got {len(listings)}"
             )
-        if not any(rule.role.value == "job_card" for rule in layout.rules):
-            errors.append("no job_card rule emitted")
+        if not any(rule.role.value in {"job_card", "job_description"} for rule in layout.rules):
+            errors.append("no job_card or job_description rule emitted")
         return JobListingRun(
             page_url=page_url,
             layout_fingerprint=layout.layout_fingerprint,
@@ -153,6 +167,21 @@ class JobListingPlanner:
             next_page_urls=next_urls,
             filter_controls=filters,
             search_controls=searches,
+            signed_in_status=self._signed_in_status(html, layout),
+            workflow=layout.workflow,
             learned_layout=layout if extraction_method == "ai_rules" else None,
             validation_errors=errors,
         )
+
+    @staticmethod
+    def _signed_in_status(html: str, layout: LearnedJobListingLayout) -> str:
+        lowered = html.lower()
+        signed_in = layout.workflow.signed_in_selector
+        signed_out = layout.workflow.signed_out_selector
+        if signed_in and signed_in.lower() in lowered:
+            return "signed_in"
+        if signed_out and signed_out.lower() in lowered:
+            return "signed_out"
+        if any(token in lowered for token in ("sign in", "login", "log in")):
+            return "signed_out"
+        return "unknown"
