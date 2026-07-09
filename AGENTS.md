@@ -57,24 +57,39 @@ bounded sample, fingerprint/cache the layout, then amortize token usage across s
    describe that interaction in a parseable workflow: safe read-only click selector, detail panel
    selector, loaded-state selector, and whether the detail is opened by link navigation, SPA route,
    or same-page panel. Never classify Apply/Login/Upload/Submit as safe detail-opening clicks.
+   For Indeed-style list/detail pages, if a right-side or same-page detail panel is already visible,
+   classify the panel as `extract` and parse it first. Do not click broad redirect links like raw
+   `href*="/viewjob"` / `/rc/clk` links just to "open" a job; those can leave the current results
+   page and trigger verification. Only use `open_detail` when the detail panel is absent or stale,
+   and prefer a stable same-page event target with a `detail_loaded_selector` check.
 
-5. **Application form DOM inventory must be separate.**
+5. **Compliant access over anti-bot evasion.**
+   Borrow the safe parts of the `rdtii-autoextract` retrieval approach, but do not build evasion
+   for job sites. The goal is not to bypass bot detection; it is to behave predictably and stop when
+   the site asks for verification. Use a normal browser context, realistic headers supplied by the
+   browser, per-domain throttling, bounded retries, exponential backoff on transient failures, and
+   cached layout rules so repeated pages do not need repeated model/browser work. Do not hammer a
+   site, do not rotate identities to defeat rate limits, and do not bypass CAPTCHA, Cloudflare,
+   login walls, or additional verification. On 403/429/CAPTCHA/Cloudflare/"Additional Verification
+   Required", stop the automation and hand off to the user.
+
+6. **Application form DOM inventory must be separate.**
    Future form-specific inventory should collect form semantics, not generic scraper content:
    input name/type/placeholder/autocomplete, labels, required markers, aria attributes, options,
    file upload accept types, hidden/disabled state, button text, nearest headings, and validation
    messages.
 
-6. **Application actions need a different taxonomy.**
+7. **Application actions need a different taxonomy.**
    Future application-form actions should be separate from job finder and scraper actions, e.g.
    fill text, select option, check option, upload file, click next, review required, human
    required, and submit blocked.
 
-7. **Never auto-submit without human approval.**
+8. **Never auto-submit without human approval.**
    The agent may prepare job applications and fill drafts, but final submit must stay behind the
    existing human-in-the-loop gate. CAPTCHA, login blockers, and sensitive/judgment fields should
    hand off to the user.
 
-8. **Use Playwright visualizers only as temporary debug aids.**
+9. **Use Playwright visualizers only as temporary debug aids.**
    The final system should be a headless scraper/job finder. During development, it is acceptable
    to use Playwright to render sample pages with visual rule tags so the user can inspect whether
    elements are being marked as `ignore`, `crawl`, `extract`, or `extract_and_crawl`. Keep these
