@@ -14,6 +14,13 @@ It covers, in order:
 When working on job finding, job listing extraction, or job application automation, stay true to
 this architecture before rereading or changing large parts of the codebase:
 
+The reason to use AI here is not to scrape every page with model calls. The AI exists to make the
+system **website-agnostic** and smarter across different site contexts: from a small rendered sample
+of a few pages, it should infer the site's repeatable framework, page types, and extraction/fill
+rules. Once confidence is high that the pattern is repeatable, the system should cache and replay
+those rules deterministically. This mirrors the `rdtii-autoextract` approach: learn structure from a
+bounded sample, fingerprint/cache the layout, then amortize token usage across same-layout pages.
+
 1. **AI identifies reusable structure; deterministic code executes it.**
    The AI should inspect a rendered DOM inventory and emit strict, machine-readable rules
    (JSON/Pydantic schema), such as selectors, roles, extraction mappings, include/exclude URL
@@ -22,8 +29,10 @@ this architecture before rereading or changing large parts of the codebase:
 
 2. **Cache by domain and layout fingerprint.**
    A website or ATS normally keeps the same flow/layout for a domain or page type. Learn the
-   layout once, store the rules, and reuse them on future pages with the same fingerprint to
-   reduce token usage.
+   layout from a small representative sample, store the rules, and reuse them on future pages with
+   the same fingerprint to reduce token usage. If confidence is low, ask for a revised rule set or
+   sample a few more pages; do not jump to writing a domain-specific crawler unless the generic rule
+   approach has clearly failed.
 
 3. **Keep the systems separate.**
    - The resume/data scraper keeps its own extraction actions.
