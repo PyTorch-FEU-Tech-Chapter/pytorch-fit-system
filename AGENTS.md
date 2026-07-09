@@ -9,6 +9,52 @@ It covers, in order:
 4. **Human-in-the-loop** — tasks with `HITL Gate = Yes` require a human to verify the code, logic, or output, and only the human pushes the card to `Done`.
 5. **Windows/gh gotchas** — UTF-8 subprocess decoding, `\r` stripping, `--limit`, UI-only Board/Roadmap views.
 
+## User's General Algorithm For Web Automation
+
+When working on job finding, job listing extraction, or job application automation, stay true to
+this architecture before rereading or changing large parts of the codebase:
+
+1. **AI identifies reusable structure; deterministic code executes it.**
+   The AI should inspect a rendered DOM inventory and emit strict, machine-readable rules
+   (JSON/Pydantic schema), such as selectors, roles, extraction mappings, include/exclude URL
+   patterns, and confidence/warnings. After that, normal code applies those rules. Do not keep
+   sending the same layout to the model every run.
+
+2. **Cache by domain and layout fingerprint.**
+   A website or ATS normally keeps the same flow/layout for a domain or page type. Learn the
+   layout once, store the rules, and reuse them on future pages with the same fingerprint to
+   reduce token usage.
+
+3. **Keep the systems separate.**
+   - The resume/data scraper keeps its own extraction actions.
+   - `job_finder/` owns job listing discovery rules only.
+   - `job_application/` owns future form understanding, form filling, upload, review, and HITL
+     submit safety.
+   Do not merge these taxonomies just because they share the same "AI learns rules, code replays
+   rules" pattern.
+
+4. **Job finder comes first.**
+   For job listing pages, the first reusable planner should identify job cards, title, company,
+   location, remote/hybrid/f2f signals, employment type, salary/level hints, detail URLs, filters,
+   search controls, and pagination. This output must be easy for the system to parse and reuse
+   automatically.
+
+5. **Application form DOM inventory must be separate.**
+   Future form-specific inventory should collect form semantics, not generic scraper content:
+   input name/type/placeholder/autocomplete, labels, required markers, aria attributes, options,
+   file upload accept types, hidden/disabled state, button text, nearest headings, and validation
+   messages.
+
+6. **Application actions need a different taxonomy.**
+   Future application-form actions should be separate from job finder and scraper actions, e.g.
+   fill text, select option, check option, upload file, click next, review required, human
+   required, and submit blocked.
+
+7. **Never auto-submit without human approval.**
+   The agent may prepare job applications and fill drafts, but final submit must stay behind the
+   existing human-in-the-loop gate. CAPTCHA, login blockers, and sensitive/judgment fields should
+   hand off to the user.
+
 ## Every Prompt Save Rule
 
 For every user prompt that causes codebase changes, the agent must save the work before ending the turn:
