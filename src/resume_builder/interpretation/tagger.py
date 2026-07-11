@@ -6,12 +6,15 @@ from ..core.principles import HARVARD_PRINCIPLES
 from .models import RetrievedSource
 
 _TAGGER_SYSTEM = (
-    "You tag ONE candidate source by INDUSTRY for an industry-first resume system. "
-    "industries = industry/domain NAMES (e.g. 'artificial intelligence', 'cybersecurity'), never "
-    "skills. A source may have MULTIPLE industries when its real components justify them (a web app "
-    "with security features is web AND cybersecurity). Put skills only in skill_subtags. Separate "
-    "quantitative_impact (numbers from the text) from qualitative_impact; never invent numbers. "
-    "Be concise.\n\n"
+    "TASK: tag ONE candidate source for an industry-first resume. OUTPUT: structured JSON only.\n"
+    "industries: industry/domain names; never skills; multiple only when real components prove them.\n"
+    "skill_subtags: atomic/canonical skills for matching; e.g. JavaScript, ReactJS, React Native, Vue.\n"
+    "results.quantitative: sourced numbers only; explain metric + value + context + practical meaning; "
+    "never invent/estimate/alter/extrapolate.\n"
+    "results.qualitative: concrete non-numeric outcome; problem solved + effect/beneficiary + technical "
+    "or ownership significance when supported.\n"
+    "conclusion: 1 plain-language takeaway; value created + strongest demonstrated capability.\n"
+    "STYLE: thorough results; dumbed-down clarity; compact clauses/lists; prefer : - , (); omit filler.\n\n"
 ) + HARVARD_PRINCIPLES
 
 
@@ -26,11 +29,10 @@ class ProjectTagger:
         prompt = (
             f"Source id: {source.source_id}\nKind: {source.kind}\nTitle: {source.title}\n\n"
             f"Content:\n{source.text}\n\n"
-            "Return the tagged record (industries, skill_subtags, summary, "
-            "quantitative_impact, qualitative_impact)."
+            "Return: industries, skill_subtags, summary, results{quantitative,qualitative}, conclusion."
         )
         tagged = self._llm.structured(
-            prompt, schema=TaggedProject, system=_TAGGER_SYSTEM, max_tokens=1024
+            prompt, schema=TaggedProject, system=_TAGGER_SYSTEM, max_tokens=2048
         )
         tagged.repo_full_name = source.source_id
         return tagged

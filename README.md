@@ -15,6 +15,39 @@ everything else from it — resumes, public profiles, portfolios, analytics, and
 A résumé, a PDF, a Facebook post, a LinkedIn profile — these are inputs or disposable outputs.
 The database is the truth. One database → unlimited industry-targeted resumes and views.
 
+## AI evidence output: results that explain themselves
+
+AI interpretation produces strict JSON—not loose prose. Each evidence record separates outcomes
+from its takeaway:
+
+```json
+{
+  "results": {
+    "quantitative": [
+      "Reduced processing time from 10 min to 2 min: 8 min saved/run; 80% faster; measured workflow impact."
+    ],
+    "qualitative": [
+      "Replaced a manual workflow with repeatable automation: fewer handoffs; easier operation for non-developers."
+    ]
+  },
+  "conclusion": "Demonstrates end-to-end automation work that converts a slow manual process into a faster, reusable system."
+}
+```
+
+- `quantitative`: sourced metric + exact value + context + plain-language meaning; no invented or
+  extrapolated numbers.
+- `qualitative`: non-numeric value—problem solved, beneficiary/system effect, difficulty, ownership,
+  or capability demonstrated.
+- `conclusion`: concise synthesis of value created + strongest evidence-backed capability; no hype.
+
+Result explanations are intentionally detailed enough for a non-expert. Syntax stays compact—lists,
+`:`, `-`, `,`, `()`—so tokens carry evidence rather than connector words.
+
+Skills remain atomic in normalized data for reliable matching (`JavaScript`, `ReactJS`, `Vue`). The
+resume renderer/AI may group truthful ecosystems to preserve page space:
+`JavaScript (ReactJS, React Native, Vue)` · `Python (PyTorch, FastAPI)`. Unrelated tools and distinct
+primary languages must not be forced into one group.
+
 ## Architecture (MVP)
 
 ```mermaid

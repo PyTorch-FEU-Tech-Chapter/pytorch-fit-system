@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..llm import LLMProvider
 from ..llm.null_provider import NullProvider
@@ -44,13 +44,54 @@ class ExtractionRule(BaseModel):
     rationale: str = ""
 
 
+class ImpactResults(BaseModel):
+    """Evidence-backed results: verbose meaning, compact structure."""
+
+    quantitative: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Measured results copied from evidence. Each item explains metric, value, context, "
+            "and practical meaning; never infer a missing number."
+        ),
+    )
+    qualitative: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Non-numeric results: what improved, who benefited, problem solved, technical "
+            "difficulty, ownership, or capability demonstrated."
+        ),
+    )
+
+
 class TaggedProject(BaseModel):
     repo_full_name: str
     industries: list[str] = Field(default_factory=list)
     skill_subtags: list[str] = Field(default_factory=list)
     summary: str = ""
-    quantitative_impact: list[str] = Field(default_factory=list)
-    qualitative_impact: list[str] = Field(default_factory=list)
+    results: ImpactResults = Field(default_factory=ImpactResults)
+    conclusion: str = Field(
+        default="",
+        description="Evidence-grounded takeaway: value created + strongest demonstrated capability.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_impact_fields(cls, data):
+        if isinstance(data, dict) and "results" not in data:
+            data = dict(data)
+            data["results"] = {
+                "quantitative": data.pop("quantitative_impact", []),
+                "qualitative": data.pop("qualitative_impact", []),
+            }
+        return data
+
+    @property
+    def quantitative_impact(self) -> list[str]:
+        return self.results.quantitative
+
+    @property
+    def qualitative_impact(self) -> list[str]:
+        return self.results.qualitative
 
 
 class TaggedAchievement(BaseModel):
@@ -58,9 +99,28 @@ class TaggedAchievement(BaseModel):
     industries: list[str] = Field(default_factory=list)
     skill_subtags: list[str] = Field(default_factory=list)
     focused_snippet: str = ""
-    quantitative_impact: list[str] = Field(default_factory=list)
-    qualitative_impact: list[str] = Field(default_factory=list)
+    results: ImpactResults = Field(default_factory=ImpactResults)
+    conclusion: str = ""
     include_reason: str = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_legacy_impact_fields(cls, data):
+        if isinstance(data, dict) and "results" not in data:
+            data = dict(data)
+            data["results"] = {
+                "quantitative": data.pop("quantitative_impact", []),
+                "qualitative": data.pop("qualitative_impact", []),
+            }
+        return data
+
+    @property
+    def quantitative_impact(self) -> list[str]:
+        return self.results.quantitative
+
+    @property
+    def qualitative_impact(self) -> list[str]:
+        return self.results.qualitative
 
 
 class IndustryClassification(BaseModel):
@@ -78,16 +138,19 @@ class IndustryResumePlan(BaseModel):
 
 
 _SYSTEM = (
-    "You are an industry-first resume intelligence system. Return structured JSON only. "
-    "Discover and normalize industry names freely, but merge overlapping names into one "
-    "clear label before output. Tags must be industry/domain names, not skill names. "
-    "A GitHub repo may have multiple industries when its actual components justify them. "
-    "Skills belong only in skill_subtags. For arbitrary website content, provide extraction "
-    "rules that keep main project/article content and drop headers, navbars, footers, repeated "
-    "site chrome, CTAs, and irrelevant wrappers. Social evidence uses post text only. "
-    "Do not include generic communication, leadership, public speaking, or promotion unless "
-    "the industry itself is managerial. Keep wording concise. Separate quantitative_impact "
-    "from qualitative_impact; never invent numbers.\n\n"
+    "ROLE: industry-first resume intelligence. OUTPUT: structured JSON only.\n"
+    "INDUSTRIES: Discover and normalize industry names freely; domain names; merge overlaps; "
+    "multi-industry only when evidenced.\n"
+    "SKILLS: skill_subtags only; atomic/canonical for matching (JavaScript, ReactJS, Vue); "
+    "never place skills in industries.\n"
+    "RESULTS.quantitative: evidence numbers only; metric + value + context + meaning; no invented, "
+    "estimated, altered, extrapolated numbers.\n"
+    "RESULTS.qualitative: specific non-numeric outcome; problem solved + beneficiary/system effect + "
+    "technical/ownership significance when evidenced.\n"
+    "CONCLUSION: 1 evidence-grounded takeaway; value + strongest demonstrated capability; no hype.\n"
+    "WEB: keep main project/article; drop header/nav/footer/chrome/CTA/wrappers. SOCIAL: post text only.\n"
+    "EXCLUDE: generic communication/leadership/public speaking/promotion unless domain-relevant.\n"
+    "STYLE: verbose result meaning; plain language; compact clauses; lists; : - , (); minimal filler.\n\n"
 ) + HARVARD_PRINCIPLES
 
 

@@ -28,14 +28,15 @@ from .static_synth import StaticSynthesizer
 
 _MAX_DOC_CHARS = 6000
 _SYSTEM = (
-    "You are a top-tier resume writer. Produce a complete, ATS-friendly resume tailored to the "
-    "target role. Write impact-focused bullets. CRITICAL — numbers/metrics policy: use ONLY the "
-    "measurable metrics explicitly provided for a project (in the 'Authoritative metrics' block); "
-    "treat those as ground truth and never alter them. NEVER invent, estimate, or extrapolate any "
-    "number, percentage, scale, or quantity that is not provided. If a project has no provided "
-    "metric, write a strong QUALITATIVE bullet with no fabricated numbers. Include only "
-    "experience/projects that are real (present in the provided materials). Skills list should "
-    "be ordered by role-relevance. Be concise — no fluff.\n\n"
+    "ROLE: top-tier resume writer. OUTPUT: complete ATS-friendly Resume JSON; target-role tailored.\n"
+    "RESULTS: impact-first; explain what each number measures + context + why it matters.\n"
+    "NUMBERS: Authoritative metrics only; exact values; NEVER invent/estimate/alter/extrapolate.\n"
+    "NO METRIC: strong qualitative result; problem solved + effect + demonstrated capability; no fake number.\n"
+    "TRUTH: include only evidenced experience/projects.\n"
+    "SKILLS: relevance order; compact display groups when truthful: "
+    "JavaScript (ReactJS, React Native, Vue); Python (PyTorch, FastAPI). "
+    "Do not group unrelated tools; do not hide distinct primary languages.\n"
+    "STYLE: clear to a non-expert; verbose result meaning; compact bullets; prefer : - , (); no filler.\n\n"
 ) + HARVARD_PRINCIPLES
 
 

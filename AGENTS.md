@@ -31,6 +31,25 @@ separate systems even when they share the same learn-once/replay-many pattern.
    same-page detail workflow. The AI should not be called repeatedly for a layout that already has
    confident cached rules.
 
+   The accepted AI artifact must be saved as strict JSON. For resume evidence, use an explicit
+   `results` object split into `quantitative` and `qualitative`, followed by a `conclusion`:
+
+   ```json
+   {
+     "results": {
+       "quantitative": ["metric + value + context + what the number means"],
+       "qualitative": ["problem solved + effect/beneficiary + demonstrated capability"]
+     },
+     "conclusion": "evidence-grounded value + strongest demonstrated capability"
+   }
+   ```
+
+   Result writing must be deliberately verbose in meaning but compact in syntax: explain numbers
+   for a non-expert; prefer lists and `:`, `-`, `,`, `()` over filler/connector phrases. Never invent,
+   estimate, alter, or extrapolate metrics. Keep internal `skill_subtags` atomic for matching and
+   deduplication. Only the final resume display may group related ecosystems to save space, e.g.
+   `JavaScript (ReactJS, React Native, Vue)` or `Python (PyTorch, FastAPI)`.
+
 4. **Rule cache.**
    Cache accepted rules by domain and layout fingerprint. Reuse cached rules on later pages with the
    same fingerprint; resample or replan only when the fingerprint changes or confidence is low.

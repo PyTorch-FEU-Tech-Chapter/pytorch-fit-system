@@ -52,3 +52,10 @@ def test_no_metrics_emits_qualitative_guard():
     synth.build(_role(), repos=[], evidence=[], documents=[])
     assert "none provided" in llm.prompt
     assert "qualitative" in llm.system.lower()
+
+
+def test_system_requests_compact_skill_ecosystems_and_explained_results():
+    llm = _CapturingLLM()
+    AISynthesizer(llm).build(_role(), repos=[], evidence=[], documents=[])
+    assert "JavaScript (ReactJS, React Native, Vue)" in llm.system
+    assert "what each number measures" in llm.system
