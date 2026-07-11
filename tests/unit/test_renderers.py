@@ -116,8 +116,9 @@ def test_html_is_single_column_with_section_dividers(templates_dir):
         summary="S", skills=["Python"], projects=[], experience=[], education=[],
     )
     html = HtmlRenderer(templates_dir).render(resume)
-    # No two-column grid; sections are scoped by a horizontal divider (border-top).
-    assert "grid-template-columns" not in html
+    # The page remains single-column; only the bounded Skills section may use a measured grid.
+    assert '<main class="sheet">' in html
+    assert "--skill-columns" in html
     assert 'class="sidebar"' not in html and 'class="main"' not in html
     assert "border-top:1px solid var(--rule)" in html
 

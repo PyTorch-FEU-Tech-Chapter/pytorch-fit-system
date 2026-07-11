@@ -155,6 +155,13 @@ class ResumeAchievement(BaseModel):
     display_url: str | None = None
 
 
+class ResumeSkillGroup(BaseModel):
+    """Display hierarchy: language/platform parent -> evidenced libraries/frameworks."""
+
+    name: str
+    items: list[str] = Field(default_factory=list)
+
+
 class Resume(BaseModel):
     """Canonical resume model. All renderers consume exactly this."""
 
@@ -164,6 +171,7 @@ class Resume(BaseModel):
     contact: ContactInfo = Field(default_factory=ContactInfo)
     summary: str = ""
     skills: list[str] = Field(default_factory=list)
+    skill_groups: list[ResumeSkillGroup] = Field(default_factory=list)
     experience: list[ResumeExperience] = Field(default_factory=list)
     projects: list[ResumeProject] = Field(default_factory=list)
     education: list[ResumeEducation] = Field(default_factory=list)

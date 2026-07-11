@@ -52,6 +52,14 @@ separate systems even when they share the same learn-once/replay-many pattern.
    deduplication. Only the final resume display may group related ecosystems to save space, e.g.
    `JavaScript (ReactJS, React Native, Vue)` or `Python (PyTorch, FastAPI)`.
 
+   Skills must also be emitted as a real hierarchy in resume JSON: `skill_groups[]` contains a
+   programming language/platform `name` plus an `items[]` sublist of evidenced libraries or
+   frameworks. Use names only—no skill explanations, proficiency claims, or filler. A framework
+   supplies its own context. Do not infer a library from the language alone. Renderers must compute
+   the skill-grid column count from actual group content and available page width; never hardcode
+   `repeat(3, 1fr)` or manually guess space. After injection, run the bounds analyzer/actual PDF page
+   count; layout measurement—not an agent estimate—is the final authority for one-page fit.
+
 4. **Rule cache.**
    Cache accepted rules by domain and layout fingerprint. Reuse cached rules on later pages with the
    same fingerprint; resample or replan only when the fingerprint changes or confidence is low.

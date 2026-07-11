@@ -76,3 +76,6 @@ def analyze_html_bounds(html: str, *, margin_mm: float = 14.0,
   the authoritative page count, not an estimate from content height.
 - Atomic blocks are identified by CSS selectors `.entry`, `.edu`, `.ach` — matching the
   class names used in `resume.html.j2`.
+- Skill grids use `plan_skill_layout`: actual group labels/items + usable page width determine the
+  column count. Bounds analysis then validates the injected result. Fixed/manual column counts are
+  not a substitute for rendered measurement.

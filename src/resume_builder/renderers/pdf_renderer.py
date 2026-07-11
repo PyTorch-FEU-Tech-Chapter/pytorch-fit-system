@@ -205,9 +205,16 @@ class PdfRenderer(Renderer):
             section("Summary")
             story.append(Paragraph(resume.summary, body))
 
-        if resume.skills:
+        if resume.skill_groups or resume.skills:
             section("Skills")
-            story.append(Paragraph(" &middot; ".join(compact_skills(resume.skills)), body))
+            if resume.skill_groups:
+                skill_text = " &middot; ".join(
+                    f"<b>{group.name}:</b> {', '.join(group.items)}"
+                    for group in resume.skill_groups
+                )
+            else:
+                skill_text = " &middot; ".join(compact_skills(resume.skills))
+            story.append(Paragraph(skill_text, body))
 
         if resume.experience:
             section("Experience")

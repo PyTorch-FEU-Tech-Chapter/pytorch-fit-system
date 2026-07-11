@@ -11,12 +11,18 @@
 
 {{ resume.summary }}
 
-{% if resume.skills %}
+{% if resume.skill_groups or resume.skills %}
 ---
 
 ## Skills
 
+{% if resume.skill_groups %}
+{% for group in resume.skill_groups %}
+- **{{ group.name }}:** {{ group.items | join(", ") }}
+{% endfor %}
+{% else %}
 {{ resume.skills | compact_skills | join(" · ") }}
+{% endif %}
 
 {% endif %}
 {% if resume.experience %}

@@ -35,7 +35,8 @@ _SYSTEM = (
     "NO METRIC: strong qualitative result; problem solved + effect + demonstrated capability; no fake number.\n"
     "TRUTH: include only evidenced experience/projects.\n"
     "SKILLS: relevance order; compact display groups when truthful: "
-    "JavaScript (ReactJS, React Native, Vue); Python (PyTorch, FastAPI). "
+    "skill_groups = language/platform parent + evidenced library/framework names only; e.g. "
+    "JavaScript -> ReactJS, React Native, Vue; Python -> PyTorch, FastAPI. No explanatory prose. "
     "Do not group unrelated tools; do not hide distinct primary languages.\n"
     "STYLE: clear to a non-expert; verbose result meaning; compact bullets; prefer : - , (); no filler.\n\n"
 ) + HARVARD_PRINCIPLES

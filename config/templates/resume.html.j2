@@ -97,6 +97,10 @@
   .edu .when{font-family:"Helvetica Neue",Arial,sans-serif; font-size:8.5pt; color:var(--faint); white-space:nowrap;}
   /* ---- skills ---- */
   .skills{font-family:"Helvetica Neue",Arial,sans-serif; font-size:9.5pt; color:var(--ink); line-height:1.5;}
+  .skill-grid{display:grid; grid-template-columns:repeat(var(--skill-columns),minmax(0,1fr)); gap:4px 14px;}
+  .skill-group{break-inside:avoid;}
+  .skill-group strong{display:block;}
+  .skill-group span{color:var(--muted);}
   .skills .chip{white-space:nowrap;}
   .skills .dot{color:var(--faint); margin:0 6px;}
   /* ---- print ---- */
@@ -154,12 +158,21 @@
   </section>
   {% endif %}
 
-  {% if resume.skills %}
+  {% if resume.skill_groups or resume.skills %}
   <section>
     <h2>Skills</h2>
+    {% if resume.skill_groups %}
+    {% set skill_layout = plan_skill_layout(resume.skill_groups) %}
+    <div class="skills skill-grid" style="--skill-columns:{{ skill_layout.columns }}">
+      {% for group in skill_layout.groups %}
+      <div class="skill-group"><strong>{{ group.name }}</strong><span>{{ group.items | join(", ") }}</span></div>
+      {% endfor %}
+    </div>
+    {% else %}
     <div class="skills">
       {% for s in resume.skills | compact_skills %}<span class="chip">{{ s }}</span>{% if not loop.last %}<span class="dot">·</span>{% endif %}{% endfor %}
     </div>
+    {% endif %}
   </section>
   {% endif %}
 

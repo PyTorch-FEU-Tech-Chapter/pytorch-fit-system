@@ -46,10 +46,11 @@ Result explanations add context without rewriting an already-good sentence. Miss
 a separate short sentence or bullet—not a longer original sentence. Syntax stays compact—lists, `:`,
 `-`, `,`, `()`—so tokens carry evidence rather than connector words.
 
-Skills remain atomic in normalized data for reliable matching (`JavaScript`, `ReactJS`, `Vue`). The
-resume renderer/AI may group truthful ecosystems to preserve page space:
-`JavaScript (ReactJS, React Native, Vue)` · `Python (PyTorch, FastAPI)`. Unrelated tools and distinct
-primary languages must not be forced into one group.
+Skills remain atomic in normalized data for reliable matching. Resume JSON adds a display hierarchy
+with names only: `JavaScript → ReactJS, React Native, Vue`; `Python → PyTorch, FastAPI`. Libraries and
+frameworks provide the context—no explanatory skill prose or unsupported proficiency labels.
+Renderers compute skill columns from the actual labels and usable page width, then verify the final
+injection using Chromium bounds and PDF page count. Unrelated tools must not be forced into a group.
 
 ## Architecture (MVP)
 

@@ -26,9 +26,15 @@
 << resume.summary | tex_escape >>
 (* endif *)
 
-(* if resume.skills *)
+(* if resume.skill_groups or resume.skills *)
 \section*{Skills}
+(* if resume.skill_groups *)
+(* for group in resume.skill_groups *)
+\textbf{<< group.name | tex_escape >>}: << group.items | join(", ") | tex_escape >>(* if not loop.last *) $\cdot$ (* endif *)
+(* endfor *)
+(* else *)
 << resume.skills | compact_skills | join(" $\\cdot$ ") | tex_escape >>
+(* endif *)
 (* endif *)
 
 (* if resume.experience *)
