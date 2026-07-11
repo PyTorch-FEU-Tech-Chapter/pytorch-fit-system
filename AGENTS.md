@@ -44,8 +44,10 @@ separate systems even when they share the same learn-once/replay-many pattern.
    }
    ```
 
-   Result writing must be deliberately verbose in meaning but compact in syntax: explain numbers
-   for a non-expert; prefer lists and `:`, `-`, `,`, `()` over filler/connector phrases. Never invent,
+   Result writing must add context without bloating existing prose: keep an already-good sentence
+   unchanged; add one short follow-up sentence or array item. Each fact/context item must render as
+   its own bullet so it can be scanned or removed independently. Explain numbers for a non-expert;
+   prefer lists and `:`, `-`, `,`, `()` over filler/connector phrases. Never invent,
    estimate, alter, or extrapolate metrics. Keep internal `skill_subtags` atomic for matching and
    deduplication. Only the final resume display may group related ecosystems to save space, e.g.
    `JavaScript (ReactJS, React Native, Vue)` or `Python (PyTorch, FastAPI)`.

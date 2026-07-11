@@ -16,7 +16,7 @@
 
 ## Skills
 
-{{ resume.skills | join(" · ") }}
+{{ resume.skills | compact_skills | join(" · ") }}
 
 {% endif %}
 {% if resume.experience %}
@@ -44,12 +44,12 @@
 {% if p.tech %}*{{ p.tech | join(" · ") }}*
 {% endif %}
 {% for q in p.quantitative_impact %}
-{{ q }}
+- {{ q }}
 {% endfor %}
-{% if p.description %}{{ p.description }}
+{% if p.description %}- {{ p.description }}
 {% endif %}
 {% for ql in p.qualitative_impact %}
-{{ ql }}
+- {{ ql }}
 {% endfor %}
 {% for b in p.bullets %}
 - {{ b }}

@@ -58,4 +58,4 @@ def test_system_requests_compact_skill_ecosystems_and_explained_results():
     llm = _CapturingLLM()
     AISynthesizer(llm).build(_role(), repos=[], evidence=[], documents=[])
     assert "JavaScript (ReactJS, React Native, Vue)" in llm.system
-    assert "what each number measures" in llm.system
+    assert "new short bullet/sentence" in llm.system

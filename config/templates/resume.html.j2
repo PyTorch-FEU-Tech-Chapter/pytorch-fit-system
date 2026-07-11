@@ -158,7 +158,7 @@
   <section>
     <h2>Skills</h2>
     <div class="skills">
-      {% for s in resume.skills %}<span class="chip">{{ s }}</span>{% if not loop.last %}<span class="dot">·</span>{% endif %}{% endfor %}
+      {% for s in resume.skills | compact_skills %}<span class="chip">{{ s }}</span>{% if not loop.last %}<span class="dot">·</span>{% endif %}{% endfor %}
     </div>
   </section>
   {% endif %}
@@ -203,11 +203,15 @@
         {% endif %}
       </div>
       {% if p.tech %}<div class="tech">{{ p.tech | join(" · ") }}</div>{% endif %}
-      {# Bullet order: quantitative_impact → description → qualitative_impact → bullets #}
-      {% for q in p.quantitative_impact %}<div class="impact quant">{{ q }}</div>{% endfor %}
-      {% if p.description %}<div class="desc">{{ p.description }}</div>{% endif %}
-      {% for ql in p.qualitative_impact %}<div class="impact qual">{{ ql }}</div>{% endfor %}
-      {% if p.bullets %}<ul class="bullets">{% for b in p.bullets %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+      {# Each fact/context sentence stays separate so it can be removed independently. #}
+      {% if p.quantitative_impact or p.description or p.qualitative_impact or p.bullets %}
+      <ul class="bullets">
+        {% for q in p.quantitative_impact %}<li class="impact quant">{{ q }}</li>{% endfor %}
+        {% if p.description %}<li class="desc">{{ p.description }}</li>{% endif %}
+        {% for ql in p.qualitative_impact %}<li class="impact qual">{{ ql }}</li>{% endfor %}
+        {% for b in p.bullets %}<li>{{ b }}</li>{% endfor %}
+      </ul>
+      {% endif %}
     </div>
     {% endfor %}
   </section>

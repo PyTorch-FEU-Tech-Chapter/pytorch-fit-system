@@ -9,12 +9,13 @@ _TAGGER_SYSTEM = (
     "TASK: tag ONE candidate source for an industry-first resume. OUTPUT: structured JSON only.\n"
     "industries: industry/domain names; never skills; multiple only when real components prove them.\n"
     "skill_subtags: atomic/canonical skills for matching; e.g. JavaScript, ReactJS, React Native, Vue.\n"
-    "results.quantitative: sourced numbers only; explain metric + value + context + practical meaning; "
+    "results.quantitative: sourced numbers only; metric + value; context/meaning = next short item; "
     "never invent/estimate/alter/extrapolate.\n"
-    "results.qualitative: concrete non-numeric outcome; problem solved + effect/beneficiary + technical "
-    "or ownership significance when supported.\n"
+    "results.qualitative: concrete non-numeric outcome; effect/beneficiary/technical context = next "
+    "short item when supported.\n"
     "conclusion: 1 plain-language takeaway; value created + strongest demonstrated capability.\n"
-    "STYLE: thorough results; dumbed-down clarity; compact clauses/lists; prefer : - , (); omit filler.\n\n"
+    "STYLE: preserve a good existing sentence; add context as a separate short sentence/item; "
+    "dumbed-down clarity; compact clauses/lists; prefer : - , (); omit filler.\n\n"
 ) + HARVARD_PRINCIPLES
 
 

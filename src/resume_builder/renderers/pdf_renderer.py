@@ -17,6 +17,7 @@ from pathlib import Path
 from ..core.models import Resume
 from .base import Renderer
 from .latex_renderer import LatexRenderer
+from .formatting import compact_skills
 
 
 class PdfRenderer(Renderer):
@@ -206,7 +207,7 @@ class PdfRenderer(Renderer):
 
         if resume.skills:
             section("Skills")
-            story.append(Paragraph(" &middot; ".join(resume.skills), body))
+            story.append(Paragraph(" &middot; ".join(compact_skills(resume.skills)), body))
 
         if resume.experience:
             section("Experience")
@@ -256,11 +257,11 @@ class PdfRenderer(Renderer):
                 # Bullet order: quantitative_impact first, then description,
                 # then qualitative_impact, then component bullets.
                 for q in p.quantitative_impact:
-                    story.append(Paragraph(q, body))
+                    story.append(Paragraph(f"&bull; {q}", body))
                 if p.description:
-                    story.append(Paragraph(p.description, body))
+                    story.append(Paragraph(f"&bull; {p.description}", body))
                 for ql in p.qualitative_impact:
-                    story.append(Paragraph(ql, body))
+                    story.append(Paragraph(f"&bull; {ql}", body))
                 for b in p.bullets:
                     story.append(Paragraph(f"&bull; {b}", body))
                 story.append(Spacer(1, 2))

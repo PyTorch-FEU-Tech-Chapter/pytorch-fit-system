@@ -29,7 +29,8 @@ from .static_synth import StaticSynthesizer
 _MAX_DOC_CHARS = 6000
 _SYSTEM = (
     "ROLE: top-tier resume writer. OUTPUT: complete ATS-friendly Resume JSON; target-role tailored.\n"
-    "RESULTS: impact-first; explain what each number measures + context + why it matters.\n"
+    "RESULTS: impact-first; keep strong existing sentences unchanged; add missing context as a new "
+    "short bullet/sentence; never stretch one sentence to carry everything.\n"
     "NUMBERS: Authoritative metrics only; exact values; NEVER invent/estimate/alter/extrapolate.\n"
     "NO METRIC: strong qualitative result; problem solved + effect + demonstrated capability; no fake number.\n"
     "TRUTH: include only evidenced experience/projects.\n"

@@ -24,10 +24,12 @@ from its takeaway:
 {
   "results": {
     "quantitative": [
-      "Reduced processing time from 10 min to 2 min: 8 min saved/run; 80% faster; measured workflow impact."
+      "Reduced processing time from 10 min to 2 min: 8 min saved/run; 80% faster.",
+      "Context: the measured workflow completes in one-fifth of the original time."
     ],
     "qualitative": [
-      "Replaced a manual workflow with repeatable automation: fewer handoffs; easier operation for non-developers."
+      "Replaced a manual workflow with repeatable automation.",
+      "Context: fewer handoffs; easier operation for non-developers."
     ]
   },
   "conclusion": "Demonstrates end-to-end automation work that converts a slow manual process into a faster, reusable system."
@@ -40,8 +42,9 @@ from its takeaway:
   or capability demonstrated.
 - `conclusion`: concise synthesis of value created + strongest evidence-backed capability; no hype.
 
-Result explanations are intentionally detailed enough for a non-expert. Syntax stays compact—lists,
-`:`, `-`, `,`, `()`—so tokens carry evidence rather than connector words.
+Result explanations add context without rewriting an already-good sentence. Missing meaning becomes
+a separate short sentence or bullet—not a longer original sentence. Syntax stays compact—lists, `:`,
+`-`, `,`, `()`—so tokens carry evidence rather than connector words.
 
 Skills remain atomic in normalized data for reliable matching (`JavaScript`, `ReactJS`, `Vue`). The
 resume renderer/AI may group truthful ecosystems to preserve page space:

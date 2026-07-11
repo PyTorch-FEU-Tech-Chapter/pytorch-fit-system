@@ -14,6 +14,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from ..core.models import Resume
 from .base import Renderer
+from .formatting import compact_skills
 
 _TEX_REPLACE = {
     "\\": r"\textbackslash{}",
@@ -56,6 +57,7 @@ class LatexRenderer(Renderer):
             autoescape=False,
         )
         self._env.filters["tex_escape"] = tex_escape
+        self._env.filters["compact_skills"] = compact_skills
         self._template_name = template_name
 
     def render(self, resume: Resume) -> str:

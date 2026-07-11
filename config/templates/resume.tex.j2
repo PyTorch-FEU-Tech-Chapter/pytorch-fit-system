@@ -28,7 +28,7 @@
 
 (* if resume.skills *)
 \section*{Skills}
-<< resume.skills | join(" $\\cdot$ ") | tex_escape >>
+<< resume.skills | compact_skills | join(" $\\cdot$ ") | tex_escape >>
 (* endif *)
 
 (* if resume.experience *)
@@ -50,20 +50,19 @@
 (* for p in resume.projects *)
 \textbf{<< p.name | tex_escape >>}(* if p.display_url *) --- \href{<< p.url or "#" >>}{(* if p.source_icon == "github" *)GitHub (* elif p.source_icon == "linkedin" *)LinkedIn (* elif p.source_icon == "facebook" *)Facebook (* else *)Source (* endif *)<< p.display_url | replace("github/", "/") | tex_escape >>}(* elif p.url *) --- \href{<< p.url >>}{<< p.url | tex_escape >>}(* endif *)\\
 (* if p.tech *)\textit{<< p.tech | join(", ") | tex_escape >>}\\(* endif *)
-(* for q in p.quantitative_impact *)
-<< q | tex_escape >>\\
-(* endfor *)
-<< p.description | tex_escape >>
-(* for ql in p.qualitative_impact *)
-\\<< ql | tex_escape >>
-(* endfor *)
-(* if p.bullets *)
 \begin{itemize}
+(* for q in p.quantitative_impact *)
+  \item << q | tex_escape >>
+(* endfor *)
+(* if p.description *)  \item << p.description | tex_escape >>
+(* endif *)
+(* for ql in p.qualitative_impact *)
+  \item << ql | tex_escape >>
+(* endfor *)
 (* for b in p.bullets *)
   \item << b | tex_escape >>
 (* endfor *)
 \end{itemize}
-(* endif *)
 \\[2pt]
 (* endfor *)
 (* endif *)

@@ -16,6 +16,7 @@ from markupsafe import Markup
 from ..core.models import Resume
 from .base import Renderer
 from . import brand_icons
+from .formatting import compact_skills
 
 
 def _brand_svg_safe(provider: str, size: int = 12) -> Markup:
@@ -36,6 +37,7 @@ class HtmlRenderer(Renderer):
         # Register brand icon helpers as template globals
         self._env.globals["brand_svg"] = _brand_svg_safe
         self._env.globals["declutter_link"] = brand_icons.declutter
+        self._env.filters["compact_skills"] = compact_skills
         self._template_name = template_name
 
     def render(self, resume: Resume) -> str:

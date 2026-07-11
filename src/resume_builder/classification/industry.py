@@ -51,14 +51,16 @@ class ImpactResults(BaseModel):
         default_factory=list,
         description=(
             "Measured results copied from evidence. Each item explains metric, value, context, "
-            "and practical meaning; never infer a missing number."
+            "or practical meaning. Keep an existing result sentence intact; add context as the "
+            "next short item instead of lengthening it. Never infer a missing number."
         ),
     )
     qualitative: list[str] = Field(
         default_factory=list,
         description=(
             "Non-numeric results: what improved, who benefited, problem solved, technical "
-            "difficulty, ownership, or capability demonstrated."
+            "difficulty, ownership, or capability demonstrated. Add context as a separate short "
+            "item; do not inflate an already complete sentence."
         ),
     )
 
@@ -143,14 +145,15 @@ _SYSTEM = (
     "multi-industry only when evidenced.\n"
     "SKILLS: skill_subtags only; atomic/canonical for matching (JavaScript, ReactJS, Vue); "
     "never place skills in industries.\n"
-    "RESULTS.quantitative: evidence numbers only; metric + value + context + meaning; no invented, "
+    "RESULTS.quantitative: evidence numbers only; metric + value; context/meaning = next short item; no invented, "
     "estimated, altered, extrapolated numbers.\n"
-    "RESULTS.qualitative: specific non-numeric outcome; problem solved + beneficiary/system effect + "
-    "technical/ownership significance when evidenced.\n"
+    "RESULTS.qualitative: specific non-numeric outcome; beneficiary/system/technical context = next "
+    "short item when evidenced.\n"
     "CONCLUSION: 1 evidence-grounded takeaway; value + strongest demonstrated capability; no hype.\n"
     "WEB: keep main project/article; drop header/nav/footer/chrome/CTA/wrappers. SOCIAL: post text only.\n"
     "EXCLUDE: generic communication/leadership/public speaking/promotion unless domain-relevant.\n"
-    "STYLE: verbose result meaning; plain language; compact clauses; lists; : - , (); minimal filler.\n\n"
+    "STYLE: keep good source sentences unchanged; add context as a new short sentence/item; plain "
+    "language; compact clauses; lists; : - , (); minimal filler.\n\n"
 ) + HARVARD_PRINCIPLES
 
 

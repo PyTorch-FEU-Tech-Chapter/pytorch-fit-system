@@ -7,6 +7,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from ..core.models import Resume
 from .base import Renderer
 from . import brand_icons
+from .formatting import compact_skills
 
 
 class MarkdownRenderer(Renderer):
@@ -21,6 +22,7 @@ class MarkdownRenderer(Renderer):
         )
         # Register brand icon helpers as template globals
         self._env.globals["declutter_link"] = brand_icons.declutter
+        self._env.filters["compact_skills"] = compact_skills
         self._template_name = template_name
 
     def render(self, resume: Resume) -> str:
