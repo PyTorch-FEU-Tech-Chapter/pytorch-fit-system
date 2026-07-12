@@ -7,7 +7,8 @@
     "build": "next build",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test:grades": "tsx --test ../grades/*.test.ts"
+    "test:grades": "tsx --test ../grades/*.test.ts",
+    "grades:login": "tsx ../grades/session-login.ts"
   },
   "dependencies": {
     "@types/node": "^22.10.2",
