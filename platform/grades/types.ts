@@ -29,5 +29,5 @@ export type ResumeAcademicHighlight = {
   label: string;
   value: string;
   source: "feu-tech-solar";
-  verifiedAt: string;
+  verified_at: string;
 };

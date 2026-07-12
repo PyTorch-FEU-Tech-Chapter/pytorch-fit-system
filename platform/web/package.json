@@ -8,7 +8,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:grades": "tsx --test ../grades/*.test.ts",
-    "grades:login": "tsx ../grades/session-login.ts"
+    "grades:login": "set NODE_PATH=%CD%\\node_modules&& tsx ../grades/session-login.ts",
+    "grades:scrape": "set NODE_PATH=%CD%\\node_modules&& tsx ../grades/run.ts",
+    "grades:inject": "set NODE_PATH=%CD%\\node_modules&& tsx ../grades/inject-run.ts"
   },
   "dependencies": {
     "@types/node": "^22.10.2",
