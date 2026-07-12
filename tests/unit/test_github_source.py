@@ -19,7 +19,7 @@ def _mock_run(stdout_payload: dict | list) -> subprocess.CompletedProcess:
 @pytest.fixture
 def gh_source(monkeypatch):
     monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/gh")
-    return GitHubSource()
+    return GitHubSource(backend="cli")
 
 
 def test_collect_normalizes_repos(gh_source):

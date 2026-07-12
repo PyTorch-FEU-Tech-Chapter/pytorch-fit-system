@@ -83,9 +83,9 @@ def test_drawing_size_matches():
 
 
 def test_declutter_github_full_url():
-    provider, handle = declutter("https://github.com/JohnAndrewBalbarosa")
+    provider, handle = declutter("https://github.com/sample-user")
     assert provider == "github"
-    assert handle == "JohnAndrewBalbarosa"
+    assert handle == "sample-user"
 
 
 def test_declutter_github_bare_handle():
@@ -101,15 +101,15 @@ def test_declutter_github_url_with_www():
 
 
 def test_declutter_linkedin():
-    provider, handle = declutter("https://www.linkedin.com/in/jbalbarosa")
+    provider, handle = declutter("https://www.linkedin.com/in/sample-user")
     assert provider == "linkedin"
-    assert handle == "jbalbarosa"
+    assert handle == "sample-user"
 
 
 def test_declutter_linkedin_bare_handle():
-    provider, handle = declutter("jbalbarosa", "linkedin")
+    provider, handle = declutter("sample-user", "linkedin")
     assert provider == "linkedin"
-    assert handle == "jbalbarosa"
+    assert handle == "sample-user"
 
 
 def test_declutter_facebook_profile():

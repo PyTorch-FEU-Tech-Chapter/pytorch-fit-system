@@ -51,6 +51,40 @@ class BrowserAction(BaseModel):
     value: str = ""
 
 
+class WebsitePageSample(BaseModel):
+    url: str
+    subdomain: str
+    layout_fingerprint: str
+    page_role: str = "unknown"
+    dom_inventory: str = ""
+
+
+class DynamicInteractionStep(BaseModel):
+    step: int
+    action: str
+    selector: str
+    purpose: str
+    wait_for_selector: str | None = None
+    expected_change: str = ""
+    safe_read_only: bool = False
+    requires_human: bool = False
+
+    @model_validator(mode="after")
+    def protect_final_submit(self) -> "DynamicInteractionStep":
+        if self.action == "final_submit" and not self.requires_human:
+            raise ValueError("final_submit interaction requires requires_human=True")
+        return self
+
+
+class DynamicApplicationPlan(BaseModel):
+    root_domain: str
+    samples: list[WebsitePageSample] = Field(default_factory=list)
+    page_roles: list[str] = Field(default_factory=list)
+    interaction_steps: list[DynamicInteractionStep] = Field(default_factory=list)
+    confidence: float = 0.0
+    warnings: list[str] = Field(default_factory=list)
+
+
 class ValidationStep(BaseModel):
     check: str
 

@@ -344,7 +344,7 @@ class Pipeline:
         self.role_picker: RolePicker = self._make_role_picker()
         self.extractor: Extractor = self._make_extractor()
         self.synthesizer: Synthesizer = self._make_synthesizer()
-        self.github = GitHubSource()
+        self.github = GitHubSource(backend=self.settings.github_source)
         self.docs = DocumentSource()
         self.social = social_aggregator or build_default_aggregator()
 

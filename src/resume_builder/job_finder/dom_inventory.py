@@ -75,6 +75,11 @@ def build_listing_dom_inventory(html: str, base_url: str, max_nodes: int = 500) 
             "aria-label",
             "data-testid",
             "data-automation",
+            "tabindex",
+            "onclick",
+            "aria-expanded",
+            "aria-controls",
+            "data-url",
         ):
             if el.get(name):
                 attrs.append(f"{name}={el.get(name)!r}")
@@ -88,6 +93,17 @@ def build_listing_dom_inventory(html: str, base_url: str, max_nodes: int = 500) 
                 attrs.append(f"options={options[:8]!r}")
 
         text = _clean_text(el.text_content())
+        role = (el.get("role") or "").lower()
+        class_tokens = " ".join((el.get("class") or "").lower().split())
+        click_signal = (
+            tag in {"button", "summary"}
+            or role in {"button", "tab", "option", "menuitem", "treeitem"}
+            or el.get("onclick") is not None
+            or el.get("aria-expanded") is not None
+            or el.get("aria-controls") is not None
+            or (el.get("tabindex") or "") in {"0", "1"}
+            or any(token in class_tokens for token in ("click", "card", "tab", "accordion", "expand"))
+        )
         anchors = [el] if tag == "a" else list(el.iterdescendants("a"))
         link_samples: list[str] = []
         for anchor in anchors[:8]:
@@ -97,6 +113,8 @@ def build_listing_dom_inventory(html: str, base_url: str, max_nodes: int = 500) 
                 link_samples.append(f"{name!r}->{urljoin(base_url, href)}")
 
         line = f"selector={_selector(el)!r} tag={tag!r}"
+        if click_signal and tag != "a":
+            line += " interaction='click_candidate'"
         if attrs:
             line += " " + " ".join(attrs)
         if text:

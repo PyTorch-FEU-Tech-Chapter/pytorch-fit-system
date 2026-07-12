@@ -5,9 +5,28 @@ schema for an `ApplicationPlan`, the canonical field taxonomy ATS forms map to,
 the state machine that governs the application workflow, and helper utilities that
 translate NCD (Normalized Candidate Data) values into detected form fields.
 
-The browser-automation layer (Playwright actions), the ATS vendor detection engine,
-and the Action-RAG retrieval components are deferred and not built yet. This package
-is the contract that those future components will be built against.
+The package now includes the structure-learning boundary before browser execution:
+bounded subdomain/layout sampling, rendered DOM inventories with explicit non-link
+`click_candidate` tags, and an AI-generated ordered interaction plan. The deterministic
+Playwright action executor, ATS vendor fingerprints, and Action-RAG recovery remain deferred.
+
+## Dynamic website planning
+
+```mermaid
+flowchart LR
+    P[Rendered pages] --> S[Bounded subdomain + layout sampling]
+    S --> I[DOM inventory: fields + click candidates]
+    I --> AI[AI plans ordered interactions once]
+    AI --> J[Strict JSON interaction steps]
+    J --> C[Cache by subdomain + layout fingerprint]
+    C --> E[Future deterministic Playwright executor]
+    E --> H[Human review before final submit]
+```
+
+Clickable `div`, `role=button`, tabs, accordions, expanders, modal openers, and same-page
+panels are first-class interaction candidates—not discarded because they lack an `<a href>`.
+Every planned interaction records selector, purpose, expected state change, and an optional
+`wait_for_selector`. Final submit is schema-guarded with `requires_human=True`.
 
 ## Workflow state machine
 
@@ -49,6 +68,7 @@ stateDiagram-v2
 | `field_taxonomy.py` | `CANONICAL_FIELDS` dictionary + `normalize_label` + `JUDGMENT_FIELDS` |
 | `state_machine.py` | `STATES`, `TRANSITIONS`, `WorkflowStateMachine` with HITL-guarded transition |
 | `field_mapping.py` | NCD→field helpers: `build_detected_field`, `total_years_experience`, `degree_to_enum` |
+| `website_planner.py` | subdomain/layout sampler + interactive DOM inventory + AI step planner |
 
 ## Contracts / key signatures
 
@@ -115,7 +135,7 @@ for them, escalating the decision to the human regardless of what NCD data is av
 
 ## What is deferred
 
-- **Browser automation** — Playwright `BrowserAction` execution loop
+- **Browser execution** — deterministic Playwright execution of the planned interactions
 - **ATS detection** — vendor fingerprinting from platform evidence
 - **Action-RAG** — retrieval-augmented recovery from application errors
 

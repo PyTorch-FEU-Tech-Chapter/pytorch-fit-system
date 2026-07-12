@@ -33,6 +33,8 @@ Reasoning order:
    - workflow.result_item_click_selector = the safe read-only selector to click
    - workflow.detail_panel_selector = the panel/container where details appear
    - workflow.detail_loaded_selector = a stable selector proving the detail panel loaded
+   - workflow.interaction_steps = ordered click/wait steps, including clickable div/button/tab/
+     accordion targets that reveal content without navigation
    Do not treat Apply/Login/Upload/Submit controls as safe detail-opening clicks.
 6. If it is a listing/results page, identify job cards and detail-opening links/click targets. The
    job title is useful but not the main objective; the objective is to reach and extract the job
@@ -54,6 +56,8 @@ Allowed roles:
 - apply_link: link/button leading from a job detail to an application page.
 - open_detail: safe read-only click target that opens a job detail panel or SPA route.
 - detail_panel: same-page panel/container that displays the selected job definition.
+- interact: safe read-only non-link control (div/button/tab/accordion/expander) required to reveal
+  job details. Pair it with an ordered workflow.interaction_steps entry and observable wait target.
 
 Extraction mapping values are selectors relative to each job_card. Use selector@attr for
 attributes such as a@href. For detail pages, selectors may target the description/requirements

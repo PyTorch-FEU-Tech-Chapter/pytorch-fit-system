@@ -100,6 +100,13 @@ def test_listing_dom_inventory_is_separate_and_exposes_job_controls():
     assert "options=['Any', 'Remote', 'On-site']" in inventory
 
 
+def test_listing_inventory_tags_clickable_div_as_interaction_candidate():
+    html = '<div class="job-card" role="button" tabindex="0" aria-controls="panel">Open job</div>'
+    inventory = build_listing_dom_inventory(html, "https://careers.example.com/jobs")
+    assert "interaction='click_candidate'" in inventory
+    assert "aria-controls='panel'" in inventory
+
+
 def test_listing_rules_extract_jobs_and_next_page_deterministically():
     layout = _good_layout()
     listings, next_urls, filters, searches = apply_listing_rules(

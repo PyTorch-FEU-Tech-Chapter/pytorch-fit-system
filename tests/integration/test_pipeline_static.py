@@ -21,6 +21,7 @@ def _gh_response(payload: object) -> subprocess.CompletedProcess:
 
 def test_full_static_pipeline(tmp_path: Path, project_root: Path, monkeypatch):
     monkeypatch.chdir(project_root)
+    monkeypatch.setenv("RESUME_GITHUB_SOURCE", "cli")
     monkeypatch.setattr("shutil.which", lambda binary: f"/usr/bin/{binary}" if binary == "gh" else None)
     get_settings.cache_clear()  # type: ignore[attr-defined]
 

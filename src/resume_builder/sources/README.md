@@ -2,6 +2,11 @@
 
 Pulls raw evidence *into* the system and normalizes it into `models.py` shapes. **Department 02.**
 
+GitHub collection is user-agnostic and website-first. The username/organization is required at
+runtime; no personal account is compiled into the collector. Normal public GitHub pages are read
+with browser-like headers and access-gate checks. `RESUME_GITHUB_SOURCE=cli` enables the optional
+authenticated `gh` developer backend, but it is not the product default.
+
 > 📖 [Dept 02 — Sources / Data Collection](../../../docs/departments/02-sources/README.md)
 
 ## Contract
@@ -14,7 +19,7 @@ class SourceCollector(ABC):
 
 | Collector | Input | Output |
 |---|---|---|
-| `GitHubSource` | github user (via `gh` CLI) | `list[Repo]` |
+| `GitHubSource` | runtime GitHub user/org (website default; optional `gh` backend) | `list[Repo]` |
 | `DocumentSource` | file path | `list[RawDocument]` |
 | `SocialAggregator` (in [`social/`](social/README.md)) | `ScrapeConfig` | `CollectResult` |
 
@@ -23,7 +28,7 @@ class SourceCollector(ABC):
 ```mermaid
 flowchart TD
     subgraph Sources
-      GH[GitHubSource] -->|gh repo list| R[Repo array]
+      GH[GitHubSource] -->|public GitHub pages + access gate| R[Repo array]
       DOC[DocumentSource] -->|parse PDF/DOCX/TeX/MD| D[RawDocument array]
       SOC[social/ SocialAggregator] -->|parallel scrape + dedupe + cache| C[CollectResult]
     end

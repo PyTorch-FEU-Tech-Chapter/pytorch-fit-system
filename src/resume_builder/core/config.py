@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     gh_user: str | None = None
+    github_source: str = "website"
     config_dir: Path = DEFAULT_CONFIG_DIR
     # Per-project measurable-impact metrics the synthesizer grounds bullets on.
     metrics_path: Path = PROJECT_ROOT / "metrics.csv"

@@ -19,11 +19,17 @@ separate systems even when they share the same learn-once/replay-many pattern.
    Open the page with a normal browser context, classify access state first, and stop for
    verification, CAPTCHA, Cloudflare, 403/429, login walls, or sign-in blockers. Use bounded retry,
    backoff, and per-domain cooldown only; do not add bypass or identity-rotation behavior.
+   GitHub follows this same website-first rule. Username/organization comes from runtime user data;
+   do not hardcode an account. `gh` CLI is developer convenience only, never the product default.
 
 2. **Rendered sample inventory.**
    Capture a small rendered DOM sample for the target page type. For job finder pages, inventory
    search controls, filters, job cards, detail panels, pagination, and safe read-only detail
    interactions. For application forms, use a separate form-specific inventory.
+   Sample bounded unique layouts across related subdomains (for example `jobs.example.com` and
+   `apply.example.com`), not only URLs on the seed hostname. Treat clickable non-link elements as
+   first-class candidates: `div[role=button]`, tabs, accordions, expanders, cards, and modal openers.
+   Inventory them with an explicit `interaction=click_candidate` tag.
 
 3. **AI rule planning.**
    Ask AI to convert the inventory into strict, parseable rules. The AI should identify reusable
@@ -59,6 +65,12 @@ separate systems even when they share the same learn-once/replay-many pattern.
    the skill-grid column count from actual group content and available page width; never hardcode
    `repeat(3, 1fr)` or manually guess space. After injection, run the bounds analyzer/actual PDF page
    count; layout measurement—not an agent estimate—is the final authority for one-page fit.
+
+   For dynamic job/application sites, the JSON must also contain an ordered interaction plan. Each
+   step requires: `action`, `selector`, `purpose`, `expected_change`, and `wait_for_selector` when an
+   observable element can prove completion. Cache/replay only safe read-only interactions for the
+   same subdomain + layout fingerprint. Login, sensitive judgment, uploads requiring confirmation,
+   and final submit remain human-gated; never infer that a generic clickable element is safe.
 
 4. **Rule cache.**
    Cache accepted rules by domain and layout fingerprint. Reuse cached rules on later pages with the

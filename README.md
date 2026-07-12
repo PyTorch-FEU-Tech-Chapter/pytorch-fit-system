@@ -98,6 +98,10 @@ The prior résumé pipeline still lives here as a **proven blueprint** for the A
 - Architecture docs: [`docs/departments/`](docs/departments/README.md)
 - How it maps to the new platform: [`docs/SPECIFICATION.md` §18](docs/SPECIFICATION.md)
 
+GitHub evidence collection is runtime-user-driven and website-first: public profile/repository pages
+are sampled through the same access-gated approach used by other profile sources. No personal
+username is hardcoded. `gh` CLI collection remains an optional local-development backend only.
+
 ### Scraper token-cost benchmark
 
 The saved benchmark in [`benchmarks/scraper_token_cost/`](benchmarks/scraper_token_cost/README.md)

@@ -277,17 +277,17 @@ def test_html_project_link_with_display_url_set(templates_dir):
         projects=[
             ResumeProject(
                 name="rdtii-autoextract",
-                url="https://github.com/JohnAndrewBalbarosa/rdtii-autoextract",
+                url="https://github.com/sample-user/sample-project",
                 description="Extraction tool.",
                 source_icon="github",
-                display_url="github/JohnAndrewBalbarosa/rdtii-autoextract",
+                display_url="github/sample-user/sample-project",
             )
         ],
     )
     html = HtmlRenderer(templates_dir).render(resume)
 
     # github/ prefix is stripped from display — only owner/repo visible
-    assert "JohnAndrewBalbarosa/rdtii-autoextract" in html
+    assert "sample-user/sample-project" in html
 
     # Full https URL must NOT appear as visible span text
     visible_spans = re.findall(r"<span>([^<]+)</span>", html)
@@ -404,11 +404,11 @@ def test_pdf_full_width_contact_and_project_links(templates_dir):
     resume = Resume(
         role=RoleSpec(id="r", label="Software Engineer", keywords=[]),
         contact=ContactInfo(
-            name="JohnAndrewBalbarosa",
+            name="Sample User",
             email="verylongemail@verylongdomain.com",
-            github="https://github.com/JohnAndrewBalbarosa",
-            linkedin="https://www.linkedin.com/in/johnandrewbalbarosa",
-            facebook="john.andrew.balbarosa.58",
+            github="https://github.com/sample-user",
+            linkedin="https://www.linkedin.com/in/sample-user",
+            facebook="sample.user",
         ),
         summary="A summary.",
         skills=["Python"],
@@ -416,7 +416,7 @@ def test_pdf_full_width_contact_and_project_links(templates_dir):
             ResumeProject(
                 name="very-long-project-name-that-would-wrap-in-narrow-cell",
                 url=(
-                    "https://github.com/JohnAndrewBalbarosa/"
+                    "https://github.com/sample-user/"
                     "very-long-project-name-that-would-wrap-in-narrow-cell"
                 ),
                 description="A project.",

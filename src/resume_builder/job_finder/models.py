@@ -24,6 +24,19 @@ class JobListingAction(str, Enum):
     SIGN_IN_STATUS = "sign_in_status"
     OPEN_DETAIL = "open_detail"
     DETAIL_PANEL = "detail_panel"
+    INTERACT = "interact"
+
+
+class InteractionStep(BaseModel):
+    """One safe, observable SPA interaction before deterministic extraction."""
+
+    step: int
+    action: str = "click"
+    selector: str
+    purpose: str = ""
+    wait_for_selector: str | None = None
+    expected_change: str = ""
+    safe_read_only: bool = True
 
 
 class JobListingExtraction(BaseModel):
@@ -65,6 +78,7 @@ class JobSearchWorkflow(BaseModel):
     requires_click_to_reveal_detail: bool = False
     recommended_search_terms: list[str] = Field(default_factory=list)
     navigation_notes: list[str] = Field(default_factory=list)
+    interaction_steps: list[InteractionStep] = Field(default_factory=list)
 
 
 class JobListingRule(BaseModel):
