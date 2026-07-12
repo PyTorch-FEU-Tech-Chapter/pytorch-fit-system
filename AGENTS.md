@@ -72,6 +72,12 @@ separate systems even when they share the same learn-once/replay-many pattern.
    same subdomain + layout fingerprint. Login, sensitive judgment, uploads requiring confirmation,
    and final submit remain human-gated; never infer that a generic clickable element is safe.
 
+   Before sampling or planning an application form, run the session-first authentication gate:
+   access blockers → visible DOM auth markers → stored Playwright state/cookies + recent non-secret
+   session decision log → AI only if still ambiguous. Never send cookie values, credentials, or
+   storage-state contents to AI. A login/sign-up wall, unknown/expired session, CAPTCHA, or
+   verification requirement stops for human handoff; the system never creates an account itself.
+
 4. **Rule cache.**
    Cache accepted rules by domain and layout fingerprint. Reuse cached rules on later pages with the
    same fingerprint; resample or replan only when the fingerprint changes or confidence is low.

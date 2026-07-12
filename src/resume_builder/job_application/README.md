@@ -10,11 +10,22 @@ bounded subdomain/layout sampling, rendered DOM inventories with explicit non-li
 `click_candidate` tags, and an AI-generated ordered interaction plan. The deterministic
 Playwright action executor, ATS vendor fingerprints, and Action-RAG recovery remain deferred.
 
+Authentication is session-first. The pipeline checks access blockers, visible signed-in/signed-out
+DOM markers, stored Playwright state, and recent non-secret session-decision logs before considering
+an AI call. AI is an ambiguity fallback only; cookie values and credentials never enter its prompt.
+Login/sign-up walls, expired/unknown sessions, CAPTCHA, and verification stop for human handoff.
+
 ## Dynamic website planning
 
 ```mermaid
 flowchart LR
-    P[Rendered pages] --> S[Bounded subdomain + layout sampling]
+    L[Session state + decision logs] --> G{Deterministic auth gate}
+    G -->|ambiguous only| A[AI auth classification]
+    G -->|signed in| P[Rendered pages]
+    A -->|signed in| P
+    G -->|signed out / blocked| H[Human handoff]
+    A -->|not signed in| H
+    P --> S[Bounded subdomain + layout sampling]
     S --> I[DOM inventory: fields + click candidates]
     I --> AI[AI plans ordered interactions once]
     AI --> J[Strict JSON interaction steps]
@@ -69,6 +80,7 @@ stateDiagram-v2
 | `state_machine.py` | `STATES`, `TRANSITIONS`, `WorkflowStateMachine` with HITL-guarded transition |
 | `field_mapping.py` | NCD→field helpers: `build_detected_field`, `total_years_experience`, `degree_to_enum` |
 | `website_planner.py` | subdomain/layout sampler + interactive DOM inventory + AI step planner |
+| `session_check.py` | access + session-log + DOM auth gate; AI ambiguity fallback; planning coordinator |
 
 ## Contracts / key signatures
 
