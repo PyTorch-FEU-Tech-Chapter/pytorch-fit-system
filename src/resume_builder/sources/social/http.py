@@ -1,11 +1,8 @@
-"""Shared HTTP layer used by every vendor handler.
+"""Shared HTTP layer used by vendor handlers.
 
-`curl_cffi` impersonates a real Chrome TLS fingerprint so anti-bot pages (Facebook,
-LinkedIn, Instagram) don't return a soft block on the very first request. The plain
-`requests`-style API is preserved so vendor handlers stay simple.
-
-Falls back to `requests` if `curl_cffi` is not installed — vendors that need
-fingerprint impersonation will simply degrade to empty results when blocked.
+This client uses one honest, stable session. It does not spoof browser/TLS fingerprints,
+rotate identities, or attempt to bypass verification. Sites that require a real browser,
+login, or CAPTCHA must use the visible human-auth flow and saved legitimate session.
 """
 
 from __future__ import annotations
@@ -51,7 +48,6 @@ class HttpClient:
         self._max_retries = max_retries
         self._timeout_s = timeout_s
         self._last_call_ts: float = 0.0
-        self._impersonate = "chrome124" if _HAS_CURL_CFFI else None
         self._session = self._make_session(cookies or {})
 
     def _make_session(self, cookies: dict[str, str]) -> Any:
@@ -85,8 +81,6 @@ class HttpClient:
         last_exc: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
-                if self._impersonate:
-                    kwargs.setdefault("impersonate", self._impersonate)
                 response = self._session.request(method, url, timeout=self._timeout_s, **kwargs)
                 return response
             except Exception as exc:  # noqa: BLE001 - retry layer

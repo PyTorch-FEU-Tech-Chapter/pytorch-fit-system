@@ -46,6 +46,10 @@ class SocialVendor(ABC):
 | [`vendors/`](vendors/README.md) | Concrete per-platform handlers |
 | `auth.py` / `browser_login.py` / `browser_cookies.py` / `state.py` | login, sessions, cookies, persistence |
 | `headless_browser.py` / `http.py` | Playwright session pool + HTTP fallback |
+
+The HTTP fallback uses a stable honest client: no TLS/browser fingerprint impersonation, stealth,
+proxy rotation, or CAPTCHA solver. Verification always moves to the visible human login flow; only
+the resulting legitimate storage state/cookies are reused.
 | `playwright_overlay.py` | Non-destructive DevTools-style highlights |
 | `playwright_step.py` | Step-through debugger (walk first N posts) |
 | `playwright_picker.py` | Hover/click element selector |

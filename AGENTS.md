@@ -21,6 +21,10 @@ separate systems even when they share the same learn-once/replay-many pattern.
    backoff, and per-domain cooldown only; do not add bypass or identity-rotation behavior.
    GitHub follows this same website-first rule. Username/organization comes from runtime user data;
    do not hardcode an account. `gh` CLI is developer convenience only, never the product default.
+   CAPTCHA and anti-bot controls must never be bypassed through OS switching, TLS/browser-fingerprint
+   spoofing, stealth plugins, solver services, proxy rotation, or identity rotation. Allowed flow:
+   open a normal visible browser → human completes verification → save/reuse that legitimate session.
+   Headless or HTTP paths stop when challenged; they do not retry with a disguised client.
 
 2. **Rendered sample inventory.**
    Capture a small rendered DOM sample for the target page type. For job finder pages, inventory

@@ -1,5 +1,4 @@
 import typer
-from pathlib import Path
 
 from ..sources.social.auth import (
     ConsolePrompt,
@@ -147,7 +146,10 @@ def login() -> None:
         cookies = login_fn(creds, ConsolePrompt())
     except LoginError as exc:
         typer.secho(f"\nLogin failed: {exc}", fg=typer.colors.RED)
-        typer.echo("Tip: try option 1 (sign-in window) — handles 2FA, CAPTCHA, anything.")
+        typer.echo(
+            "Tip: try option 1 (sign-in window) — you can complete 2FA/CAPTCHA manually, "
+            "then the legitimate session is saved."
+        )
         raise typer.Exit(code=1) from exc
     store.save(vendor, cookies)
     typer.secho(
