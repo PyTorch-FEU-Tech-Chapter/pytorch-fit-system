@@ -160,13 +160,13 @@ class SessionFirstAuthChecker:
             )
 
         visible = AccessGuard._visible_text_hint(html)
-        signed_in_evidence = [pattern.pattern for pattern in _SIGNED_IN if pattern.search(html)]
+        signed_in_evidence = [pattern.pattern for pattern in _SIGNED_IN if pattern.search(visible)]
         if signed_in_evidence:
             return self._record(
                 site_key, url, JobSessionState.SIGNED_IN, "deterministic_dom", 0.98,
                 signed_in_evidence, True,
             )
-        signed_out_evidence = [pattern.pattern for pattern in _SIGNED_OUT if pattern.search(html)]
+        signed_out_evidence = [pattern.pattern for pattern in _SIGNED_OUT if pattern.search(visible)]
         if signed_out_evidence:
             return self._record(
                 site_key, url, JobSessionState.SIGNED_OUT, "deterministic_dom", 1.0,

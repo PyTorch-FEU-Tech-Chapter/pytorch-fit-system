@@ -5,10 +5,12 @@ schema for an `ApplicationPlan`, the canonical field taxonomy ATS forms map to,
 the state machine that governs the application workflow, and helper utilities that
 translate NCD (Normalized Candidate Data) values into detected form fields.
 
-The package now includes the structure-learning boundary before browser execution:
+The package includes the structure-learning boundary and browser execution:
 bounded subdomain/layout sampling, rendered DOM inventories with explicit non-link
 `click_candidate` tags, and an AI-generated ordered interaction plan. The deterministic
-Playwright action executor, ATS vendor fingerprints, and Action-RAG recovery remain deferred.
+Playwright execution now supports dynamic reveal/fill steps, evidence-grounded AI answers, scoped
+permissions, validation, bounded retry, confirmed submission, and an idempotency ledger. ATS vendor
+fingerprints and Action-RAG recovery remain deferred.
 
 Authentication is session-first. The pipeline checks access blockers, visible signed-in/signed-out
 DOM markers, stored Playwright state, and recent non-secret session-decision logs before considering
@@ -30,8 +32,8 @@ flowchart LR
     I --> AI[AI plans ordered interactions once]
     AI --> J[Strict JSON interaction steps]
     J --> C[Cache by subdomain + layout fingerprint]
-    C --> E[Future deterministic Playwright executor]
-    E --> H[Human review before final submit]
+    C --> E[Deterministic Playwright executor]
+    E --> H[Permission policy + confirmed submit]
 ```
 
 Clickable `div`, `role=button`, tabs, accordions, expanders, modal openers, and same-page
@@ -128,16 +130,20 @@ def total_years_experience(spans: list[tuple[float, float]]) -> float: ...
 def degree_to_enum(degree: str, options: list[str]) -> str | None: ...
 ```
 
-## HITL gate
+## Permission gate
 
-Two enforcement points guarantee a human reviews before submission:
+Plans retain a conservative human-review marker. Runtime users can explicitly enable a
+domain-scoped `autonomous_submit` permission; this never skips access checks, validation,
+idempotency, or observable confirmation.
+
+Two enforcement points preserve the default:
 
 1. **Schema level** — `ApplicationPlan.hitl.stop_before` is validated by a Pydantic
    `model_validator`; any value other than `"Submit"` raises `ValueError` at plan creation.
 2. **State machine level** — `WorkflowStateMachine.transition("Review", "Submit")` raises
    `ValueError` unless `human_approved=True` is explicitly passed.
 
-These two checks are independent so neither can be silently bypassed.
+The executor accepts only a scoped `ApplicationPermissionPolicy`, not a global safety-off switch.
 
 ## Judgment fields
 
@@ -147,7 +153,6 @@ for them, escalating the decision to the human regardless of what NCD data is av
 
 ## What is deferred
 
-- **Browser execution** — deterministic Playwright execution of the planned interactions
 - **ATS detection** — vendor fingerprinting from platform evidence
 - **Action-RAG** — retrieval-augmented recovery from application errors
 

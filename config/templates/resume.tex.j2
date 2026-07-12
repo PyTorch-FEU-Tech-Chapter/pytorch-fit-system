@@ -82,6 +82,15 @@
 \end{itemize}
 (* endif *)
 
+(* if resume.academic_highlights *)
+\section*{Academic Highlights}
+\begin{itemize}
+(* for item in resume.academic_highlights *)
+  \item \textbf{<< item.label | tex_escape >>}: << item.value | tex_escape >>
+(* endfor *)
+\end{itemize}
+(* endif *)
+
 (* if resume.certifications *)
 \section*{Certifications}
 \begin{itemize}

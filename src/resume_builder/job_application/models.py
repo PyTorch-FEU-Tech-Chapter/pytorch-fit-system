@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -49,6 +51,8 @@ class BrowserAction(BaseModel):
     action: str
     target: str
     value: str = ""
+    value_source: str = "literal"
+    action_class: Literal["read_only", "draft_write", "sensitive_write", "irreversible"] = "draft_write"
 
 
 class WebsitePageSample(BaseModel):
@@ -68,11 +72,16 @@ class DynamicInteractionStep(BaseModel):
     expected_change: str = ""
     safe_read_only: bool = False
     requires_human: bool = False
+    value: str = ""
+    value_source: str = "literal"
+    action_class: Literal["read_only", "draft_write", "sensitive_write", "irreversible"] = "read_only"
 
     @model_validator(mode="after")
     def protect_final_submit(self) -> "DynamicInteractionStep":
         if self.action == "final_submit" and not self.requires_human:
             raise ValueError("final_submit interaction requires requires_human=True")
+        if self.action == "final_submit":
+            self.action_class = "irreversible"
         return self
 
 
@@ -83,15 +92,21 @@ class DynamicApplicationPlan(BaseModel):
     interaction_steps: list[DynamicInteractionStep] = Field(default_factory=list)
     confidence: float = 0.0
     warnings: list[str] = Field(default_factory=list)
+    job_id: str = ""
+    plan_version: str = "1"
 
 
 class ValidationStep(BaseModel):
     check: str
+    selector: str = ""
+    expected: str = "visible"
+    required: bool = True
 
 
 class RecoveryRule(BaseModel):
     on: str
     do: str
+    max_attempts: int = 3
 
 
 class Hitl(BaseModel):
@@ -118,3 +133,28 @@ class ApplicationPlan(BaseModel):
                 f"HITL gate violation: stop_before must be 'Submit', got '{self.hitl.stop_before}'"
             )
         return self
+
+
+class ScreeningQuestion(BaseModel):
+    question_id: str
+    label: str
+    selector: str
+    kind: str = "text"
+    options: list[str] = Field(default_factory=list)
+    required: bool = False
+    max_length: int | None = None
+
+
+class EvidenceCitation(BaseModel):
+    evidence_id: str
+    category: str
+    text: str
+
+
+class QuestionAnswer(BaseModel):
+    question_id: str
+    answer: str = ""
+    confidence: float = 0.0
+    evidence_ids: list[str] = Field(default_factory=list)
+    rationale: str = ""
+    abstain: bool = False

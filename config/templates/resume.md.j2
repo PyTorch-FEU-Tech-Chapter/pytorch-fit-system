@@ -77,6 +77,16 @@
 {% endfor %}
 
 {% endif %}
+{% if resume.academic_highlights %}
+---
+
+## Academic Highlights
+
+{% for item in resume.academic_highlights %}
+- **{{ item.label }}:** {{ item.value }}
+{% endfor %}
+
+{% endif %}
 {% if resume.certifications %}
 ---
 

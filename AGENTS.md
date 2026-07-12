@@ -91,13 +91,32 @@ separate systems even when they share the same learn-once/replay-many pattern.
    from visible details/panels first, then cards and pagination. For application forms, fill only
    draft-safe fields and keep submit blocked.
 
-6. **Human review gates.**
-   Hand off whenever access is blocked, confidence is low, the page asks for sensitive judgment, or
-   a final submit would be required. Never auto-submit an application without human approval.
+6. **Permission gates.**
+   Hand off whenever access is blocked or confidence is low. Draft writes, AI-grounded screening
+   answers, sensitive writes, and final submit are controlled by an explicit, domain-scoped
+   `ApplicationPermissionPolicy`. Defaults remain conservative. Autonomous submit is allowed only
+   when the runtime user explicitly enables `autonomous_submit` for the target domain; it still
+   requires validation and observable confirmation. CAPTCHA, login/identity verification, rate
+   limits, domain/layout mismatch, and unknown submission outcomes are never bypassable.
 
 7. **Debug visualizers only.**
    Playwright visual tagging is allowed only as a temporary development aid under `/out/`. The final
    scraper/job finder path should stay headless and should not depend on visual debug tooling.
+
+8. **Logic-based folder structure.**
+   Organize automation by decision boundary, not by one large agent file: permissions/bypass policy,
+   evidence tools, AI question answering, deterministic execution, validation/recovery, idempotency
+   ledger, privacy/audit, and vendor integrations live in separate modules. A bypass is a scoped
+   capability object, never scattered booleans or a global safety-off flag. Known first-party
+   integrations such as FEU Tech SOLAR use fixed deterministic selectors and headless execution;
+   AI DOM planning is reserved for genuinely website-agnostic flows.
+
+9. **Career evidence and grades.**
+   Screening-question AI may retrieve only bounded normalized `Resume`/NCD evidence (skills,
+   projects, experience, achievements, academic highlights) through the career-evidence tool. Every
+   answer cites evidence IDs and abstains when unsupported. FEU grade data is optional/private,
+   scraped from the user's own authenticated SOLAR session, normalized before storage, and injected
+   into resumes only as reviewable academic highlights with source + verification timestamp.
 
 ## Every Prompt Save Rule
 

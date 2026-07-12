@@ -12,7 +12,14 @@ _DEGREE_TIERS: list[tuple[list[str], list[str]]] = [
 
 
 def total_years_experience(spans: list[tuple[float, float]]) -> float:
-    total = sum(max(0.0, end - start) for start, end in spans)
+    valid = sorted((start, end) for start, end in spans if end > start)
+    merged: list[tuple[float, float]] = []
+    for start, end in valid:
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    total = sum(end - start for start, end in merged)
     return round(total, 1)
 
 

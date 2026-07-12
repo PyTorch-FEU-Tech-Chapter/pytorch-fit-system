@@ -20,9 +20,14 @@ SAMPLES: compare page roles, subdomains, and layout fingerprints before planning
 INTERACTIONS: emit ordered steps for links AND non-link controls: button, clickable div, role=button,
 tab, accordion, expander, modal opener, same-page panel. Every click needs selector + purpose +
 expected_change + wait_for_selector when observable. Never invent selectors absent from inventory.
-SAFETY: read-only discovery clicks may be replayed. Login, sensitive judgment, upload confirmation,
-and final submit require human review. Never auto-submit; final_submit must require_human=true.
+SAFETY: read-only discovery clicks may be replayed. Login and access verification always hand off.
+Sensitive judgment, upload confirmation, and final submit require an explicit scoped permission;
+final_submit remains marked requires_human=true in the portable plan and may only be bypassed by
+the runtime ApplicationPermissionPolicy for the current domain.
 FORMS: inventory fields, required documents, validation, SPA state changes, recovery, and page transitions.
+ACTION CLASSES: classify every step as read_only, draft_write, sensitive_write, or irreversible.
+Use click/expand/open to reveal hidden content before inventory-dependent fill steps. Draft writes must
+include value_source; never place credentials or cookies in a plan. Permission policy decides execution.
 CACHE: plan is reusable only for the same subdomain + layout fingerprint.
 """
 
@@ -43,9 +48,9 @@ def _selector(el) -> str:
     if classes:
         return f"{tag}.{classes[0]}"
     if el.get("name"):
-        return f"{tag}[name={el.get('name')}]"
+        return f"{tag}[name='{el.get('name')}']"
     if el.get("role"):
-        return f"{tag}[role={el.get('role')}]"
+        return f"{tag}[role='{el.get('role')}']"
     return tag
 
 
@@ -145,4 +150,6 @@ class ApplicationWebsitePlanner:
         )
         plan = self.llm.structured(prompt, schema=DynamicApplicationPlan, system=_SYSTEM, max_tokens=4096)
         plan.samples = samples
+        if not plan.root_domain and samples:
+            plan.root_domain = _site_root(samples[0].subdomain)
         return plan

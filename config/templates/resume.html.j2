@@ -255,6 +255,15 @@
   </section>
   {% endif %}
 
+  {% if resume.academic_highlights %}
+  <section>
+    <h2>Academic Highlights</h2>
+    {% for item in resume.academic_highlights %}
+    <div class="edu"><div class="row"><span class="school">{{ item.label }}</span><span class="degree">{{ item.value }}</span></div></div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
   {% if resume.certifications %}
   <section>
     <h2>Certifications</h2>

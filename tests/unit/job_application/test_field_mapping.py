@@ -1,5 +1,4 @@
 from __future__ import annotations
-import pytest
 from resume_builder.job_application.field_mapping import (
     total_years_experience, degree_to_enum, build_detected_field,
 )
@@ -13,6 +12,9 @@ def test_total_years_negative_clamped():
 
 def test_total_years_empty():
     assert total_years_experience([]) == 0.0
+
+def test_total_years_merges_overlapping_jobs():
+    assert total_years_experience([(0, 3), (2, 4)]) == 4.0
 
 def test_degree_to_enum_bachelor():
     result = degree_to_enum("BS Computer Science", ["High School", "Bachelor's", "Master's"])

@@ -13,6 +13,14 @@
 >
 > **Org:** PyTorch FEU Tech Student Chapter · **Document version:** 0.1 · drafted 2026-06-29
 
+> **v0.2 implementation decision (2026-07-12):** The conservative default remains review before
+> submit, but a user may explicitly enable domain-scoped autonomous draft, sensitive-write, and
+> submit permissions. AI screening answers are restricted to bounded NCD/Resume evidence returned
+> by `search_career_evidence`, require evidence IDs, and abstain when unsupported. Autonomous submit
+> still requires domain/layout validation, idempotency, and observable confirmation. CAPTCHA,
+> login/identity verification, rate limits, blockers, and unknown outcomes remain non-bypassable.
+> This v0.2 decision supersedes the absolute-HITL wording later in this draft.
+
 ---
 
 ## 0. TL;DR — the confirmed decisions (read these first)

@@ -13,6 +13,8 @@ from resume_builder.job_application.models import (
     PlatformInfo,
     WorkflowInfo,
 )
+from resume_builder.job_application.ledger import ApplicationLedger, LedgerState
+from resume_builder.job_application.permissions import ApplicationPermissionPolicy
 
 
 FORM_HTML = """
@@ -114,3 +116,60 @@ def test_browser_executor_submits_once_after_explicit_human_approval(tmp_path: P
         assert page.locator("#confirmation").is_visible()
         assert sum(event.action == "final_submit" for event in result.events) == 1
         browser.close()
+
+
+def test_browser_executor_autonomous_submit_is_explicit_and_idempotent(tmp_path: Path) -> None:
+    resume = tmp_path / "resume.pdf"
+    resume.write_bytes(b"%PDF-1.4\n")
+    application_plan, dynamic_plan = _plans(resume)
+    ledger = ApplicationLedger(tmp_path / "ledger.json")
+    policy = ApplicationPermissionPolicy(autonomous_submit=True)
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.set_content(FORM_HTML)
+        first = SafeApplicationExecutor().execute(
+            page, application_plan, dynamic_plan,
+            permission_policy=policy, application_id="company:job-1", ledger=ledger,
+        )
+        second = SafeApplicationExecutor().execute(
+            page, application_plan, dynamic_plan,
+            permission_policy=policy, application_id="company:job-1", ledger=ledger,
+        )
+        assert first.status == ExecutionStatus.SUBMITTED
+        assert second.status == ExecutionStatus.ALREADY_SUBMITTED
+        assert ledger.get("company:job-1").state == LedgerState.SUBMITTED
+        browser.close()
+
+
+def test_submit_without_confirmation_proof_is_unknown(tmp_path: Path) -> None:
+    resume = tmp_path / "resume.pdf"
+    resume.write_bytes(b"%PDF-1.4\n")
+    application_plan, dynamic_plan = _plans(resume)
+    dynamic_plan.interaction_steps[0].wait_for_selector = None
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.set_content(FORM_HTML)
+        result = SafeApplicationExecutor().execute(
+            page, application_plan, dynamic_plan, human_approved=True
+        )
+        assert result.status == ExecutionStatus.SUBMISSION_UNKNOWN
+        assert result.events[-1].status == "unknown"
+        browser.close()
+
+
+def test_executor_rejects_plan_for_another_domain() -> None:
+    application_plan = ApplicationPlan(
+        platform=PlatformInfo(vendor="Mock"), workflow=WorkflowInfo()
+    )
+    dynamic_plan = DynamicApplicationPlan(root_domain="trusted.example.com")
+
+    class Page:
+        url = "https://evil.example.net/application"
+
+    result = SafeApplicationExecutor().execute(Page(), application_plan, dynamic_plan)
+    assert result.status == ExecutionStatus.HUMAN_HANDOFF
+    assert result.events[0].action == "validate_plan"

@@ -162,6 +162,13 @@ class ResumeSkillGroup(BaseModel):
     items: list[str] = Field(default_factory=list)
 
 
+class ResumeAcademicHighlight(BaseModel):
+    label: str
+    value: str
+    source: str = "feu-tech-solar"
+    verified_at: str = ""
+
+
 class Resume(BaseModel):
     """Canonical resume model. All renderers consume exactly this."""
 
@@ -177,4 +184,5 @@ class Resume(BaseModel):
     education: list[ResumeEducation] = Field(default_factory=list)
     certifications: list[ResumeCertification] = Field(default_factory=list)
     achievements: list[ResumeAchievement] = Field(default_factory=list)
+    academic_highlights: list[ResumeAcademicHighlight] = Field(default_factory=list)
     generated_on: date = Field(default_factory=date.today)

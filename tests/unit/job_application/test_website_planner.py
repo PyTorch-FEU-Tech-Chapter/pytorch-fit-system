@@ -57,7 +57,7 @@ def test_inventory_tags_clickable_non_link_controls():
     inventory = build_application_dom_inventory(_FORM, "https://apply.example.com/form")
     assert "selector='button.accordion'" in inventory
     assert "interaction='click_candidate'" in inventory
-    assert "selector='input[name=company]'" in inventory
+    assert "selector=\"input[name='company']\"" in inventory
     assert "interaction='field_candidate'" in inventory
 
 

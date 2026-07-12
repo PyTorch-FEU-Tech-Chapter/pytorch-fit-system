@@ -1,5 +1,4 @@
 from __future__ import annotations
-import pytest
 from resume_builder.job_application.field_taxonomy import normalize_label, is_judgment_field
 
 def test_mobile_no_maps_to_phone():

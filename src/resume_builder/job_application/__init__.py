@@ -15,6 +15,9 @@ from resume_builder.job_application.models import (
     WebsitePageSample,
     DynamicInteractionStep,
     DynamicApplicationPlan,
+    EvidenceCitation,
+    QuestionAnswer,
+    ScreeningQuestion,
 )
 from resume_builder.job_application.website_planner import (
     ApplicationWebsitePlanner,
@@ -52,6 +55,14 @@ from resume_builder.job_application.executor import (
     ExecutionStatus,
     SafeApplicationExecutor,
 )
+from resume_builder.job_application.evidence_context import CareerEvidenceTool
+from resume_builder.job_application.question_answering import AIQuestionAnswerer
+from resume_builder.job_application.permissions import ApplicationPermissionPolicy
+from resume_builder.job_application.ledger import ApplicationLedger, LedgerState
+from resume_builder.job_application.autonomous_questions import (
+    AutonomousQuestionPipeline,
+    QuestionPlanningResult,
+)
 
 __all__ = [
     "ApplicationPlan",
@@ -68,6 +79,9 @@ __all__ = [
     "WebsitePageSample",
     "DynamicInteractionStep",
     "DynamicApplicationPlan",
+    "EvidenceCitation",
+    "QuestionAnswer",
+    "ScreeningQuestion",
     "ApplicationWebsitePlanner",
     "build_application_dom_inventory",
     "sample_subdomain_layouts",
@@ -92,4 +106,11 @@ __all__ = [
     "ExecutionEvent",
     "ExecutionStatus",
     "SafeApplicationExecutor",
+    "CareerEvidenceTool",
+    "AIQuestionAnswerer",
+    "ApplicationPermissionPolicy",
+    "ApplicationLedger",
+    "LedgerState",
+    "AutonomousQuestionPipeline",
+    "QuestionPlanningResult",
 ]
