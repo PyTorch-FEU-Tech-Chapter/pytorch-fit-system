@@ -46,6 +46,12 @@ from resume_builder.job_application.field_mapping import (
     degree_to_enum,
     total_years_experience,
 )
+from resume_builder.job_application.executor import (
+    ApplicationExecutionResult,
+    ExecutionEvent,
+    ExecutionStatus,
+    SafeApplicationExecutor,
+)
 
 __all__ = [
     "ApplicationPlan",
@@ -82,4 +88,8 @@ __all__ = [
     "build_detected_field",
     "degree_to_enum",
     "total_years_experience",
+    "ApplicationExecutionResult",
+    "ExecutionEvent",
+    "ExecutionStatus",
+    "SafeApplicationExecutor",
 ]

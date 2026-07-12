@@ -102,6 +102,22 @@ GitHub evidence collection is runtime-user-driven and website-first: public prof
 are sampled through the same access-gated approach used by other profile sources. No personal
 username is hardcoded. `gh` CLI collection remains an optional local-development backend only.
 
+### Job application sender: tested execution boundary
+
+The legacy Python engine now has a deterministic browser executor for accepted application JSON:
+
+- Auto-fill: text, selections, checkboxes, safe clicks, resume upload.
+- Dynamic pages: replay approved read-only interactions from the cached layout plan.
+- Draft validation: missing information stops for human input; unsupported or unsafe actions fail
+  closed.
+- Final send: always blocked until the user gives explicit approval for that application.
+- Confirmation: after approval, click once; wait for the planned confirmation selector; record the
+  visible reference/message without storing cookies or credentials.
+
+An actual headless-Chromium integration test uses a local mock ATS. It verifies both outcomes:
+resume attached + draft ready without approval; submitted + confirmation captured with approval.
+This is assisted sending for one genuine application—not unattended bulk application blasting.
+
 ### Scraper token-cost benchmark
 
 The saved benchmark in [`benchmarks/scraper_token_cost/`](benchmarks/scraper_token_cost/README.md)
