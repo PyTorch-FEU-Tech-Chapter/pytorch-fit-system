@@ -36,6 +36,19 @@ def test_access_guard_stops_on_indeed_verification_page():
     assert "human handoff" in decision.reason
 
 
+def test_access_guard_allows_passive_recaptcha_footer_disclosure():
+    html = """
+    <main><h1>Add your location</h1><label>Postal code<input name="postal"></label></main>
+    <footer>This site is protected by reCAPTCHA, and the Google Privacy Policy and
+    Terms of Service apply.</footer>
+    """
+
+    decision = AccessGuard().classify(url="https://smartapply.indeed.com/form", html=html)
+
+    assert decision.state == AccessState.OK
+    assert decision.should_continue is True
+
+
 def test_access_guard_stops_on_jobstreet_sign_in_modal():
     guard = AccessGuard()
 

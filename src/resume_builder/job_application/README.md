@@ -41,6 +41,22 @@ panels are first-class interaction candidates—not discarded because they lack 
 Every planned interaction records selector, purpose, expected state change, and an optional
 `wait_for_selector`. Final submit is schema-guarded with `requires_human=True`.
 
+The planner also emits executable `dom_rules` for whole questionnaire/component containers and
+each nested field. This supports company-specific forms where both the number of questions and the
+div/component nesting vary. Saved-resume choices, upload/replace controls, and work-mode choices are
+distinct roles; missing controls are reported as warnings rather than invented selectors. Resume
+selection/upload and Continue remain previewable human gates.
+
+For a non-mutating live preview against a user-approved Chrome/CDP session:
+
+```bash
+python tools/job_finder/application_cdp_tag.py inventory
+# Development-only current-session rules, or strict rules returned by the configured API:
+python tools/job_finder/application_cdp_tag.py apply --rules out/live-indeed-application/rules.json
+```
+
+The preview never fills fields, uploads a resume, clicks Continue, or submits an application.
+
 ## Workflow state machine
 
 ```mermaid

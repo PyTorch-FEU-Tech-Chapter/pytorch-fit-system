@@ -15,6 +15,7 @@ from resume_builder.job_finder import (
     build_listing_dom_inventory,
     fingerprint,
     render_rule_overlay,
+    sanitize_debug_dom,
 )
 
 _LISTINGS = """
@@ -188,6 +189,15 @@ def test_rule_overlay_marks_the_same_selectors_used_by_executor():
     assert "AI DOM decisions" in overlay
 
 
+def test_debug_dom_redacts_visible_email_text_and_attributes():
+    sanitized = sanitize_debug_dom(
+        '<a aria-label="Sign out: person@example.com">person@example.com</a>'
+    )
+
+    assert "person@example.com" not in sanitized
+    assert sanitized.count("[redacted-email]") == 2
+
+
 def test_system_prompt_prioritizes_session_search_and_job_definition():
     llm = _FakeLLM()
     planner = JobListingPlanner(llm, store=JobListingLayoutStore(output_dir=None))
@@ -211,6 +221,7 @@ def test_system_prompt_prioritizes_session_search_and_job_definition():
     assert "Just a moment" in system
     assert "do not suggest bypassing" in system
     assert "human handoff" in system
+    assert "remote, hybrid, onsite, or any" in system
 
 
 def test_workflow_can_describe_spa_click_to_reveal_detail_panel():

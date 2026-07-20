@@ -39,5 +39,11 @@ HTTP model API; that endpoint may be remote or locally hosted:
 python tools/job_finder/cdp_tag.py api-plan --preferences "remote Python roles"
 ```
 
+Pass work arrangement separately so it remains a strict constraint rather than free-form text:
+
+```bash
+python tools/job_finder/cdp_tag.py api-plan --work-mode hybrid
+```
+
 No command implements access-control bypass, fingerprint spoofing, proxy/identity rotation, or
 CAPTCHA solving.

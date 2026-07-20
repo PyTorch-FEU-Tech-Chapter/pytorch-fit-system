@@ -63,6 +63,35 @@ class WebsitePageSample(BaseModel):
     dom_inventory: str = ""
 
 
+class ApplicationDomRule(BaseModel):
+    """Executable DOM classification shared by inspection and debug visualization."""
+
+    selector: str
+    role: Literal[
+        "questionnaire_container",
+        "question_field",
+        "resume_choice",
+        "resume_upload",
+        "work_mode_choice",
+        "extract",
+        "click",
+        "continue_review",
+        "final_submit",
+        "ignore",
+        "auth_check",
+    ]
+    purpose: str = ""
+    include_descendants: bool = False
+    requires_human: bool = False
+
+    @model_validator(mode="after")
+    def protect_resume_and_transition_gates(self) -> "ApplicationDomRule":
+        gated = {"resume_choice", "resume_upload", "continue_review", "final_submit"}
+        if self.role in gated and not self.requires_human:
+            raise ValueError(f"{self.role} DOM rule requires requires_human=True")
+        return self
+
+
 class DynamicInteractionStep(BaseModel):
     step: int
     action: str
@@ -89,6 +118,7 @@ class DynamicApplicationPlan(BaseModel):
     root_domain: str
     samples: list[WebsitePageSample] = Field(default_factory=list)
     page_roles: list[str] = Field(default_factory=list)
+    dom_rules: list[ApplicationDomRule] = Field(default_factory=list)
     interaction_steps: list[DynamicInteractionStep] = Field(default_factory=list)
     confidence: float = 0.0
     warnings: list[str] = Field(default_factory=list)

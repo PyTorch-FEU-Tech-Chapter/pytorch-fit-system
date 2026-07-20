@@ -13,6 +13,7 @@ from resume_builder.job_application.models import (
     ValidationStep,
     WorkflowInfo,
     WebsitePageSample,
+    ApplicationDomRule,
     DynamicInteractionStep,
     DynamicApplicationPlan,
     EvidenceCitation,
@@ -63,6 +64,7 @@ from resume_builder.job_application.autonomous_questions import (
     AutonomousQuestionPipeline,
     QuestionPlanningResult,
 )
+from resume_builder.job_application.visualizer import render_application_overlay
 
 __all__ = [
     "ApplicationPlan",
@@ -77,6 +79,7 @@ __all__ = [
     "ValidationStep",
     "WorkflowInfo",
     "WebsitePageSample",
+    "ApplicationDomRule",
     "DynamicInteractionStep",
     "DynamicApplicationPlan",
     "EvidenceCitation",
@@ -113,4 +116,5 @@ __all__ = [
     "LedgerState",
     "AutonomousQuestionPipeline",
     "QuestionPlanningResult",
+    "render_application_overlay",
 ]

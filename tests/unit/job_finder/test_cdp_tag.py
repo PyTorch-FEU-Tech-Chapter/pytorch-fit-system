@@ -12,7 +12,7 @@ from resume_builder.job_finder import (
     LearnedJobListingLayout,
     fingerprint,
 )
-from tools.job_finder.cdp_tag import _apply, _load_capture, _validate_layout
+from tools.job_finder.cdp_tag import _apply, _load_capture, _parser, _validate_layout
 
 
 HTML = """
@@ -68,6 +68,12 @@ def test_load_capture_refuses_a_blocked_access_decision(tmp_path):
 
     with pytest.raises(SystemExit, match="human handoff"):
         _load_capture(tmp_path)
+
+
+def test_work_mode_flag_is_explicit_and_bounded():
+    args = _parser().parse_args(["api-plan", "--work-mode", "hybrid"])
+
+    assert args.work_mode == "hybrid"
 
 
 def test_apply_uses_captured_html_and_strict_rules(tmp_path, monkeypatch):

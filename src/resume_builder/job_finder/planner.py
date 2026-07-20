@@ -43,6 +43,8 @@ Reasoning order:
 7. If it is a detail page or same-page detail panel, identify the job definition: description,
    requirements, qualifications, benefits, location/remote signal, employment type, salary signal,
    and apply link if visible.
+8. Treat an explicit user work-mode preference (remote, hybrid, onsite, or any) as a filter
+   constraint. Map it only to visible controls/options; never silently substitute another mode.
 
 Allowed roles:
 - ignore: site chrome/noise/auth/legal/cookie widgets; remove before extraction.

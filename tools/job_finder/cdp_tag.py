@@ -68,6 +68,7 @@ def _capture(args: argparse.Namespace) -> int:
             "access_state": decision.state.value,
             "should_continue": decision.should_continue,
             "reason": decision.reason,
+            "work_mode": args.work_mode,
         }
         _write(args.output_dir / "access.json", json.dumps(metadata, indent=2))
         page.screenshot(path=str(args.output_dir / "access.png"), full_page=False)
@@ -209,7 +210,11 @@ def _api_plan(args: argparse.Namespace) -> int:
     run = planner.plan_page(
         capture["url"],
         html,
-        user_preferences=args.preferences,
+        user_preferences=(
+            f"required work mode: {args.work_mode}\n{args.preferences}"
+            if args.work_mode != "any"
+            else args.preferences
+        ),
         force_relearn=args.force_relearn,
     )
     layout = run.learned_layout or layout_store.get(run.layout_fingerprint)
@@ -237,6 +242,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--settle-ms", type=int, default=2_000)
     parser.add_argument("--rules", type=Path, default=DEFAULT_OUTPUT / "rules.json")
     parser.add_argument("--preferences", default="")
+    parser.add_argument(
+        "--work-mode",
+        choices=("remote", "hybrid", "onsite", "any"),
+        default="any",
+        help="Explicit user work-mode preference supplied to model planning.",
+    )
     parser.add_argument("--force-relearn", action="store_true")
     return parser
 

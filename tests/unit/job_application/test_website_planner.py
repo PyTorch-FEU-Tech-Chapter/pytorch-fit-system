@@ -82,6 +82,9 @@ def test_planner_emits_ordered_dynamic_steps_from_samples():
     assert plan.interaction_steps[0].wait_for_selector == "div#work"
     assert plan.interaction_steps[1].requires_human is True
     assert "non-link controls" in llm.system
+    assert "questionnaire_container" in llm.system
+    assert "saved-resume choices" in llm.system
+    assert "remote/hybrid/onsite/any" in llm.system
     assert "apply.example.com" in llm.prompt
 
 
@@ -98,3 +101,4 @@ def test_final_submit_requires_human():
 def test_dynamic_plan_serializes_strict_contract():
     payload = DynamicApplicationPlan(root_domain="example.com").model_dump(mode="json")
     assert payload["samples"] == [] and payload["interaction_steps"] == []
+    assert payload["dom_rules"] == []

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import html as html_lib
+import re
 
 import lxml.html
 
 from .models import JobListingAction, JobListingRule, LearnedJobListingLayout
 from .rule_executor import _select
+
+_EMAIL = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 
 _ROLE_VISUALS: dict[JobListingAction, tuple[str, str]] = {
     JobListingAction.IGNORE: ("ignore", "IGNORE"),
@@ -42,7 +45,12 @@ def sanitize_debug_dom(html: str) -> str:
         root = lxml.html.fromstring(html)
     except Exception:
         return ""
-    for node in list(root.xpath("//script|//noscript|//iframe|//object|//embed")):
+    for node in list(
+        root.xpath(
+            "//script|//noscript|//iframe|//object|//embed|"
+            "//svg[@aria-hidden='true']|//img[@alt='']"
+        )
+    ):
         parent = node.getparent()
         if parent is not None:
             parent.remove(node)
@@ -60,6 +68,12 @@ def sanitize_debug_dom(html: str) -> str:
                 "nonce",
             }:
                 del node.attrib[attribute]
+            else:
+                node.attrib[attribute] = _EMAIL.sub("[redacted-email]", node.attrib[attribute])
+        if node.text:
+            node.text = _EMAIL.sub("[redacted-email]", node.text)
+        if node.tail:
+            node.tail = _EMAIL.sub("[redacted-email]", node.tail)
     return lxml.html.tostring(root, encoding="unicode")
 
 

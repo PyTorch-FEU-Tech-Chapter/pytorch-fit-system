@@ -96,6 +96,13 @@ separate systems even when they share the same learn-once/replay-many pattern.
    Execute cached rules with code, not model calls. For job finder, extract job definition details
    from visible details/panels first, then cards and pagination. For application forms, fill only
    draft-safe fields and keep submit blocked.
+   Job search must preserve an explicit `work_mode` preference with allowed values `remote`,
+   `hybrid`, `onsite`, or `any`; never infer or silently substitute a different mode. Application
+   planning must inventory the entire questionnaire/component container plus every nested field,
+   because companies vary both question count and structure. Detect saved-resume choices separately
+   from upload/replace controls. Recommend among available role-specific resumes only from real
+   artifacts, show the choice to the human first, and never upload, replace, advance, or submit when
+   the required resume/profile data is missing or unapproved.
 
 6. **Permission gates.**
    Hand off whenever access is blocked or confidence is low. Draft writes, AI-grounded screening
@@ -119,6 +126,9 @@ separate systems even when they share the same learn-once/replay-many pattern.
    development, then run `apply` to validate and visualize those exact rules. For real model
    execution use `api-plan`, which calls the configured HTTP model API. Every phase must retain the
    access gate; an access blocker stops the run rather than selecting a bypass path.
+   For application pages, use `tools/job_finder/application_cdp_tag.py inventory` and `apply` to
+   preview questionnaire containers, nested fields, resume controls, work-mode choices, Continue,
+   and final-submit gates without executing them.
 
 8. **Logic-based folder structure.**
    Organize automation by decision boundary, not by one large agent file: permissions/bypass policy,

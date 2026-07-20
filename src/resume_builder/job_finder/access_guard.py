@@ -167,7 +167,16 @@ class AccessGuard:
     def _visible_text_hint(html: str) -> str:
         text = re.sub(r"<(script|style|noscript|template)\b.*?</\1>", " ", html, flags=re.I | re.S)
         text = re.sub(r"<[^>]+>", " ", text)
-        return re.sub(r"\s+", " ", text)
+        text = re.sub(r"\s+", " ", text)
+        # A passive legal disclosure is present on ordinary application forms and is not a
+        # challenge. Active CAPTCHA headings/instructions remain available to the patterns above.
+        text = re.sub(
+            r"this site is protected by recaptcha.*?terms of service apply\.?",
+            " ",
+            text,
+            flags=re.I | re.S,
+        )
+        return text
 
     @staticmethod
     def _stop(state: AccessState, reason: str, evidence: tuple[str, ...]) -> AccessDecision:

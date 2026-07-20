@@ -125,3 +125,8 @@ domain + layout-fingerprint cache → deterministic replay → human gates.
   `api-plan` for configured local-or-remote HTTP model execution. The harness must stop at access
   blockers and must never implement an OSI-layer, CAPTCHA, Cloudflare, fingerprint, proxy, or
   identity bypass.
+- Preserve the user-selected job work mode (`remote|hybrid|onsite|any`). On application pages,
+  inventory whole questionnaire div/component trees and each nested field. Detect saved resume
+  choices versus fresh-upload controls from the rendered page, recommend only existing artifacts,
+  and show the human the selected resume and completed draft before Continue or final submit. Use
+  `tools/job_finder/application_cdp_tag.py` for non-mutating live previews.

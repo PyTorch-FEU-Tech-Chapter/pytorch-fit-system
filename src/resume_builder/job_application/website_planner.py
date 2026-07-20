@@ -25,6 +25,15 @@ Sensitive judgment, upload confirmation, and final submit require an explicit sc
 final_submit remains marked requires_human=true in the portable plan and may only be bypassed by
 the runtime ApplicationPermissionPolicy for the current domain.
 FORMS: inventory fields, required documents, validation, SPA state changes, recovery, and page transitions.
+DOM RULES: classify the whole form/questionnaire container and every nested field/control. A company
+may render one question per component, multiple questions inside one div, or nested sub-divs; emit a
+questionnaire_container rule for the reusable parent and question_field rules for every visible
+input/select/textarea/radio/checkbox group. Do not assume a fixed question count or fixed wording.
+RESUMES: detect saved-resume choices, selected resume state, upload/replace controls, and whether the
+site requires a fresh upload. Never invent a saved option. Resume selection/upload is sensitive_write
+and requires human preview/approval; final submit always remains a separate human gate.
+WORK MODE: preserve the user's explicit remote/hybrid/onsite/any preference as a constraint. Tag any
+work-mode choice separately; never infer a different preference from job text.
 ACTION CLASSES: classify every step as read_only, draft_write, sensitive_write, or irreversible.
 Use click/expand/open to reveal hidden content before inventory-dependent fill steps. Draft writes must
 include value_source; never place credentials or cookies in a plan. Permission policy decides execution.
