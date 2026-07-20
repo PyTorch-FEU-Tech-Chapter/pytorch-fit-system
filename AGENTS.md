@@ -41,6 +41,12 @@ separate systems even when they share the same learn-once/replay-many pattern.
    same-page detail workflow. The AI should not be called repeatedly for a layout that already has
    confident cached rules.
 
+   **Model boundary.** The current Codex/Claude session may be used to create or review fixtures
+   during development only; it is not an embedded production model. Runtime model planning must
+   use the provider-neutral HTTP API boundary. Support both remote APIs and locally hosted models
+   by configuration, provided the local server exposes the supported API contract. Never add a
+   stage-level dependency on a specific vendor, interactive chat session, or clipboard workflow.
+
    The accepted AI artifact must be saved as strict JSON. For resume evidence, use an explicit
    `results` object split into `quantitative` and `qualitative`, followed by a `conclusion`:
 
@@ -102,6 +108,11 @@ separate systems even when they share the same learn-once/replay-many pattern.
 7. **Debug visualizers only.**
    Playwright visual tagging is allowed only as a temporary development aid under `/out/`. The final
    scraper/job finder path should stay headless and should not depend on visual debug tooling.
+   For job-finder model tests, overlay the accepted rules on the same sanitized rendered DOM and
+   label matched elements explicitly: `CLICK`, `FILL/INTERACT`, `EXTRACT`, `CRAWL`,
+   `EXTRACT + CRAWL`, `IGNORE`, `AUTH CHECK`, or `HUMAN GATE`. The overlay must use the exact cached
+   selectors/actions consumed by deterministic execution; it must not maintain a second visual-only
+   rule set.
 
 8. **Logic-based folder structure.**
    Organize automation by decision boundary, not by one large agent file: permissions/bypass policy,

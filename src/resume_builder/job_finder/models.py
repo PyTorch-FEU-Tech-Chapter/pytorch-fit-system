@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from enum import Enum
 
 from pydantic import BaseModel, Field, model_validator
@@ -139,3 +140,16 @@ class JobListingRun(BaseModel):
     workflow: JobSearchWorkflow = Field(default_factory=JobSearchWorkflow)
     learned_layout: LearnedJobListingLayout | None = None
     validation_errors: list[str] = Field(default_factory=list)
+
+
+class JobScrapeVisualizationArtifact(BaseModel):
+    """One inspectable model-planning + deterministic-extraction result."""
+
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    source_label: str = "job finder run"
+    model_output: LearnedJobListingLayout
+    scraping_output: JobListingRun
+    rendered_dom: str | None = Field(
+        default=None,
+        description="Sanitized rendered DOM used only by the local debug visualizer.",
+    )

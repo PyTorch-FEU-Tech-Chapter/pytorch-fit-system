@@ -103,3 +103,20 @@ If the code already exists, update the task's `stage` to reflect reality instead
 - `gh project item-list` defaults to 30 items — pass `--limit 300`.
 - The **Board layout + "Group by: Status"** view and any **Roadmap view** are **UI-only** — they
   cannot be set via API. Tell the user to toggle those once in the Project settings.
+
+## 6. Website-agnostic AI planning and deterministic replay
+
+For resume scraping, job finding, and application-form work, follow the detailed source of truth in
+[`AGENTS.md`](AGENTS.md): access gate → rendered DOM inventory → AI-authored strict JSON rules →
+domain + layout-fingerprint cache → deterministic replay → human gates.
+
+- The current Codex/Claude session is allowed only for development fixtures and review. It is not
+  embedded in the shipped system and must not be a production runtime provider.
+- Runtime model calls must go through the provider-neutral HTTP API boundary. Configuration may
+  point that boundary to a remote API or a locally hosted model server implementing the supported
+  API contract.
+- Job-finder development visualization must apply the exact executable selectors to a sanitized
+  rendered DOM and visibly tag `CLICK`, `FILL/INTERACT`, `EXTRACT`, `CRAWL`,
+  `EXTRACT + CRAWL`, `IGNORE`, `AUTH CHECK`, and `HUMAN GATE` decisions.
+- Visual overlays are local debug artifacts under `/out/`; production replay remains headless and
+  deterministic and never calls the model again for a confident cached layout.

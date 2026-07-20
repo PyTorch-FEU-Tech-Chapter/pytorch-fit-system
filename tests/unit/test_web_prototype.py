@@ -51,6 +51,49 @@ def test_developer_scraping_inspector_is_separate_from_careerlens_ui():
     assert "resume-build scrape --visual --delay-ms 900" in html
     assert "RESUME_BUILD_PLAYWRIGHT_VISUAL" in html
     assert "Actual website, actual scraper logic" in html
+    assert "/developer/job-scraping" in html
+
+
+def test_job_scraping_visualization_shows_current_session_model_output(tmp_path, monkeypatch):
+    monkeypatch.setattr(web_app, "_ARTIFACT_ROOT", tmp_path)
+
+    response = TestClient(app).get("/developer/job-scraping")
+
+    assert response.status_code == 200
+    html = response.text
+    assert "Website-agnostic DOM rule visualization" in html
+    assert "Current Codex session" in html
+    assert "Annotated rendered DOM" in html
+    assert "/developer/job-scraping/dom" in html
+    assert "Backend Engineer" in html
+    assert "Raw model + execution JSON" in html
+
+
+def test_job_scraping_dom_overlay_marks_deterministic_actions(tmp_path, monkeypatch):
+    monkeypatch.setattr(web_app, "_ARTIFACT_ROOT", tmp_path)
+
+    response = TestClient(app).get("/developer/job-scraping/dom")
+
+    assert response.status_code == 200
+    html = response.text
+    assert "AI DOM decisions" in html
+    assert 'data-codex-label="FILL"' in html
+    assert 'data-codex-label="CLICK"' in html
+    assert 'data-codex-label="EXTRACT + CRAWL"' in html
+    assert 'data-codex-label="CRAWL NEXT"' in html
+    assert 'data-codex-label="IGNORE"' in html
+
+
+def test_latest_job_scraping_api_returns_visualization_artifact(tmp_path, monkeypatch):
+    monkeypatch.setattr(web_app, "_ARTIFACT_ROOT", tmp_path)
+
+    response = TestClient(app).get("/api/job-scraping/latest")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["source_label"].startswith("Current Codex session")
+    assert payload["model_output"]["rules"][1]["role"] == "job_card"
+    assert payload["scraping_output"]["listings"][0]["title"] == "Backend Engineer"
 
 
 def test_dashboard_renders_get_started_auth_controls():

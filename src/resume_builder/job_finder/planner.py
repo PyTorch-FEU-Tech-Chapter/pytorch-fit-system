@@ -7,7 +7,8 @@ from resume_builder.llm.base import LLMProvider
 from .dom_inventory import build_listing_dom_inventory, fingerprint
 from .models import JobListingRun, LearnedJobListingLayout
 from .rule_executor import apply_listing_rules
-from .store import JobListingLayoutStore
+from .store import JobListingLayoutStore, JobScrapeArtifactStore
+from .visualizer import sanitize_debug_dom
 
 _SYSTEM = """You are the structure-learning component for a job finder.
 You observe a rendered DOM inventory for a job search/listing/detail page and emit reusable JSON
@@ -74,12 +75,16 @@ class JobListingPlanner:
         self,
         llm: LLMProvider,
         store: JobListingLayoutStore | None = None,
+        artifact_store: JobScrapeArtifactStore | None = None,
         *,
         min_listings: int = 1,
         max_revision_attempts: int = 1,
     ) -> None:
         self.llm = llm
         self.store = store or JobListingLayoutStore()
+        self.artifact_store = artifact_store
+        if artifact_store is None and self.store.output_dir is not None:
+            self.artifact_store = JobScrapeArtifactStore()
         self.min_listings = min_listings
         self.max_revision_attempts = max_revision_attempts
 
@@ -96,7 +101,7 @@ class JobListingPlanner:
         if cached is not None:
             run = self._execute(page_url, html, cached, "ai_rules_cache")
             if not run.validation_errors:
-                return run
+                return self._record(run, cached, html)
 
         inventory = build_listing_dom_inventory(html, page_url)
         previous = cached
@@ -116,11 +121,21 @@ class JobListingPlanner:
             if not run.validation_errors:
                 self.store.put(layout)
                 run.learned_layout = layout
-                return run
+                return self._record(run, layout, html)
             previous = layout
             errors = run.validation_errors
 
         run.learned_layout = previous
+        return self._record(run, previous, html) if previous is not None else run
+
+    def _record(
+        self,
+        run: JobListingRun,
+        layout: LearnedJobListingLayout,
+        html: str,
+    ) -> JobListingRun:
+        if self.artifact_store is not None:
+            self.artifact_store.put(run, layout, rendered_dom=sanitize_debug_dom(html))
         return run
 
     def _infer_layout(

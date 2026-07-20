@@ -16,6 +16,7 @@ import tempfile
 import threading
 import traceback
 import uuid
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -47,6 +48,8 @@ from .auth import (
 )
 from .cdo_advisor import AdvisorAnalyzeRequest, analyze_for_injection
 from .mock_data import PROTOTYPE_DATA
+from .job_scraping_demo import current_session_artifact
+from ..job_finder import JobScrapeArtifactStore, render_rule_overlay
 from ..metrics.usage_counter import add_pages_scraped, bump_download, read_counters
 
 if sys.platform == "win32":
@@ -90,6 +93,37 @@ def prototype_alias(request: Request) -> HTMLResponse:
 @app.get("/developer/scraping", response_class=HTMLResponse)
 def developer_scraping(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "developer_scraping.html", {})
+
+
+def _latest_job_scrape_artifact():
+    store = JobScrapeArtifactStore(_ARTIFACT_ROOT / "job-finder-runs")
+    return store.latest() or current_session_artifact()
+
+
+@app.get("/developer/job-scraping", response_class=HTMLResponse)
+def developer_job_scraping(request: Request) -> HTMLResponse:
+    artifact = _latest_job_scrape_artifact()
+    return templates.TemplateResponse(
+        request,
+        "developer_job_scraping.html",
+        {
+            "artifact": artifact,
+            "model_output": artifact.model_output.model_dump(mode="json"),
+            "scraping_output": artifact.scraping_output.model_dump(mode="json"),
+            "raw_json": json.dumps(artifact.model_dump(mode="json"), indent=2, default=str),
+        },
+    )
+
+
+@app.get("/developer/job-scraping/dom", response_class=HTMLResponse)
+def developer_job_scraping_dom() -> HTMLResponse:
+    artifact = _latest_job_scrape_artifact()
+    return HTMLResponse(render_rule_overlay(artifact.rendered_dom or "", artifact.model_output))
+
+
+@app.get("/api/job-scraping/latest")
+def api_latest_job_scraping() -> dict:
+    return _latest_job_scrape_artifact().model_dump(mode="json")
 
 
 @app.get("/api/auth/status")

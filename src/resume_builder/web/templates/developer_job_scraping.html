@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Scraping Model Output</title>
+  <link rel="stylesheet" href="/static/prototype.css">
+</head>
+<body class="developer-body">
+<main class="developer-shell job-output-shell">
+  <section class="developer-hero">
+    <div>
+      <p class="eyebrow">Developer tool · model test</p>
+      <h1 class="page-title">Website-agnostic DOM rule visualization</h1>
+      <p class="subtitle">The AI labels a new rendered layout once; deterministic code replays the same selectors and actions for the matching layout fingerprint.</p>
+    </div>
+    <a class="btn" href="/developer/scraping">Back to scraper inspector</a>
+  </section>
+
+  <section class="auth-panel">
+    <div class="section-header">
+      <h2>Annotated rendered DOM</h2>
+      <span class="section-label">Primary model test</span>
+    </div>
+    <p class="developer-copy">Colored overlays show exactly which HTML elements will be clicked, filled, extracted, crawled, ignored, or stopped for human review.</p>
+    <iframe class="job-dom-frame" src="/developer/job-scraping/dom" sandbox title="AI-tagged job page DOM"></iframe>
+  </section>
+
+  <section class="auth-panel job-run-summary">
+    <div>
+      <span class="section-label">Source</span>
+      <strong>{{ artifact.source_label }}</strong>
+    </div>
+    <div>
+      <span class="section-label">Method</span>
+      <strong>{{ scraping_output.extraction_method }}</strong>
+    </div>
+    <div>
+      <span class="section-label">Model confidence</span>
+      <strong>{{ "%.0f" | format(model_output.confidence * 100) }}%</strong>
+    </div>
+    <div>
+      <span class="section-label">Jobs extracted</span>
+      <strong>{{ scraping_output.listings | length }}</strong>
+    </div>
+  </section>
+
+  <section class="job-output-flow" aria-label="Job scraping stages">
+    <article class="auth-panel">
+      <div class="section-header">
+        <h2>Rules behind the overlays</h2>
+        <span class="section-label">Model output</span>
+      </div>
+      <p class="developer-copy"><code>{{ model_output.layout_fingerprint }}</code></p>
+      <div class="job-rule-list">
+        {% for rule in model_output.rules %}
+        <div class="job-rule-row">
+          <span class="job-rule-role">{{ rule.role }}</span>
+          <code>{{ rule.selector }}</code>
+          <small>{{ rule.reason }}</small>
+        </div>
+        {% endfor %}
+      </div>
+      {% if model_output.warnings %}
+      <div class="job-output-warning"><strong>Warnings</strong><ul>{% for warning in model_output.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></div>
+      {% endif %}
+    </article>
+
+    <article class="auth-panel">
+      <div class="section-header">
+        <h2>Deterministic extraction preview</h2>
+        <span class="section-label">Deterministic output</span>
+      </div>
+      <div class="job-result-list">
+        {% for job in scraping_output.listings %}
+        <article class="job-result-card">
+          <div class="job-result-heading">
+            <div><span class="section-label">{{ job.employment_type or "Type unavailable" }}</span><h3>{{ job.title or "Untitled job" }}</h3></div>
+            <span class="job-remote">{{ job.remote_signal or "Work setup unavailable" }}</span>
+          </div>
+          <p><strong>{{ job.company or "Company unavailable" }}</strong> · {{ job.location or "Location unavailable" }}</p>
+          <p>{{ job.description or "No description extracted." }}</p>
+          {% if job.detail_url %}<a href="{{ job.detail_url }}">{{ job.detail_url }}</a>{% endif %}
+          <small>source selector: <code>{{ job.source_selector }}</code></small>
+        </article>
+        {% else %}
+        <p>No job records were extracted.</p>
+        {% endfor %}
+      </div>
+      {% if scraping_output.validation_errors %}
+      <div class="job-output-error"><strong>Validation errors</strong><ul>{% for error in scraping_output.validation_errors %}<li>{{ error }}</li>{% endfor %}</ul></div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="auth-panel">
+    <div class="section-header">
+      <h2>Raw model + execution JSON</h2>
+      <span class="section-label">Auditable output</span>
+    </div>
+    <details>
+      <summary>Open complete model + scraper payload</summary>
+      <pre class="json-preview">{{ raw_json }}</pre>
+    </details>
+  </section>
+</main>
+</body>
+</html>

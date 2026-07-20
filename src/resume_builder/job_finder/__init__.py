@@ -10,11 +10,13 @@ from .models import (
     InteractionStep,
     JobListingRule,
     JobListingRun,
+    JobScrapeVisualizationArtifact,
     LearnedJobListingLayout,
 )
 from .planner import JobListingPlanner
 from .rule_executor import apply_listing_rules
-from .store import JobListingLayoutStore
+from .store import JobListingLayoutStore, JobScrapeArtifactStore
+from .visualizer import render_rule_overlay, sanitize_debug_dom
 
 __all__ = [
     "AccessDecision",
@@ -31,8 +33,12 @@ __all__ = [
     "JobListingPlanner",
     "JobListingRule",
     "JobListingRun",
+    "JobScrapeArtifactStore",
+    "JobScrapeVisualizationArtifact",
     "LearnedJobListingLayout",
     "apply_listing_rules",
     "build_listing_dom_inventory",
     "fingerprint",
+    "render_rule_overlay",
+    "sanitize_debug_dom",
 ]

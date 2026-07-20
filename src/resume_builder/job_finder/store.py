@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from .models import LearnedJobListingLayout
+from .models import JobListingRun, JobScrapeVisualizationArtifact, LearnedJobListingLayout
 
 
 class JobListingLayoutStore:
@@ -41,3 +41,44 @@ class JobListingLayoutStore:
 
     def all(self) -> list[LearnedJobListingLayout]:
         return [layout.model_copy(deep=True) for layout in self._layouts.values()]
+
+
+class JobScrapeArtifactStore:
+    """Persist model rules beside their deterministic scraping output for inspection."""
+
+    def __init__(self, output_dir: Path | None = Path("out/job-finder-runs")) -> None:
+        self.output_dir = output_dir
+
+    def put(
+        self,
+        run: JobListingRun,
+        layout: LearnedJobListingLayout,
+        *,
+        source_label: str = "job finder run",
+        rendered_dom: str | None = None,
+    ) -> JobScrapeVisualizationArtifact:
+        artifact = JobScrapeVisualizationArtifact(
+            source_label=source_label,
+            model_output=layout,
+            scraping_output=run,
+            rendered_dom=rendered_dom,
+        )
+        if self.output_dir is not None:
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            domain = re.sub(r"[^a-zA-Z0-9.-]+", "_", layout.domain)
+            path = self.output_dir / f"{domain}-{layout.layout_fingerprint}.json"
+            path.write_text(artifact.model_dump_json(indent=2), encoding="utf-8")
+        return artifact
+
+    def latest(self) -> JobScrapeVisualizationArtifact | None:
+        if self.output_dir is None or not self.output_dir.exists():
+            return None
+        paths = sorted(self.output_dir.glob("*.json"), key=lambda path: path.stat().st_mtime)
+        for path in reversed(paths):
+            try:
+                return JobScrapeVisualizationArtifact.model_validate_json(
+                    path.read_text(encoding="utf-8")
+                )
+            except Exception:
+                continue
+        return None

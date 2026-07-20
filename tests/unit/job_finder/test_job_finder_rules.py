@@ -6,6 +6,7 @@ from resume_builder.job_finder import (
     JobListingAction,
     JobListingExtraction,
     JobListingLayoutStore,
+    JobScrapeArtifactStore,
     JobListingPlanner,
     JobListingRule,
     JobSearchWorkflow,
@@ -13,6 +14,7 @@ from resume_builder.job_finder import (
     apply_listing_rules,
     build_listing_dom_inventory,
     fingerprint,
+    render_rule_overlay,
 )
 
 _LISTINGS = """
@@ -156,6 +158,34 @@ def test_store_persists_machine_readable_layout(tmp_path):
     assert JobListingLayoutStore(output_dir=tmp_path).get("abc").rules[1].role == (
         JobListingAction.JOB_CARD
     )
+
+
+def test_planner_persists_model_rules_with_extracted_output(tmp_path):
+    llm = _FakeLLM()
+    artifact_store = JobScrapeArtifactStore(tmp_path)
+    planner = JobListingPlanner(
+        llm,
+        store=JobListingLayoutStore(output_dir=None),
+        artifact_store=artifact_store,
+    )
+
+    planner.plan_page("https://careers.example.com/jobs", _LISTINGS)
+
+    artifact = artifact_store.latest()
+    assert artifact is not None
+    assert artifact.model_output.rules[1].role == JobListingAction.JOB_CARD
+    assert artifact.scraping_output.listings[0].title == "Backend Engineer"
+    assert "job-card" in (artifact.rendered_dom or "")
+
+
+def test_rule_overlay_marks_the_same_selectors_used_by_executor():
+    overlay = render_rule_overlay(_LISTINGS, _good_layout())
+
+    assert overlay.count('data-codex-label="EXTRACT + CRAWL"') == 2
+    assert 'data-codex-label="CRAWL NEXT"' in overlay
+    assert 'data-codex-label="FILL"' in overlay
+    assert 'data-codex-label="IGNORE"' in overlay
+    assert "AI DOM decisions" in overlay
 
 
 def test_system_prompt_prioritizes_session_search_and_job_definition():

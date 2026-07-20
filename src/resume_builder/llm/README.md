@@ -22,10 +22,9 @@ flowchart TD
     Stage[AIExtractor / AISynthesizer] --> ABC[[LLMProvider ABC]]
     Reg[get_provider settings/env] --> Pick{provider?}
     Pick -->|anthropic| AN[AnthropicProvider]
-    Pick -->|openai| OA[OpenAIProvider]
-    Pick -->|claude-session| CS[ClaudeSessionProvider<br/>clipboard, no API key]
+    Pick -->|openai-compatible| OA[OpenAI-compatible HTTP API<br/>cloud or local model server]
     Pick -->|static mode| NU[NullProvider no-op]
-    AN & OA & CS & NU --> ABC
+    AN & OA & NU --> ABC
     ABC --> Str[structured: ask JSON -> tolerant parse -> pydantic]
 ```
 
@@ -36,8 +35,8 @@ flowchart TD
 | `base.py` | `LLMProvider` ABC + tolerant JSON parser + `LLMUnavailableError` |
 | `registry.py` | `get_provider()` factory (settings/env driven) |
 | `anthropic_provider.py` | Claude API |
-| `openai_provider.py` | GPT-4o-mini |
-| `claude_session_provider.py` | Interactive clipboard paste (no API key) |
+| `openai_provider.py` | OpenAI-compatible HTTP API; remote or locally hosted server |
+| `claude_session_provider.py` | Development-only interactive fixture; not in runtime registry |
 | `null_provider.py` | No-op for `static` mode |
 
 ## Rules
@@ -45,3 +44,8 @@ flowchart TD
 Never import a concrete provider in a stage — use the ABC. No hardcoded keys (read from
 settings/env). Add a provider by subclassing + registering. `structured()` has a default
 (JSON + tolerant parse); override only for native tool-use APIs.
+
+Production AI execution must cross an HTTP API boundary. Configure
+`RESUME_LLM_API_BASE_URL`, `RESUME_LLM_API_KEY`, and `RESUME_LLM_MODEL`; a local model is supported
+only when it exposes the same API contract. The current Codex/Claude chat session may generate
+fixtures during development, but it is not embedded in or selectable by the shipped system.

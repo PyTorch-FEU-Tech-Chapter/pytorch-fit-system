@@ -25,7 +25,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    llm_provider: str = "anthropic"
+    llm_provider: str = "openai-compatible"
+    llm_model: str | None = None
+    llm_api_base_url: str = "https://api.openai.com/v1"
+    llm_api_key: str | None = None
     anthropic_model: str = "claude-sonnet-4-6"
     openai_model: str = "gpt-4o-mini"
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
