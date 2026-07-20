@@ -120,3 +120,8 @@ domain + layout-fingerprint cache → deterministic replay → human gates.
   `EXTRACT + CRAWL`, `IGNORE`, `AUTH CHECK`, and `HUMAN GATE` decisions.
 - Visual overlays are local debug artifacts under `/out/`; production replay remains headless and
   deterministic and never calls the model again for a confident cached layout.
+- For a live Chrome/CDP development test, use `tools/job_finder/cdp_tag.py inventory`, author strict
+  `rules.json` with the current session only as a development fixture, then use `apply`. Use
+  `api-plan` for configured local-or-remote HTTP model execution. The harness must stop at access
+  blockers and must never implement an OSI-layer, CAPTCHA, Cloudflare, fingerprint, proxy, or
+  identity bypass.

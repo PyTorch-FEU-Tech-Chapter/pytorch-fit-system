@@ -114,6 +114,12 @@ separate systems even when they share the same learn-once/replay-many pattern.
    selectors/actions consumed by deterministic execution; it must not maintain a second visual-only
    rule set.
 
+   The live development harness is `tools/job_finder/cdp_tag.py`: run `inventory` against a normal
+   user-approved Chrome/CDP session, let the current AI session author `rules.json` only during
+   development, then run `apply` to validate and visualize those exact rules. For real model
+   execution use `api-plan`, which calls the configured HTTP model API. Every phase must retain the
+   access gate; an access blocker stops the run rather than selecting a bypass path.
+
 8. **Logic-based folder structure.**
    Organize automation by decision boundary, not by one large agent file: permissions/bypass policy,
    evidence tools, AI question answering, deterministic execution, validation/recovery, idempotency
