@@ -113,3 +113,22 @@ def test_scheduler_honors_candidate_bound_when_target_is_not_reached(tmp_path):
     payload = json.loads((args.output / "run.json").read_text(encoding="utf-8"))
     assert payload["status"] == "bounded_without_target"
     assert payload["candidates_started"] == 2
+
+
+def test_unresolved_validation_is_parked_then_reentered(tmp_path):
+    args = _args(tmp_path, count=1, target=1)
+    calls = 0
+
+    def worker(job, _args):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return BatchApplicationOutcome(
+                task=job.batch_task(),
+                status=BatchApplicationStatus.HUMAN_HANDOFF,
+                detail="module validation remains unresolved: Enter a valid location",
+            )
+        return _outcome(job, BatchApplicationStatus.SUBMITTED)
+
+    assert runner.run(args, worker=worker) == 0
+    assert calls == 2

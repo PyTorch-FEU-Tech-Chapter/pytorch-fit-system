@@ -61,6 +61,15 @@ def _outcome(
     return BatchApplicationOutcome(task=job.batch_task(), status=status, detail=detail)
 
 
+def _should_delay_for_human(outcome: BatchApplicationOutcome) -> bool:
+    if outcome.status == BatchApplicationStatus.VERIFICATION_PENDING:
+        return True
+    return (
+        outcome.status == BatchApplicationStatus.HUMAN_HANDOFF
+        and "validation remains unresolved" in outcome.detail.casefold()
+    )
+
+
 def _check_access(page, job, queue):
     reference = job.batch_task().application_reference
     access = check_access_gate(page)
@@ -405,10 +414,7 @@ def run(args: argparse.Namespace, *, worker=_worker) -> int:
                     args.output / f"{job.task_id}.json",
                     outcome.model_dump(mode="json"),
                 )
-                if (
-                    outcome.status == BatchApplicationStatus.VERIFICATION_PENDING
-                    and time.monotonic() < deadline
-                ):
+                if _should_delay_for_human(outcome) and time.monotonic() < deadline:
                     # Human gates are delayed tasks, never worker-blocking busy loops.
                     retry_seconds = getattr(args, "verification_retry_seconds", 5.0)
                     heapq.heappush(
