@@ -12,6 +12,7 @@ from resume_builder.job_application import (
     IndeedSmartApplyRunResult,
     IndeedSmartApplyRunStatus,
     indeed_batch_outcome,
+    reconcile_indeed_post_apply,
 )
 from resume_builder.job_finder import ForeignCountryPolicy
 
@@ -116,3 +117,89 @@ def test_indeed_captcha_handoff_maps_to_verification_batch():
     )
 
     assert outcome.status == BatchApplicationStatus.VERIFICATION_PENDING
+
+
+class _Body:
+    def __init__(self, text):
+        self.text = text
+
+    @property
+    def first(self):
+        return self
+
+    def count(self):
+        return 1
+
+    def inner_text(self):
+        return self.text
+
+
+class _PostApplyPage:
+    url = "https://smartapply.indeed.com/beta/indeedapply/form/post-apply"
+
+    def __init__(self, text="Your application has been submitted!"):
+        self.body = _Body(text)
+
+    def locator(self, selector):
+        if selector == "body":
+            return self.body
+        return _Empty()
+
+
+class _Empty:
+    @property
+    def first(self):
+        return self
+
+    def count(self):
+        return 0
+
+    def nth(self, _index):
+        return self
+
+
+def test_post_apply_confirmation_resolves_queue_and_records_sql(tmp_path):
+    task = _task(1).model_copy(
+        update={
+            "company": "Example Co",
+            "job_title": "Backend Intern",
+            "application_reference": "Example Co — Backend Intern",
+        }
+    )
+    queue = HumanVerificationQueue(tmp_path / "verification.json")
+    queue.enqueue(
+        application_reference=task.application_reference,
+        url="https://smartapply.indeed.com/beta/indeedapply/form/review-module",
+        result=AccessGateResult(
+            state=AccessGateState.HUMAN_REQUIRED,
+            reason="captcha",
+        ),
+    )
+    from resume_builder.job_application import ApplicationSubmissionHistory
+
+    history = ApplicationSubmissionHistory(tmp_path / "submissions.sqlite3")
+    outcome = reconcile_indeed_post_apply(
+        _PostApplyPage(),
+        task,
+        verification_queue=queue,
+        submission_history=history,
+    )
+
+    assert outcome is not None
+    assert outcome.status == BatchApplicationStatus.SUBMITTED
+    assert queue.pending() == []
+    assert history.recent_submissions()[0].job_title == "Backend Intern"
+
+
+def test_post_apply_route_without_confirmation_fails_closed(tmp_path):
+    from resume_builder.job_application import ApplicationSubmissionHistory
+
+    outcome = reconcile_indeed_post_apply(
+        _PostApplyPage("Thanks for visiting"),
+        _task(1),
+        verification_queue=HumanVerificationQueue(tmp_path / "verification.json"),
+        submission_history=ApplicationSubmissionHistory(tmp_path / "submissions.sqlite3"),
+    )
+
+    assert outcome is not None
+    assert outcome.status == BatchApplicationStatus.FAILED

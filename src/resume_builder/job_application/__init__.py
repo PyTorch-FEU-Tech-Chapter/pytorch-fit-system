@@ -119,7 +119,10 @@ from resume_builder.job_application.indeed_smart_apply_runner import (
     IndeedSmartApplyRunStatus,
     run_indeed_smart_apply_until_gate,
 )
-from resume_builder.job_application.indeed_batch import indeed_batch_outcome
+from resume_builder.job_application.indeed_batch import (
+    indeed_batch_outcome,
+    reconcile_indeed_post_apply,
+)
 
 __all__ = [
     "ApplicationPlan",
@@ -212,5 +215,6 @@ __all__ = [
     "IndeedSmartApplyRunResult",
     "IndeedSmartApplyRunStatus",
     "indeed_batch_outcome",
+    "reconcile_indeed_post_apply",
     "run_indeed_smart_apply_until_gate",
 ]

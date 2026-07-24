@@ -62,6 +62,11 @@ class _Locator:
             return self.page.state.fields.get("phone", "")
         return ""
 
+    def get_attribute(self, name):
+        if name == "data-value" and "combobox" in self.selector:
+            return self.page.state.fields.get("phone_country_iso", "")
+        return None
+
     def locator(self, selector):
         return _Locator(self.page, f"{self.selector} {selector}")
 

@@ -23,6 +23,9 @@ workers. Each worker must own its browser page; Playwright pages are never share
 Successful no-CAPTCHA flows may continue to observable confirmation, while CAPTCHA results collect
 as `verification_pending` items in the thread-safe `HumanVerificationQueue`. One worker failure
 fails only that task closed and never enables retries or submission for another task.
+For Indeed, `reconcile_indeed_post_apply` deterministically recognizes the exact post-apply route
+plus visible `Your application has been submitted!` proof. It records the SQL confirmation and
+resolves the matching CAPTCHA queue item, allowing that worker slot to return to job search.
 Every batch task carries an explicit target country and `remote|hybrid|onsite|any` work mode. The
 coordinator rejects a worker result that changes either value, so a foreign-country remote search
 cannot silently become a Philippines-targeted or onsite application.
@@ -87,8 +90,10 @@ Indeed Smart Apply has a deterministic module planner for the verified contact, 
 relevant-experience, review, and post-apply routes. Contact names are reconciled against the
 selected resume. Each contact field is checked before editing, so matching values remain untouched.
 Phone comes only from the runtime-verified contact profile, is normalized against a separate
-country-code control, and is never inferred, generated, or hardcoded. Missing verified contact data
-stops before Continue. Resume upload and resume Continue are separate approvals;
+country-code control, and is never inferred, generated, or hardcoded. When a foreign application
+locale preselects another phone country, the adapter replaces it only from an explicit
+runtime-verified ISO country code before filling the national number. Missing verified contact
+data stops before Continue. Resume upload and resume Continue are separate approvals;
 achievements, leadership, and projects never substitute for professional experience; final submit
 still requires its own explicit approval.
 

@@ -162,6 +162,7 @@ def build_indeed_smart_apply_plan(
     approvals: SmartApplyApprovals | None = None,
     verified_phone: str = "",
     phone_country_calling_code: str = "",
+    phone_country_iso: str = "",
 ) -> SmartApplyModulePlan:
     """Plan exactly one visible module; the caller executes and re-observes after navigation."""
     module = classify_indeed_smart_apply_module(page_url)
@@ -214,10 +215,48 @@ def build_indeed_smart_apply_plan(
             plan.stop_reason = "verified phone number is unavailable; human input is required"
             plan.warnings.append("phone is never inferred from the resume or generated")
             return plan
-        if _phone_digits(values.get("phone", "")) != expected_phone:
+        current_phone_country = values.get("phone_country_iso", "").strip().upper()
+        verified_phone_country = phone_country_iso.strip().upper()
+        next_step = 3
+        country_changed = False
+        if current_phone_country and current_phone_country != verified_phone_country:
+            if not verified_phone_country:
+                plan.stop_reason = (
+                    "phone country differs from the application locale and no "
+                    "runtime-verified country is available"
+                )
+                return plan
+            if not re.fullmatch(r"[A-Z]{2}", verified_phone_country):
+                plan.stop_reason = "runtime-verified phone country must be an ISO alpha-2 code"
+                return plan
+            plan.browser_actions.extend(
+                (
+                    BrowserAction(
+                        step=next_step,
+                        action="click",
+                        target="[role=combobox][aria-haspopup=listbox]",
+                        value_source="runtime verified contact profile",
+                        action_class="sensitive_write",
+                    ),
+                    BrowserAction(
+                        step=next_step + 1,
+                        action="click",
+                        target=f"[data-testid=country-select-{verified_phone_country}]",
+                        value_source="runtime verified contact profile",
+                        action_class="sensitive_write",
+                    ),
+                )
+            )
+            next_step += 2
+            country_changed = True
+            plan.warnings.append(
+                "application locale phone country is replaced only with the "
+                "runtime-verified contact country"
+            )
+        if country_changed or _phone_digits(values.get("phone", "")) != expected_phone:
             plan.browser_actions.append(
                 BrowserAction(
-                    step=3,
+                    step=next_step,
                     action="fill",
                     target="input[name=phone]",
                     value=expected_phone,
@@ -225,9 +264,10 @@ def build_indeed_smart_apply_plan(
                     action_class="sensitive_write",
                 )
             )
+            next_step += 1
         plan.browser_actions.append(
             BrowserAction(
-                step=4,
+                step=next_step,
                 action="click",
                 target="button:visible:has-text('Continue')",
             )

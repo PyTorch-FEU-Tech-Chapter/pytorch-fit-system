@@ -116,6 +116,9 @@ separate systems even when they share the same learn-once/replay-many pattern.
    not imply submit approval and does not enable repeat or bulk submission.
    Questionnaire execution accepts only an evidence-grounded answer plan, validates required fields,
    advances one page, and re-inventories before answering another page.
+   Treat Indeed's exact post-apply route plus visible `Your application has been submitted!` text
+   as deterministic confirmation: persist the SQL submission, resolve its verification-queue item,
+   and return that worker slot to search. Neither route nor text alone is sufficient proof.
 
    Work-mode translation is adapter-specific and evidence-based. Preserve the requested
    `remote|hybrid|onsite|any` value without substitution. Indeed may map `remote` to the location

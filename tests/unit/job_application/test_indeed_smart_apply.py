@@ -97,6 +97,47 @@ def test_checker_corrects_only_mismatched_contact_fields():
     )
 
 
+def test_contact_reconciles_application_locale_with_verified_phone_country():
+    plan = build_indeed_smart_apply_plan(
+        "https://smartapply.indeed.com/beta/indeedapply/form/contact-info-module",
+        _resume(),
+        field_values={
+            "first_name": "John Andrew",
+            "last_name": "Balbarosa",
+            "phone": "9669772854",
+            "phone_country_iso": "AU",
+        },
+        verified_phone="+63 966 977 2854",
+        phone_country_calling_code="+63",
+        phone_country_iso="PH",
+    )
+
+    assert [(action.action, action.target) for action in plan.browser_actions] == [
+        ("click", "[role=combobox][aria-haspopup=listbox]"),
+        ("click", "[data-testid=country-select-PH]"),
+        ("fill", "input[name=phone]"),
+        ("click", "button:visible:has-text('Continue')"),
+    ]
+
+
+def test_contact_stops_on_country_mismatch_without_verified_iso():
+    plan = build_indeed_smart_apply_plan(
+        "https://smartapply.indeed.com/beta/indeedapply/form/contact-info-module",
+        _resume(),
+        field_values={
+            "first_name": "John Andrew",
+            "last_name": "Balbarosa",
+            "phone": "9669772854",
+            "phone_country_iso": "AU",
+        },
+        verified_phone="+63 966 977 2854",
+        phone_country_calling_code="+63",
+    )
+
+    assert plan.browser_actions == []
+    assert "no runtime-verified country" in plan.stop_reason
+
+
 def test_contact_stops_when_no_verified_phone_is_available():
     plan = build_indeed_smart_apply_plan(
         "https://smartapply.indeed.com/beta/indeedapply/form/contact-info-module",

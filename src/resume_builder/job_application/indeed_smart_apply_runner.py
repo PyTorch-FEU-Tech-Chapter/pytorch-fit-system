@@ -62,6 +62,11 @@ def _input_value(page: Any, selector: str) -> str:
     return locator.input_value() if locator.count() else ""
 
 
+def _attribute(page: Any, selector: str, name: str) -> str:
+    locator = _first(page, selector)
+    return (locator.get_attribute(name) or "") if locator.count() else ""
+
+
 def _visible_access_blocker(page: Any) -> str:
     return check_access_gate(page).reason
 
@@ -78,6 +83,11 @@ def _observe_fields(page: Any, module: IndeedSmartApplyModule) -> dict[str, str]
                 "[data-testid=name-fields-last-name-input], input[name=lastName]",
             ),
             "phone": _input_value(page, "input[name=phone], input[type=tel]"),
+            "phone_country_iso": _attribute(
+                page,
+                "[role=combobox][aria-haspopup=listbox]",
+                "data-value",
+            ),
         }
     if module == IndeedSmartApplyModule.LOCATION:
         body = _first(page, "body").inner_text()
@@ -167,6 +177,7 @@ def run_indeed_smart_apply_until_gate(
     permission_policy: ApplicationPermissionPolicy | None = None,
     verified_phone: str = "",
     phone_country_calling_code: str = "",
+    phone_country_iso: str = "",
     question_plan: QuestionPlanningResult | None = None,
     verification_queue: HumanVerificationQueue | None = None,
     application_reference: str = "",
@@ -295,6 +306,7 @@ def run_indeed_smart_apply_until_gate(
             approvals=gates,
             verified_phone=verified_phone,
             phone_country_calling_code=phone_country_calling_code,
+            phone_country_iso=phone_country_iso,
         )
         if module == IndeedSmartApplyModule.REVIEW and not plan.browser_actions:
             return IndeedSmartApplyRunResult(
