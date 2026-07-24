@@ -15,6 +15,7 @@ from .models import ApplicationPlan, BrowserAction, DynamicApplicationPlan, Dyna
 from .ledger import ApplicationLedger, LedgerState
 from .permissions import ApplicationPermissionPolicy
 from .privacy import redact
+from .submission_history import ApplicationSubmissionHistory, SubmissionDecision
 
 
 class ExecutionStatus(str, Enum):
@@ -69,6 +70,10 @@ class SafeApplicationExecutor:
         permission_policy: ApplicationPermissionPolicy | None = None,
         application_id: str = "",
         ledger: ApplicationLedger | None = None,
+        submission_history: ApplicationSubmissionHistory | None = None,
+        company: str = "",
+        job_title: str = "",
+        duplicate_window_days: int = 30,
     ) -> ApplicationExecutionResult:
         events: list[ExecutionEvent] = []
         policy = permission_policy or ApplicationPermissionPolicy()
@@ -123,6 +128,10 @@ class SafeApplicationExecutor:
                         events,
                         application_id,
                         ledger,
+                        submission_history,
+                        company,
+                        job_title,
+                        duplicate_window_days,
                     )
                     if submit_result is not None:
                         return submit_result
@@ -164,6 +173,10 @@ class SafeApplicationExecutor:
                         events,
                         application_id,
                         ledger,
+                        submission_history,
+                        company,
+                        job_title,
+                        duplicate_window_days,
                     )
                     if result is not None:
                         return result
@@ -262,6 +275,10 @@ class SafeApplicationExecutor:
         events: list[ExecutionEvent],
         application_id: str,
         ledger: ApplicationLedger | None,
+        submission_history: ApplicationSubmissionHistory | None,
+        company: str,
+        job_title: str,
+        duplicate_window_days: int,
     ) -> ApplicationExecutionResult | None:
         if not human_approved:
             events.append(
@@ -278,11 +295,63 @@ class SafeApplicationExecutor:
                 events=events,
             )
 
+        reservation_id: int | None = None
+        if submission_history is not None:
+            if not company.strip() or not job_title.strip():
+                events.append(
+                    ExecutionEvent(
+                        step=step,
+                        action="submission_history_check",
+                        target="company+job_title",
+                        status="blocked",
+                        detail="company and exact job title are required",
+                    )
+                )
+                return ApplicationExecutionResult(
+                    status=ExecutionStatus.HUMAN_HANDOFF,
+                    events=events,
+                )
+            reservation = submission_history.reserve_submission(
+                company=company,
+                job_title=job_title,
+                source_url=str(getattr(page, "url", "")),
+                within_days=duplicate_window_days,
+            )
+            if not reservation.allowed:
+                detail = (
+                    f"confirmed exact company/title submission exists within "
+                    f"{duplicate_window_days} days"
+                    if reservation.decision == SubmissionDecision.RECENT_DUPLICATE
+                    else "recent exact company/title submission attempt is unresolved"
+                )
+                events.append(
+                    ExecutionEvent(
+                        step=step,
+                        action="submission_history_check",
+                        target="company+job_title",
+                        status="skipped",
+                        detail=detail,
+                    )
+                )
+                return ApplicationExecutionResult(
+                    status=ExecutionStatus.ALREADY_SUBMITTED,
+                    events=events,
+                )
+            reservation_id = reservation.application_id
+
         if ledger and application_id:
             ledger.set(application_id, LedgerState.SUBMITTING)
-        locator = page.locator(selector)
-        locator.wait_for(state="visible")
-        locator.click()
+        try:
+            locator = page.locator(selector)
+            locator.wait_for(state="visible")
+            locator.click()
+        except Exception:
+            if submission_history is not None and reservation_id is not None:
+                submission_history.mark_submission_unknown(
+                    reservation_id,
+                    details="final submit browser action failed before confirmation",
+                )
+            raise
         confirmation_text = ""
         if confirmation_selector:
             try:
@@ -292,6 +361,11 @@ class SafeApplicationExecutor:
             except Exception:
                 if ledger and application_id:
                     ledger.set(application_id, LedgerState.SUBMISSION_UNKNOWN)
+                if submission_history is not None and reservation_id is not None:
+                    submission_history.mark_submission_unknown(
+                        reservation_id,
+                        details="confirmation proof not observed",
+                    )
                 events.append(ExecutionEvent(step=step, action="final_submit", target=selector,
                                              status="unknown",
                                              detail="confirmation proof not observed"))
@@ -301,6 +375,11 @@ class SafeApplicationExecutor:
         else:
             if ledger and application_id:
                 ledger.set(application_id, LedgerState.SUBMISSION_UNKNOWN)
+            if submission_history is not None and reservation_id is not None:
+                submission_history.mark_submission_unknown(
+                    reservation_id,
+                    details="no confirmation proof configured",
+                )
             events.append(ExecutionEvent(step=step, action="final_submit", target=selector,
                                          status="unknown",
                                          detail="no confirmation proof configured"))
@@ -318,6 +397,11 @@ class SafeApplicationExecutor:
         )
         if ledger and application_id:
             ledger.set(application_id, LedgerState.SUBMITTED, confirmation_text)
+        if submission_history is not None and reservation_id is not None:
+            submission_history.mark_submitted(
+                reservation_id,
+                confirmation=confirmation_text,
+            )
         return ApplicationExecutionResult(
             status=ExecutionStatus.SUBMITTED,
             events=events,

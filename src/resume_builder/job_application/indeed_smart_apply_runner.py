@@ -20,6 +20,7 @@ from .indeed_smart_apply import (
 )
 from .autonomous_questions import QuestionPlanningResult
 from .permissions import ApplicationPermissionPolicy
+from .submission_history import ApplicationSubmissionHistory, SubmissionDecision
 
 
 class IndeedSmartApplyRunStatus(str, Enum):
@@ -28,6 +29,7 @@ class IndeedSmartApplyRunStatus(str, Enum):
     POST_APPLY = "post_apply"
     HUMAN_HANDOFF = "human_handoff"
     FAILED = "failed"
+    SKIPPED_DUPLICATE = "skipped_duplicate"
 
 
 class IndeedSmartApplyRunResult(BaseModel):
@@ -156,6 +158,10 @@ def run_indeed_smart_apply_until_gate(
     question_plan: QuestionPlanningResult | None = None,
     verification_queue: HumanVerificationQueue | None = None,
     application_reference: str = "",
+    submission_history: ApplicationSubmissionHistory | None = None,
+    company: str = "",
+    job_title: str = "",
+    duplicate_window_days: int = 30,
     max_modules: int = 8,
 ) -> IndeedSmartApplyRunResult:
     """Advance known modules and stop at the next human or AI fallback gate."""
@@ -293,8 +299,8 @@ def run_indeed_smart_apply_until_gate(
                 selected_resume=plan.selected_resume,
             )
 
-        before_url = str(page.url)
-        for action in sorted(plan.browser_actions, key=lambda item: item.step):
+        ordered_actions = sorted(plan.browser_actions, key=lambda item: item.step)
+        for action in ordered_actions:
             domain = (urlsplit(str(page.url)).hostname or "").lower()
             if not policy.allows(action.action_class, domain=domain):
                 return IndeedSmartApplyRunResult(
@@ -305,15 +311,67 @@ def run_indeed_smart_apply_until_gate(
                     stop_reason=f"{action.action_class} permission required",
                     selected_resume=plan.selected_resume,
                 )
-            _execute_action(page, action)
-            executed.append(f"{module.value}:{action.action}")
 
         submitted = any(
             action.action.lower().strip() == "final_submit"
-            for action in plan.browser_actions
+            for action in ordered_actions
         )
+        reservation_id: int | None = None
+        if submitted and submission_history is not None:
+            if not company.strip() or not job_title.strip():
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.GATE_REACHED,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason=(
+                        "company and exact job title are required for submission history"
+                    ),
+                    selected_resume=plan.selected_resume,
+                )
+            reservation = submission_history.reserve_submission(
+                company=company,
+                job_title=job_title,
+                source_url=str(page.url),
+                within_days=duplicate_window_days,
+            )
+            if not reservation.allowed:
+                reason = (
+                    "confirmed exact company/title submission exists within "
+                    f"{duplicate_window_days} days"
+                    if reservation.decision == SubmissionDecision.RECENT_DUPLICATE
+                    else "exact company/title has a recent unresolved submission attempt"
+                )
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.SKIPPED_DUPLICATE,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason=reason,
+                    selected_resume=plan.selected_resume,
+                )
+            reservation_id = reservation.application_id
+
+        before_url = str(page.url)
+        for action in ordered_actions:
+            try:
+                _execute_action(page, action)
+            except Exception:
+                if submission_history is not None and reservation_id is not None:
+                    submission_history.mark_submission_unknown(
+                        reservation_id,
+                        details="browser action failed before observable confirmation",
+                    )
+                raise
+            executed.append(f"{module.value}:{action.action}")
+
         if submitted:
             if not _wait_for_url_change(page, before_url):
+                if submission_history is not None and reservation_id is not None:
+                    submission_history.mark_submission_unknown(
+                        reservation_id,
+                        details="submission outcome was not observably confirmed",
+                    )
                 return IndeedSmartApplyRunResult(
                     status=IndeedSmartApplyRunStatus.FAILED,
                     module=module,
@@ -324,6 +382,11 @@ def run_indeed_smart_apply_until_gate(
                 )
             next_module = _wait_for_known_module(page)
             if next_module == IndeedSmartApplyModule.POST_APPLY:
+                if submission_history is not None and reservation_id is not None:
+                    submission_history.mark_submitted(
+                        reservation_id,
+                        confirmation="observable post-apply page reached",
+                    )
                 return IndeedSmartApplyRunResult(
                     status=IndeedSmartApplyRunStatus.POST_APPLY,
                     module=next_module,
@@ -331,6 +394,11 @@ def run_indeed_smart_apply_until_gate(
                     actions_executed=executed,
                     stop_reason="observable post-apply page reached",
                     selected_resume=plan.selected_resume,
+                )
+            if submission_history is not None and reservation_id is not None:
+                submission_history.mark_submission_unknown(
+                    reservation_id,
+                    details="submit navigated to an unexpected route",
                 )
             return IndeedSmartApplyRunResult(
                 status=IndeedSmartApplyRunStatus.FAILED,

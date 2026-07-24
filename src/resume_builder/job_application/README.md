@@ -23,6 +23,13 @@ challenge in the same legitimate browser session, a clear recheck resolves the q
 normal runner can resume. Cookies, credentials, storage state, proxy rotation, fingerprint
 spoofing, solver services, and other anti-bot evasion are outside this pipeline.
 
+Confirmed submissions are stored separately in `ApplicationSubmissionHistory`, backed by SQLite.
+Before a final click, the runner atomically checks normalized-exact company and job-title keys. A
+confirmed match from the previous 30 days is skipped; a recent unresolved attempt also stops to
+avoid an accidental double submission. A different exact title at the same company remains
+eligible. The database keeps the displayed company/title, UTC application time, state, query-free
+source URL, redacted confirmation, and an audit row for every eligibility/outcome decision.
+
 ## Dynamic website planning
 
 ```mermaid
@@ -134,6 +141,7 @@ stateDiagram-v2
 | `website_planner.py` | subdomain/layout sampler + interactive DOM inventory + AI step planner |
 | `session_check.py` | access + session-log + DOM auth gate; AI ambiguity fallback; planning coordinator |
 | `access_verification.py` | deterministic CAPTCHA/access checker + non-secret human queue |
+| `submission_history.py` | SQLite exact company/title history, 30-day guard, and audit log |
 | `indeed_smart_apply.py` | deterministic Indeed module classification, field/resume planning, and human gates |
 | `indeed_smart_apply_runner.py` | bounded sequential execution with access, permission, and transition checks |
 

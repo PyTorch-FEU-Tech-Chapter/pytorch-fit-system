@@ -69,6 +69,13 @@ from resume_builder.job_application.access_verification import (
     check_access_gate,
     sanitize_application_url,
 )
+from resume_builder.job_application.submission_history import (
+    ApplicationHistoryEntry,
+    ApplicationSubmissionHistory,
+    SubmissionDecision,
+    SubmissionReservation,
+    normalize_exact_identity,
+)
 from resume_builder.job_application.autonomous_questions import (
     AutonomousQuestionPipeline,
     HybridQuestionPipeline,
@@ -150,6 +157,11 @@ __all__ = [
     "VerificationQueueState",
     "check_access_gate",
     "sanitize_application_url",
+    "ApplicationHistoryEntry",
+    "ApplicationSubmissionHistory",
+    "SubmissionDecision",
+    "SubmissionReservation",
+    "normalize_exact_identity",
     "AutonomousQuestionPipeline",
     "HybridQuestionPipeline",
     "QuestionPlanningResult",

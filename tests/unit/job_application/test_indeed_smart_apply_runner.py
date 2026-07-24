@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from resume_builder.core.models import ContactInfo, Resume, RoleSpec
 from resume_builder.job_application import (
     HumanVerificationQueue,
+    ApplicationSubmissionHistory,
     ApplicationPermissionPolicy,
     DynamicInteractionStep,
     IndeedSmartApplyRunStatus,
@@ -357,3 +358,36 @@ def test_runner_queues_active_captcha_without_storing_query_values(tmp_path):
     assert len(queue.pending()) == 1
     assert queue.pending()[0].reason == "captcha"
     assert "private-session" not in queue.path.read_text(encoding="utf-8")
+
+
+def test_runner_skips_recent_exact_company_title_before_submit_click(tmp_path):
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    history = ApplicationSubmissionHistory(tmp_path / "applications.sqlite3")
+    existing = history.reserve_submission(
+        company="DataAnnotation",
+        job_title="Backend Developer - AI Trainer",
+    )
+    history.mark_submitted(existing.application_id, confirmation="post-apply reached")
+    page = _Page(
+        [
+            _State(f"{root}/review-module", "Submit your application", {}),
+            _State(f"{root}/post-apply", "Your application has been submitted", {}),
+        ]
+    )
+
+    result = run_indeed_smart_apply_until_gate(
+        page,
+        _resume(),
+        approvals=SmartApplyApprovals(final_submit=True),
+        permission_policy=ApplicationPermissionPolicy(
+            autonomous_submit=True,
+            allowed_domains={"smartapply.indeed.com"},
+        ),
+        submission_history=history,
+        company="dataannotation",
+        job_title="Backend   Developer - AI Trainer",
+    )
+
+    assert result.status == IndeedSmartApplyRunStatus.SKIPPED_DUPLICATE
+    assert result.actions_executed == []
+    assert page.index == 0

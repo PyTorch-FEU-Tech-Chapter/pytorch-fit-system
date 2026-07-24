@@ -15,6 +15,7 @@ from resume_builder.job_application.models import (
 )
 from resume_builder.job_application.ledger import ApplicationLedger, LedgerState
 from resume_builder.job_application.permissions import ApplicationPermissionPolicy
+from resume_builder.job_application.submission_history import ApplicationSubmissionHistory
 
 
 FORM_HTML = """
@@ -140,6 +141,45 @@ def test_browser_executor_autonomous_submit_is_explicit_and_idempotent(tmp_path:
         assert first.status == ExecutionStatus.SUBMITTED
         assert second.status == ExecutionStatus.ALREADY_SUBMITTED
         assert ledger.get("company:job-1").state == LedgerState.SUBMITTED
+        browser.close()
+
+
+def test_browser_executor_skips_recent_exact_company_title_from_sql_history(
+    tmp_path: Path,
+) -> None:
+    resume = tmp_path / "resume.pdf"
+    resume.write_bytes(b"%PDF-1.4\n")
+    application_plan, dynamic_plan = _plans(resume)
+    history = ApplicationSubmissionHistory(tmp_path / "applications.sqlite3")
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.set_content(FORM_HTML)
+        first = SafeApplicationExecutor().execute(
+            page,
+            application_plan,
+            dynamic_plan,
+            human_approved=True,
+            submission_history=history,
+            company="Example Company",
+            job_title="Backend Engineer",
+        )
+        page.set_content(FORM_HTML)
+        second = SafeApplicationExecutor().execute(
+            page,
+            application_plan,
+            dynamic_plan,
+            human_approved=True,
+            submission_history=history,
+            company=" example company ",
+            job_title="Backend   Engineer",
+        )
+
+        assert first.status == ExecutionStatus.SUBMITTED
+        assert second.status == ExecutionStatus.ALREADY_SUBMITTED
+        assert second.events[-1].action == "submission_history_check"
+        assert page.locator("#confirmation").is_hidden()
         browser.close()
 
 
