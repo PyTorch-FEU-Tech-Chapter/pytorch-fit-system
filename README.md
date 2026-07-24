@@ -126,8 +126,8 @@ The legacy Python engine now has a deterministic browser executor for accepted a
 - Dynamic pages: replay approved read-only interactions from the cached layout plan.
 - Draft validation: missing information stops for human input; unsupported or unsafe actions fail
   closed.
-- Indeed Smart Apply: reconcile contact names from the selected resume, preserve account contact
-  data, and stop when the required phone is blank; never infer or generate a number.
+- Indeed Smart Apply: check each contact field before editing, reconcile names from the selected
+  resume, and obtain phone only from runtime-verified contact data; never infer or hardcode it.
 - Role-specific resumes: upload and Continue are separate approvals; only actual professional
   experience may populate employment fields.
 - Final send: always blocked until the user gives explicit approval for that application.

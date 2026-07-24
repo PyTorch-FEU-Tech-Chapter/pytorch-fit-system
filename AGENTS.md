@@ -102,11 +102,13 @@ separate systems even when they share the same learn-once/replay-many pattern.
    rendered-DOM sampling plus AI rule planning. Untagged domains use that generic sampling path
    immediately. Accepted fallback rules remain scoped to the exact subdomain + layout fingerprint.
 
-   For verified Indeed Smart Apply modules, reconcile first/last name only from the selected resume.
-   Preserve account email and phone values, never infer or generate a phone number, and stop before
-   Continue when a required phone is blank. Treat resume upload and resume Continue as separate
-   human approvals. Populate employment fields only from actual professional experience; never
-   promote achievements, leadership, or projects into employment.
+   For verified Indeed Smart Apply modules, check each contact field before editing and leave
+   matching values untouched. Reconcile first/last name only from the selected resume. Obtain phone
+   only from runtime-verified contact data, normalize it against a separate country-code control,
+   never infer, generate, or hardcode it, and stop when verified data is unavailable. Treat resume
+   upload and resume Continue as separate human approvals. Populate employment fields only from
+   actual professional experience; never promote achievements, leadership, or projects into
+   employment.
 
    Work-mode translation is adapter-specific and evidence-based. Preserve the requested
    `remote|hybrid|onsite|any` value without substitution. Indeed may map `remote` to the location

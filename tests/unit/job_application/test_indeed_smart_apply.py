@@ -66,24 +66,47 @@ def test_prefilled_contact_skips_name_writes_and_continues():
         field_values={
             "first_name": "John Andrew",
             "last_name": "Balbarosa",
-            "phone": "existing",
+            "phone": "9123456789",
         },
+        verified_phone="+63 912 345 6789",
+        phone_country_calling_code="+63",
     )
     assert [action.action for action in plan.browser_actions] == ["click"]
 
 
-def test_incomplete_prefilled_name_is_corrected_but_blank_phone_blocks_continue():
+def test_checker_corrects_only_mismatched_contact_fields():
     plan = build_indeed_smart_apply_plan(
         "https://smartapply.indeed.com/beta/indeedapply/form/contact-info-module",
         _resume(),
         field_values={"first_name": "John", "last_name": "Balbarosa", "phone": ""},
+        verified_phone="+63 912 345 6789",
+        phone_country_calling_code="+63",
     )
 
     assert [(action.action, action.value) for action in plan.browser_actions] == [
-        ("fill", "John Andrew")
+        ("fill", "John Andrew"),
+        ("fill", "9123456789"),
+        ("click", ""),
     ]
-    assert "phone number is blank" in plan.stop_reason
-    assert all(action.action != "click" for action in plan.browser_actions)
+    assert all(
+        action.target != "[data-testid=name-fields-last-name-input]"
+        for action in plan.browser_actions
+    )
+
+
+def test_contact_stops_when_no_verified_phone_is_available():
+    plan = build_indeed_smart_apply_plan(
+        "https://smartapply.indeed.com/beta/indeedapply/form/contact-info-module",
+        _resume(),
+        field_values={
+            "first_name": "John Andrew",
+            "last_name": "Balbarosa",
+            "phone": "",
+        },
+    )
+
+    assert plan.browser_actions == []
+    assert "verified phone number is unavailable" in plan.stop_reason
 
 
 def test_empty_experience_never_promotes_achievement_to_employment():

@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import Enum
 import json
 from pathlib import Path
+import re
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field
@@ -86,6 +87,18 @@ def _split_name(full_name: str) -> tuple[str, str]:
     return " ".join(parts[:-1]), parts[-1]
 
 
+def _phone_digits(value: str) -> str:
+    return re.sub(r"\D", "", value)
+
+
+def _national_phone(verified_phone: str, country_calling_code: str) -> str:
+    phone = _phone_digits(verified_phone)
+    prefix = _phone_digits(country_calling_code)
+    if prefix and phone.startswith(prefix):
+        return phone[len(prefix) :]
+    return phone
+
+
 def build_indeed_smart_apply_plan(
     page_url: str,
     resume: Resume,
@@ -94,6 +107,8 @@ def build_indeed_smart_apply_plan(
     selected_resume: str = "",
     approved_resume: Path | None = None,
     approvals: SmartApplyApprovals | None = None,
+    verified_phone: str = "",
+    phone_country_calling_code: str = "",
 ) -> SmartApplyModulePlan:
     """Plan exactly one visible module; the caller executes and re-observes after navigation."""
     module = classify_indeed_smart_apply_module(page_url)
@@ -141,18 +156,32 @@ def build_indeed_smart_apply_plan(
             plan.warnings.append(
                 "prefilled last name differs from the verified resume name and requires correction"
             )
-        if not values.get("phone", "").strip():
-            plan.stop_reason = "required phone number is blank; human must enter a verified number"
+        expected_phone = _national_phone(verified_phone, phone_country_calling_code)
+        if not expected_phone:
+            plan.stop_reason = "verified phone number is unavailable; human input is required"
             plan.warnings.append("phone is never inferred from the resume or generated")
             return plan
+        if _phone_digits(values.get("phone", "")) != expected_phone:
+            plan.browser_actions.append(
+                BrowserAction(
+                    step=3,
+                    action="fill",
+                    target="input[name=phone]",
+                    value=expected_phone,
+                    value_source="runtime verified contact profile",
+                    action_class="sensitive_write",
+                )
+            )
         plan.browser_actions.append(
             BrowserAction(
-                step=3,
+                step=4,
                 action="click",
                 target="button:visible:has-text('Continue')",
             )
         )
-        plan.warnings.append("account email and phone are preserved; neither is inferred")
+        plan.warnings.append(
+            "matching contact fields are left untouched; email is preserved and phone is verified"
+        )
         return plan
 
     if module == IndeedSmartApplyModule.LOCATION:

@@ -49,8 +49,10 @@ selection/upload and Continue remain previewable human gates.
 
 Indeed Smart Apply has a deterministic module planner for the verified contact, location, resume,
 relevant-experience, review, and post-apply routes. Contact names are reconciled against the
-selected resume, but email and phone are never inferred or generated. A blank required phone stops
-before Continue for human input. Resume upload and resume Continue are separate approvals;
+selected resume. Each contact field is checked before editing, so matching values remain untouched.
+Phone comes only from the runtime-verified contact profile, is normalized against a separate
+country-code control, and is never inferred, generated, or hardcoded. Missing verified contact data
+stops before Continue. Resume upload and resume Continue are separate approvals;
 achievements, leadership, and projects never substitute for professional experience; final submit
 still requires its own explicit approval.
 
