@@ -66,6 +66,15 @@ Employer questionnaires accept only an evidence-grounded `QuestionPlanningResult
 validates required answers, advances one questionnaire page, then requires fresh inventory and
 planning if another question page appears.
 
+`HybridQuestionPipeline` keeps standard questions deterministic. It maps selected-resume facts
+(name, education, graduation state, professional experience, links) and explicitly verified
+runtime profile facts (email, phone, street/city/region/postal/country) without a model call.
+Missing private facts, salary, authorization/visa, relocation, scheduling, consent, and demographic
+questions stop for human input. Only non-standard employer questions such as project- or
+technology-specific experience may call the bounded career-evidence answerer. That answerer now
+receives only resume evidence with a positive token match and must still cite accepted evidence IDs
+or abstain.
+
 For a non-mutating live preview against a user-approved Chrome/CDP session:
 
 ```bash

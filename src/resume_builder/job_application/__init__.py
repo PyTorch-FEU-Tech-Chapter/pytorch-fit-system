@@ -62,7 +62,13 @@ from resume_builder.job_application.permissions import ApplicationPermissionPoli
 from resume_builder.job_application.ledger import ApplicationLedger, LedgerState
 from resume_builder.job_application.autonomous_questions import (
     AutonomousQuestionPipeline,
+    HybridQuestionPipeline,
     QuestionPlanningResult,
+)
+from resume_builder.job_application.deterministic_questions import (
+    DeterministicQuestionDecision,
+    DeterministicQuestionResolver,
+    VerifiedApplicationProfile,
 )
 from resume_builder.job_application.visualizer import render_application_overlay
 from resume_builder.job_application.indeed_smart_apply import (
@@ -129,7 +135,11 @@ __all__ = [
     "ApplicationLedger",
     "LedgerState",
     "AutonomousQuestionPipeline",
+    "HybridQuestionPipeline",
     "QuestionPlanningResult",
+    "DeterministicQuestionDecision",
+    "DeterministicQuestionResolver",
+    "VerifiedApplicationProfile",
     "render_application_overlay",
     "IndeedSmartApplyModule",
     "SmartApplyApprovals",

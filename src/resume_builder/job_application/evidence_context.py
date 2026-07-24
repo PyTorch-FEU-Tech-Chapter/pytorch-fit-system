@@ -8,9 +8,37 @@ from resume_builder.core.models import Resume
 
 from .models import EvidenceCitation
 
+_QUERY_STOPWORDS = frozenset(
+    {
+        "about",
+        "and",
+        "describe",
+        "do",
+        "experience",
+        "have",
+        "how",
+        "many",
+        "professional",
+        "please",
+        "tell",
+        "the",
+        "using",
+        "what",
+        "with",
+        "work",
+        "years",
+        "you",
+        "your",
+    }
+)
+
 
 def _tokens(value: str) -> set[str]:
-    return {token for token in re.findall(r"[a-z0-9+#.]+", value.lower()) if len(token) > 1}
+    return {
+        token
+        for token in re.findall(r"[a-z0-9+#.]+", value.lower())
+        if len(token) > 1 and token not in _QUERY_STOPWORDS
+    }
 
 
 class CareerEvidenceTool:
@@ -25,9 +53,7 @@ class CareerEvidenceTool:
         wanted = _tokens(query)
         ranked = [(len(wanted & _tokens(item.text)), item) for item in self._items]
         ranked.sort(key=lambda pair: pair[0], reverse=True)
-        relevant = [item for score, item in ranked if score > 0]
-        supporting = [item for score, item in ranked if score == 0]
-        return [*relevant, *supporting][: self.max_items]
+        return [item for score, item in ranked if score > 0][: self.max_items]
 
     def _build_items(self) -> list[EvidenceCitation]:
         items: list[EvidenceCitation] = []

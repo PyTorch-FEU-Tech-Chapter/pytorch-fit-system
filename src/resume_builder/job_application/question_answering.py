@@ -24,6 +24,12 @@ class AIQuestionAnswerer:
 
     def answer(self, question: ScreeningQuestion) -> QuestionAnswer:
         evidence = self.evidence_tool.search(question.label)
+        if not evidence:
+            return QuestionAnswer(
+                question_id=question.question_id,
+                abstain=True,
+                rationale="no positively matched career evidence",
+            )
         prompt = (
             "QUESTION:\n" + question.model_dump_json(indent=2)
             + "\n\nTOOL RESULT search_career_evidence:\n"

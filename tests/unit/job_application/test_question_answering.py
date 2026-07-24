@@ -28,8 +28,8 @@ class _LLM:
         assert "PyTorch" in prompt
         return QuestionAnswer(
             question_id="q1",
-            answer="I used PyTorch to build an image classifier.",
-            evidence_ids=["skill_group:0", "project:1"],
+            answer="PyTorch is included in my evidenced Python skill set.",
+            evidence_ids=["skill_group:0"],
             confidence=0.9,
         )
 
@@ -44,17 +44,34 @@ def test_answerer_uses_bounded_resume_evidence_tool():
 
 
 class _HallucinatingLLM:
+    called = False
+
     def structured(self, prompt, schema, system=None, max_tokens=2048):
+        self.called = True
         return QuestionAnswer(question_id="q1", answer="Ten years", evidence_ids=["fake:99"])
 
 
 def test_answerer_abstains_when_citation_is_not_in_tool_result():
-    answerer = AIQuestionAnswerer(_HallucinatingLLM(), CareerEvidenceTool(_resume()))
+    llm = _HallucinatingLLM()
+    answerer = AIQuestionAnswerer(llm, CareerEvidenceTool(_resume()))
     answer = answerer.answer(ScreeningQuestion(
         question_id="q1", label="Years of COBOL experience", selector="#q1"
     ))
     assert answer.abstain is True
     assert answer.answer == ""
+    assert llm.called is False
+
+
+def test_evidence_tool_excludes_zero_match_resume_items():
+    evidence = CareerEvidenceTool(_resume()).search("COBOL")
+
+    assert evidence == []
+
+
+def test_evidence_tool_ignores_question_boilerplate_for_unknown_tool():
+    evidence = CareerEvidenceTool(_resume()).search("Describe your experience with n8n")
+
+    assert evidence == []
 
 
 def test_question_pipeline_emits_executable_draft_write():
