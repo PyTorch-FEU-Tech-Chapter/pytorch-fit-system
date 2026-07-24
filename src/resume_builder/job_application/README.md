@@ -56,6 +56,11 @@ stops before Continue. Resume upload and resume Continue are separate approvals;
 achievements, leadership, and projects never substitute for professional experience; final submit
 still requires its own explicit approval.
 
+`run_indeed_smart_apply_until_gate` composes those one-module plans into a bounded sequential run.
+It re-observes the page after every Continue, stops on access/layout drift, and returns at resume
+preview, missing/sensitive data, review, or final-submit gates. Reaching Review is not permission to
+submit; unattended repeat runs still require an explicit domain-scoped `autonomous_submit` policy.
+
 For a non-mutating live preview against a user-approved Chrome/CDP session:
 
 ```bash
@@ -109,6 +114,7 @@ stateDiagram-v2
 | `website_planner.py` | subdomain/layout sampler + interactive DOM inventory + AI step planner |
 | `session_check.py` | access + session-log + DOM auth gate; AI ambiguity fallback; planning coordinator |
 | `indeed_smart_apply.py` | deterministic Indeed module classification, field/resume planning, and human gates |
+| `indeed_smart_apply_runner.py` | bounded sequential execution with access, permission, and transition checks |
 
 ## Contracts / key signatures
 

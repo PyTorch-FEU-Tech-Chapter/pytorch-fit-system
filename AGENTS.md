@@ -110,6 +110,11 @@ separate systems even when they share the same learn-once/replay-many pattern.
    actual professional experience; never promote achievements, leadership, or projects into
    employment.
 
+   Sequential Indeed execution must re-observe after every module transition and remain bounded.
+   Stop on access/layout drift, missing contact evidence, resume preview, unknown questionnaires,
+   Review, and final Submit unless the exact gate has been explicitly approved. Reaching Review does
+   not imply submit approval and does not enable repeat or bulk submission.
+
    Work-mode translation is adapter-specific and evidence-based. Preserve the requested
    `remote|hybrid|onsite|any` value without substitution. Indeed may map `remote` to the location
    value `remote` only when the live location control advertises remote support (for example in its

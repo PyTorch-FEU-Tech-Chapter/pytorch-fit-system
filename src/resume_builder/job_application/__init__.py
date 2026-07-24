@@ -74,6 +74,11 @@ from resume_builder.job_application.indeed_smart_apply import (
     load_resume_artifact,
     recommend_role_resume,
 )
+from resume_builder.job_application.indeed_smart_apply_runner import (
+    IndeedSmartApplyRunResult,
+    IndeedSmartApplyRunStatus,
+    run_indeed_smart_apply_until_gate,
+)
 
 __all__ = [
     "ApplicationPlan",
@@ -133,4 +138,7 @@ __all__ = [
     "classify_indeed_smart_apply_module",
     "load_resume_artifact",
     "recommend_role_resume",
+    "IndeedSmartApplyRunResult",
+    "IndeedSmartApplyRunStatus",
+    "run_indeed_smart_apply_until_gate",
 ]
