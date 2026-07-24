@@ -56,6 +56,13 @@ from resume_builder.job_application.executor import (
     ExecutionStatus,
     SafeApplicationExecutor,
 )
+from resume_builder.job_application.batch import (
+    ApplicationBatchCoordinator,
+    BatchApplicationOutcome,
+    BatchApplicationRun,
+    BatchApplicationStatus,
+    BatchApplicationTask,
+)
 from resume_builder.job_application.evidence_context import CareerEvidenceTool
 from resume_builder.job_application.question_answering import AIQuestionAnswerer
 from resume_builder.job_application.permissions import ApplicationPermissionPolicy
@@ -112,6 +119,7 @@ from resume_builder.job_application.indeed_smart_apply_runner import (
     IndeedSmartApplyRunStatus,
     run_indeed_smart_apply_until_gate,
 )
+from resume_builder.job_application.indeed_batch import indeed_batch_outcome
 
 __all__ = [
     "ApplicationPlan",
@@ -156,6 +164,11 @@ __all__ = [
     "ExecutionEvent",
     "ExecutionStatus",
     "SafeApplicationExecutor",
+    "ApplicationBatchCoordinator",
+    "BatchApplicationOutcome",
+    "BatchApplicationRun",
+    "BatchApplicationStatus",
+    "BatchApplicationTask",
     "CareerEvidenceTool",
     "AIQuestionAnswerer",
     "ApplicationPermissionPolicy",
@@ -198,5 +211,6 @@ __all__ = [
     "recommend_role_resume",
     "IndeedSmartApplyRunResult",
     "IndeedSmartApplyRunStatus",
+    "indeed_batch_outcome",
     "run_indeed_smart_apply_until_gate",
 ]

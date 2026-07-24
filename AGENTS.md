@@ -143,6 +143,13 @@ separate systems even when they share the same learn-once/replay-many pattern.
    when the runtime user explicitly enables `autonomous_submit` for the target domain; it still
    requires validation and observable confirmation. CAPTCHA, login/identity verification, rate
    limits, domain/layout mismatch, and unknown submission outcomes are never bypassable.
+   Bounded parallel application batches may use isolated browser pages. Continue clear,
+   high-confidence items independently; collect CAPTCHA-blocked items in the human-verification
+   queue for sequential human completion. Never share a Playwright page across workers, retry a
+   challenged item with another identity, or let one item's approval authorize another.
+   Every batch item must preserve its explicit target country and work mode. A worker that changes
+   either preference fails closed; do not silently substitute the browser locale, current domain,
+   Philippines, or onsite work for a requested foreign-country remote search.
 
 7. **Debug visualizers only.**
    Playwright visual tagging is allowed only as a temporary development aid under `/out/`. The final

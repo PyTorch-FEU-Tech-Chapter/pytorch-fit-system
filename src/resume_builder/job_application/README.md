@@ -18,6 +18,15 @@ these primitives. Site modules retain only verified DOM selectors, routes, and w
 new websites configure the shared library instead of copying CAPTCHA, submit, or resume-selection
 logic.
 
+`ApplicationBatchCoordinator` provides bounded parallel orchestration for isolated application
+workers. Each worker must own its browser page; Playwright pages are never shared across threads.
+Successful no-CAPTCHA flows may continue to observable confirmation, while CAPTCHA results collect
+as `verification_pending` items in the thread-safe `HumanVerificationQueue`. One worker failure
+fails only that task closed and never enables retries or submission for another task.
+Every batch task carries an explicit target country and `remote|hybrid|onsite|any` work mode. The
+coordinator rejects a worker result that changes either value, so a foreign-country remote search
+cannot silently become a Philippines-targeted or onsite application.
+
 Authentication is session-first. The pipeline checks access blockers, visible signed-in/signed-out
 DOM markers, stored Playwright state, and recent non-secret session-decision logs before considering
 an AI call. AI is an ambiguity fallback only; cookie values and credentials never enter its prompt.

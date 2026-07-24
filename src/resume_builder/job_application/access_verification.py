@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from threading import RLock
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -28,6 +29,8 @@ __all__ = [
     "check_access_gate",
     "sanitize_application_url",
 ]
+
+_QUEUE_LOCK = RLock()
 
 
 class VerificationQueueState(str, Enum):
@@ -71,26 +74,27 @@ class HumanVerificationQueue:
     ) -> VerificationQueueEntry:
         if not result.blocked:
             raise ValueError("only human-required access results may be queued")
-        safe_url = sanitize_application_url(url)
-        domain = (urlsplit(safe_url).hostname or "").lower()
-        reference = _safe_application_reference(application_reference, safe_url)
-        entry_id = self._entry_id(domain, reference)
-        payload = self._load()
-        existing = payload.get(entry_id)
-        now = datetime.now(timezone.utc).isoformat()
-        entry = VerificationQueueEntry(
-            id=entry_id,
-            application_reference=reference,
-            domain=domain,
-            url=safe_url,
-            reason=result.reason,
-            status=VerificationQueueState.PENDING,
-            created_at=existing.get("created_at", now) if existing else now,
-            updated_at=now,
-            occurrences=int(existing.get("occurrences", 0)) + 1 if existing else 1,
-        )
-        payload[entry_id] = entry.model_dump(mode="json")
-        self._save(payload)
+        with _QUEUE_LOCK:
+            safe_url = sanitize_application_url(url)
+            domain = (urlsplit(safe_url).hostname or "").lower()
+            reference = _safe_application_reference(application_reference, safe_url)
+            entry_id = self._entry_id(domain, reference)
+            payload = self._load()
+            existing = payload.get(entry_id)
+            now = datetime.now(timezone.utc).isoformat()
+            entry = VerificationQueueEntry(
+                id=entry_id,
+                application_reference=reference,
+                domain=domain,
+                url=safe_url,
+                reason=result.reason,
+                status=VerificationQueueState.PENDING,
+                created_at=existing.get("created_at", now) if existing else now,
+                updated_at=now,
+                occurrences=int(existing.get("occurrences", 0)) + 1 if existing else 1,
+            )
+            payload[entry_id] = entry.model_dump(mode="json")
+            self._save(payload)
         return entry
 
     def resolve_if_clear(
@@ -102,29 +106,31 @@ class HumanVerificationQueue:
     ) -> VerificationQueueEntry | None:
         if result.blocked:
             return None
-        safe_url = sanitize_application_url(url)
-        domain = (urlsplit(safe_url).hostname or "").lower()
-        reference = _safe_application_reference(application_reference, safe_url)
-        entry_id = self._entry_id(domain, reference)
-        payload = self._load()
-        existing = payload.get(entry_id)
-        if not existing:
-            return None
-        existing["status"] = VerificationQueueState.RESOLVED.value
-        existing["updated_at"] = datetime.now(timezone.utc).isoformat()
-        payload[entry_id] = existing
-        self._save(payload)
+        with _QUEUE_LOCK:
+            safe_url = sanitize_application_url(url)
+            domain = (urlsplit(safe_url).hostname or "").lower()
+            reference = _safe_application_reference(application_reference, safe_url)
+            entry_id = self._entry_id(domain, reference)
+            payload = self._load()
+            existing = payload.get(entry_id)
+            if not existing:
+                return None
+            existing["status"] = VerificationQueueState.RESOLVED.value
+            existing["updated_at"] = datetime.now(timezone.utc).isoformat()
+            payload[entry_id] = existing
+            self._save(payload)
         return VerificationQueueEntry.model_validate(existing)
 
     def pending(self) -> list[VerificationQueueEntry]:
-        return sorted(
-            (
-                VerificationQueueEntry.model_validate(value)
-                for value in self._load().values()
-                if value.get("status") == VerificationQueueState.PENDING.value
-            ),
-            key=lambda item: item.updated_at,
-        )
+        with _QUEUE_LOCK:
+            return sorted(
+                (
+                    VerificationQueueEntry.model_validate(value)
+                    for value in self._load().values()
+                    if value.get("status") == VerificationQueueState.PENDING.value
+                ),
+                key=lambda item: item.updated_at,
+            )
 
     @staticmethod
     def _entry_id(domain: str, application_reference: str) -> str:
