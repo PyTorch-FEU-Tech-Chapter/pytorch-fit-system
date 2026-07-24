@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -33,6 +34,13 @@ class _DefaultSubmissionHistory:
 
 
 _DEFAULT_SUBMISSION_HISTORY = _DefaultSubmissionHistory()
+_POST_APPLY_CONFIRMATION = "your application has been submitted"
+_VALIDATION_SELECTORS = (
+    "[aria-invalid=true]",
+    "[role=alert]",
+    "[data-testid*=error]",
+    ".ia-ValidationError",
+)
 
 
 class IndeedSmartApplyRunStatus(str, Enum):
@@ -147,14 +155,60 @@ def _required_question_answers_present(page: Any) -> bool:
     return True
 
 
-def _wait_for_url_change(page: Any, before_url: str, *, timeout_ms: int = 5_000) -> bool:
+def _visible_body_text(page: Any) -> str:
+    body = _first(page, "body")
+    return body.inner_text() if body.count() else ""
+
+
+def _page_observation(page: Any) -> tuple[str, IndeedSmartApplyModule, str]:
+    """Capture route plus rendered module identity for same-route React transitions."""
+    url = str(page.url)
+    text = re.sub(r"\s+", " ", _visible_body_text(page)).strip().casefold()
+    return url, classify_indeed_smart_apply_module(url), text
+
+
+def _wait_for_transition(
+    page: Any,
+    before: tuple[str, IndeedSmartApplyModule, str],
+    *,
+    timeout_ms: int = 5_000,
+) -> tuple[bool, tuple[str, IndeedSmartApplyModule, str]]:
     interval_ms = 250
     attempts = max(1, timeout_ms // interval_ms)
     for _ in range(attempts):
-        if str(page.url) != before_url:
+        observed = _page_observation(page)
+        if observed != before:
+            return True, observed
+        page.wait_for_timeout(interval_ms)
+    observed = _page_observation(page)
+    return observed != before, observed
+
+
+def _visible_validation_reason(page: Any) -> str:
+    for selector in _VALIDATION_SELECTORS:
+        locator = page.locator(selector).first
+        if locator.count() and locator.is_visible():
+            text = re.sub(r"\s+", " ", locator.inner_text()).strip()
+            return text or "visible validation error"
+    return ""
+
+
+def _post_apply_is_confirmed(page: Any) -> bool:
+    return (
+        classify_indeed_smart_apply_module(str(page.url))
+        == IndeedSmartApplyModule.POST_APPLY
+        and _POST_APPLY_CONFIRMATION in _visible_body_text(page).casefold()
+    )
+
+
+def _wait_for_post_apply_confirmation(page: Any, *, timeout_ms: int = 5_000) -> bool:
+    interval_ms = 250
+    attempts = max(1, timeout_ms // interval_ms)
+    for _ in range(attempts):
+        if _post_apply_is_confirmed(page):
             return True
         page.wait_for_timeout(interval_ms)
-    return str(page.url) != before_url
+    return _post_apply_is_confirmed(page)
 
 
 def _wait_for_known_module(page: Any, *, timeout_ms: int = 5_000) -> IndeedSmartApplyModule:
@@ -233,6 +287,17 @@ def run_indeed_smart_apply_until_gate(
                 stop_reason="unknown module requires bounded AI sampling",
             )
         if module == IndeedSmartApplyModule.POST_APPLY:
+            if not _wait_for_post_apply_confirmation(page):
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason=(
+                        "post-apply route lacks the exact visible confirmation; "
+                        "submission outcome is unknown and must not be retried"
+                    ),
+                )
             return IndeedSmartApplyRunResult(
                 status=IndeedSmartApplyRunStatus.POST_APPLY,
                 module=module,
@@ -271,22 +336,25 @@ def run_indeed_smart_apply_until_gate(
                     actions_executed=executed,
                     stop_reason="required questionnaire fields remain unanswered",
                 )
-            before_url = str(page.url)
+            before = _page_observation(page)
             _first(page, "button:visible:has-text('Continue')").click()
             executed.append(f"{module.value}:click")
             question_plan = None
-            if not _wait_for_url_change(page, before_url):
+            transitioned, observed = _wait_for_transition(page, before)
+            if not transitioned:
+                validation = _visible_validation_reason(page)
                 return IndeedSmartApplyRunResult(
-                    status=IndeedSmartApplyRunStatus.FAILED,
+                    status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
                     module=module,
                     modules_seen=seen,
                     actions_executed=executed,
-                    stop_reason="expected questionnaire transition was not observed",
+                    stop_reason=(
+                        f"questionnaire validation remains unresolved: {validation}"
+                        if validation
+                        else "questionnaire transition was not observed; human review required"
+                    ),
                 )
-            if (
-                classify_indeed_smart_apply_module(str(page.url))
-                == IndeedSmartApplyModule.QUESTIONS
-            ):
+            if observed[1] == IndeedSmartApplyModule.QUESTIONS:
                 return IndeedSmartApplyRunResult(
                     status=IndeedSmartApplyRunStatus.GATE_REACHED,
                     module=module,
@@ -399,7 +467,7 @@ def run_indeed_smart_apply_until_gate(
                 )
             reservation_id = reservation.application_id
 
-        before_url = str(page.url)
+        before = _page_observation(page)
         for action in ordered_actions:
             if action.action.lower().strip() == "final_submit":
                 final_gate = evaluate_final_submit_gate(page, action.target)
@@ -435,7 +503,8 @@ def run_indeed_smart_apply_until_gate(
             executed.append(f"{module.value}:{action.action}")
 
         if submitted:
-            if not _wait_for_url_change(page, before_url):
+            transitioned, _ = _wait_for_transition(page, before)
+            if not transitioned:
                 if submission_history is not None and reservation_id is not None:
                     submission_history.mark_submission_unknown(
                         reservation_id,
@@ -450,7 +519,10 @@ def run_indeed_smart_apply_until_gate(
                     selected_resume=plan.selected_resume,
                 )
             next_module = _wait_for_known_module(page)
-            if next_module == IndeedSmartApplyModule.POST_APPLY:
+            if (
+                next_module == IndeedSmartApplyModule.POST_APPLY
+                and _wait_for_post_apply_confirmation(page)
+            ):
                 if submission_history is not None and reservation_id is not None:
                     submission_history.mark_submitted(
                         reservation_id,
@@ -467,14 +539,16 @@ def run_indeed_smart_apply_until_gate(
             if submission_history is not None and reservation_id is not None:
                 submission_history.mark_submission_unknown(
                     reservation_id,
-                    details="submit navigated to an unexpected route",
+                    details="submit did not reach exact visible post-apply confirmation",
                 )
             return IndeedSmartApplyRunResult(
-                status=IndeedSmartApplyRunStatus.FAILED,
+                status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
                 module=next_module,
                 modules_seen=seen,
                 actions_executed=executed,
-                stop_reason="submit navigated to an unexpected route; do not retry",
+                stop_reason=(
+                    "submit outcome lacks exact visible post-apply confirmation; do not retry"
+                ),
                 selected_resume=plan.selected_resume,
             )
 
@@ -488,13 +562,19 @@ def run_indeed_smart_apply_until_gate(
                 selected_resume=plan.selected_resume,
             )
 
-        if not _wait_for_url_change(page, before_url):
+        transitioned, _ = _wait_for_transition(page, before)
+        if not transitioned:
+            validation = _visible_validation_reason(page)
             return IndeedSmartApplyRunResult(
-                status=IndeedSmartApplyRunStatus.FAILED,
+                status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
                 module=module,
                 modules_seen=seen,
                 actions_executed=executed,
-                stop_reason="expected module transition was not observed",
+                stop_reason=(
+                    f"module validation remains unresolved: {validation}"
+                    if validation
+                    else "module transition was not observed; human review required"
+                ),
                 selected_resume=plan.selected_resume,
             )
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .batch import BatchApplicationTask
 from .submission_history import (
@@ -14,6 +14,7 @@ from .submission_history import (
 )
 
 _INDEED_DETAIL_PATHS = frozenset({"/viewjob"})
+_ALLOWED_TARGET_COUNTRIES = frozenset({"Australia", "Canada"})
 
 
 class IndeedUnattendedJob(BaseModel):
@@ -49,12 +50,33 @@ class IndeedUnattendedJob(BaseModel):
             raise ValueError("unattended Indeed jobs must preserve work_mode=remote")
         return value
 
+    @field_validator("target_country")
+    @classmethod
+    def require_approved_foreign_country(cls, value: str) -> str:
+        country = value.strip()
+        if country not in _ALLOWED_TARGET_COUNTRIES:
+            raise ValueError("unattended Indeed target_country must be Australia or Canada")
+        return country
+
     @field_validator("resume_file")
     @classmethod
     def require_plain_resume_filename(cls, value: str) -> str:
         if value and Path(value).name != value:
             raise ValueError("resume_file must be a filename within artifact_dir")
         return value
+
+    @model_validator(mode="after")
+    def require_country_specific_indeed_host(self) -> "IndeedUnattendedJob":
+        host = (urlsplit(self.listing_url).hostname or "").lower()
+        expected_host = {
+            "Australia": "au.indeed.com",
+            "Canada": "ca.indeed.com",
+        }[self.target_country]
+        if host != expected_host:
+            raise ValueError(
+                f"{self.target_country} candidates must use the {expected_host} listing host"
+            )
+        return self
 
     def batch_task(self) -> BatchApplicationTask:
         return BatchApplicationTask(

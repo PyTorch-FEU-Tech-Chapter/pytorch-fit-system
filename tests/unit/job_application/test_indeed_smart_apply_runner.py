@@ -40,6 +40,10 @@ class _Locator:
     def count(self):
         if self.selector.startswith(("iframe", "[data-testid=challenge")):
             return 0
+        if self.selector.startswith(
+            ("[aria-invalid", "[role=alert]", "[data-testid*=error]", ".ia-ValidationError")
+        ):
+            return int(bool(self.page.state.fields.get("validation")))
         if self.selector.startswith(("input[required]", "textarea[required]", "select[required]")):
             return 0
         return 1
@@ -51,6 +55,10 @@ class _Locator:
         return True
 
     def inner_text(self):
+        if self.selector.startswith(
+            ("[aria-invalid", "[role=alert]", "[data-testid*=error]", ".ia-ValidationError")
+        ):
+            return self.page.state.fields.get("validation", "")
         return self.page.state.body
 
     def input_value(self):
@@ -148,6 +156,11 @@ class _HydratingPage(_Page):
             self.index += 1
 
 
+class _StuckPage(_Page):
+    def advance(self):
+        return None
+
+
 def _resume():
     return Resume(
         role=RoleSpec(id="ai", label="AI Engineer", keywords=[]),
@@ -231,6 +244,42 @@ def test_runner_waits_for_unknown_hydration_route_before_handoff():
     assert page.waits == 2
 
 
+def test_runner_reinventories_a_same_url_module_transition():
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    location_url = f"{root}/profile-location"
+    page = _Page(
+        [
+            _State(location_url, "Country Philippines", {}),
+            _State(location_url, "Country Philippines Location details saved", {}),
+            _State(f"{root}/review-module", "Submit your application", {}),
+        ]
+    )
+
+    result = run_indeed_smart_apply_until_gate(page, _resume())
+
+    assert result.status == IndeedSmartApplyRunStatus.REVIEW_READY
+    assert result.actions_executed == ["location:click", "location:click"]
+    assert page.index == 2
+
+
+def test_runner_parks_unresolved_validation_as_human_handoff():
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    page = _StuckPage(
+        [
+            _State(
+                f"{root}/profile-location",
+                "Country Philippines",
+                {"validation": "Enter a valid location"},
+            )
+        ]
+    )
+
+    result = run_indeed_smart_apply_until_gate(page, _resume())
+
+    assert result.status == IndeedSmartApplyRunStatus.HUMAN_HANDOFF
+    assert "Enter a valid location" in result.stop_reason
+
+
 def test_runner_executes_one_accepted_question_plan_then_stops_at_review():
     root = "https://smartapply.indeed.com/beta/indeedapply/form"
     page = _Page(
@@ -285,6 +334,16 @@ def test_runner_waits_for_observable_post_apply_after_approved_submit():
     assert result.module.value == "post_apply"
     assert result.actions_executed == ["review:final_submit"]
     assert page.index == 1
+
+
+def test_runner_does_not_accept_post_apply_route_without_visible_confirmation():
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    page = _Page([_State(f"{root}/post-apply", "Thanks for visiting Indeed", {})])
+
+    result = run_indeed_smart_apply_until_gate(page, _resume())
+
+    assert result.status == IndeedSmartApplyRunStatus.HUMAN_HANDOFF
+    assert "must not be retried" in result.stop_reason
 
 
 def test_runner_uses_persistent_history_by_default(tmp_path, monkeypatch):

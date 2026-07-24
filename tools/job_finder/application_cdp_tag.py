@@ -48,7 +48,15 @@ def inventory(args: argparse.Namespace) -> int:
             "reason": decision.reason,
         }
         _write(args.output_dir / "access.json", json.dumps(metadata, indent=2))
-        page.screenshot(path=str(args.output_dir / "access.png"), full_page=False)
+        try:
+            page.screenshot(
+                path=str(args.output_dir / "access.png"),
+                full_page=False,
+                timeout=5_000,
+            )
+        except Exception as exc:
+            metadata["screenshot_warning"] = f"optional debug screenshot failed: {type(exc).__name__}"
+            _write(args.output_dir / "access.json", json.dumps(metadata, indent=2))
         print(json.dumps(metadata, indent=2))
         if not decision.should_continue:
             print("STOP: human handoff required; no model inventory was accepted")

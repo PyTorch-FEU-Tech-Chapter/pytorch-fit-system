@@ -214,6 +214,15 @@ def _run_application(
     return indeed_batch_outcome(job.batch_task(), result)
 
 
+def _retire_if_submitted(page, outcome: BatchApplicationOutcome) -> BatchApplicationOutcome:
+    if outcome.status == BatchApplicationStatus.SUBMITTED:
+        try:
+            page.close()
+        except Exception:
+            pass
+    return outcome
+
+
 def _worker(job: IndeedUnattendedJob, args: argparse.Namespace) -> BatchApplicationOutcome:
     from playwright.sync_api import sync_playwright
 
@@ -238,13 +247,16 @@ def _worker(job: IndeedUnattendedJob, args: argparse.Namespace) -> BatchApplicat
         context = browser.contexts[0]
         page, is_application_page = _matching_existing_page(context, job)
         if is_application_page:
-            return _run_application(
+            return _retire_if_submitted(
                 page,
-                job,
-                args,
-                queue,
-                history,
-                description="",
+                _run_application(
+                    page,
+                    job,
+                    args,
+                    queue,
+                    history,
+                    description="",
+                ),
             )
         if page is None:
             page = context.new_page()
@@ -280,46 +292,95 @@ def _worker(job: IndeedUnattendedJob, args: argparse.Namespace) -> BatchApplicat
         application_page, apply_error = _open_smart_apply(page, context)
         if apply_error:
             return _outcome(job, BatchApplicationStatus.HUMAN_HANDOFF, apply_error)
-        return _run_application(
+        return _retire_if_submitted(
             application_page,
-            job,
-            args,
-            queue,
-            history,
-            description=description,
+            _run_application(
+                application_page,
+                job,
+                args,
+                queue,
+                history,
+                description=description,
+            ),
         )
 
 
-def run(args: argparse.Namespace) -> int:
+def _run_payload(
+    *,
+    status: str,
+    started_at: str,
+    jobs: list[IndeedUnattendedJob],
+    latest: dict[str, BatchApplicationOutcome],
+    target_submissions: int,
+    candidates_started: set[str],
+    finished_at: str = "",
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "status": status,
+        "started_at": started_at,
+        "target_submissions": target_submissions,
+        "confirmed_submissions": sum(
+            outcome.status == BatchApplicationStatus.SUBMITTED
+            for outcome in latest.values()
+        ),
+        "candidates_started": len(candidates_started),
+        "jobs": [job.model_dump(mode="json") for job in jobs],
+        "outcomes": [
+            latest[job.task_id].model_dump(mode="json")
+            for job in jobs
+            if job.task_id in latest
+        ],
+    }
+    if finished_at:
+        payload["finished_at"] = finished_at
+    return payload
+
+
+def run(args: argparse.Namespace, *, worker=_worker) -> int:
     manifest = IndeedUnattendedManifest.model_validate_json(
         args.manifest.read_text(encoding="utf-8")
     )
+    jobs = manifest.jobs[: args.max_candidates]
     started_at = datetime.now(timezone.utc).isoformat()
     outcomes: dict[str, BatchApplicationOutcome] = {}
     latest: dict[str, BatchApplicationOutcome] = {}
+    candidates_started: set[str] = set()
+    confirmed = 0
     deadline = time.monotonic() + args.verification_wait_minutes * 60
     scheduled: list[tuple[float, int, IndeedUnattendedJob]] = []
     sequence = 0
-    for job in manifest.jobs:
+    for job in jobs:
         heapq.heappush(scheduled, (time.monotonic(), sequence, job))
         sequence += 1
     _write_json(
         args.output / "run.json",
-        {
-            "status": "running",
-            "started_at": started_at,
-            "jobs": [job.model_dump(mode="json") for job in manifest.jobs],
-            "outcomes": [],
-        },
+        _run_payload(
+            status="running",
+            started_at=started_at,
+            jobs=jobs,
+            latest=latest,
+            target_submissions=args.target_submissions,
+            candidates_started=candidates_started,
+        ),
     )
     with ThreadPoolExecutor(max_workers=args.max_parallel) as executor:
         active = {}
         while scheduled or active:
             now = time.monotonic()
-            while scheduled and scheduled[0][0] <= now and len(active) < args.max_parallel:
+            safe_parallel = min(args.max_parallel, args.target_submissions - confirmed)
+            while (
+                scheduled
+                and scheduled[0][0] <= now
+                and len(active) < safe_parallel
+                and confirmed < args.target_submissions
+            ):
                 _, _, job = heapq.heappop(scheduled)
-                active[executor.submit(_worker, job, args)] = job
+                candidates_started.add(job.task_id)
+                active[executor.submit(worker, job, args)] = job
             if not active:
+                if confirmed >= args.target_submissions:
+                    scheduled.clear()
+                    break
                 if scheduled:
                     time.sleep(min(0.25, max(0.0, scheduled[0][0] - time.monotonic())))
                 continue
@@ -335,6 +396,11 @@ def run(args: argparse.Namespace) -> int:
                         f"worker failed closed: {type(exc).__name__}",
                     )
                 latest[job.task_id] = outcome
+                if (
+                    outcome.status == BatchApplicationStatus.SUBMITTED
+                    and job.task_id not in outcomes
+                ):
+                    confirmed += 1
                 _write_json(
                     args.output / f"{job.task_id}.json",
                     outcome.model_dump(mode="json"),
@@ -344,44 +410,72 @@ def run(args: argparse.Namespace) -> int:
                     and time.monotonic() < deadline
                 ):
                     # Human gates are delayed tasks, never worker-blocking busy loops.
-                    heapq.heappush(scheduled, (time.monotonic() + 5.0, sequence, job))
+                    retry_seconds = getattr(args, "verification_retry_seconds", 5.0)
+                    heapq.heappush(
+                        scheduled,
+                        (time.monotonic() + retry_seconds, sequence, job),
+                    )
                     sequence += 1
                 else:
                     outcomes[job.task_id] = outcome
             _write_json(
                 args.output / "run.json",
-                {
-                    "status": "running",
-                    "started_at": started_at,
-                    "outcomes": [
-                        latest[job.task_id].model_dump(mode="json")
-                        for job in manifest.jobs
-                        if job.task_id in latest
-                    ],
-                },
+                _run_payload(
+                    status="running",
+                    started_at=started_at,
+                    jobs=jobs,
+                    latest=latest,
+                    target_submissions=args.target_submissions,
+                    candidates_started=candidates_started,
+                ),
             )
+            if confirmed >= args.target_submissions:
+                scheduled.clear()
             if time.monotonic() >= deadline:
                 for _, _, job in scheduled:
-                    outcomes[job.task_id] = latest.get(
-                        job.task_id,
-                        _outcome(
-                            job,
-                            BatchApplicationStatus.VERIFICATION_PENDING,
-                            "human-verification wait window expired",
-                        ),
-                    )
+                    if job.task_id in candidates_started:
+                        outcomes[job.task_id] = latest.get(
+                            job.task_id,
+                            _outcome(
+                                job,
+                                BatchApplicationStatus.VERIFICATION_PENDING,
+                                "human-verification wait window expired",
+                            ),
+                        )
                 scheduled.clear()
-    ordered = [outcomes[job.task_id] for job in manifest.jobs]
+    terminal_status = (
+        "target_reached"
+        if confirmed >= args.target_submissions
+        else "bounded_without_target"
+    )
     _write_json(
         args.output / "run.json",
-        {
-            "status": "finished",
-            "started_at": started_at,
-            "finished_at": datetime.now(timezone.utc).isoformat(),
-            "outcomes": [item.model_dump(mode="json") for item in ordered],
-        },
+        _run_payload(
+            status=terminal_status,
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc).isoformat(),
+            jobs=jobs,
+            latest=latest,
+            target_submissions=args.target_submissions,
+            candidates_started=candidates_started,
+        ),
     )
-    return 1 if any(item.status == BatchApplicationStatus.FAILED for item in ordered) else 0
+    if confirmed >= args.target_submissions:
+        return 0
+    return 1 if any(
+        item.status == BatchApplicationStatus.FAILED for item in outcomes.values()
+    ) else 2
+
+
+def _unique_run_directory(base: Path) -> Path:
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    candidate = base / run_id
+    suffix = 1
+    while candidate.exists():
+        candidate = base / f"{run_id}-{suffix}"
+        suffix += 1
+    candidate.mkdir(parents=True)
+    return candidate
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -400,7 +494,9 @@ def _parser() -> argparse.ArgumentParser:
         default=ROOT / ".cache" / "application-verification-queue.json",
     )
     parser.add_argument("--output", type=Path, default=ROOT / "out" / "indeed-unattended")
+    parser.add_argument("--target-submissions", type=int, default=3)
     parser.add_argument("--max-parallel", type=int, default=3)
+    parser.add_argument("--max-candidates", type=int, default=12)
     parser.add_argument("--verification-wait-minutes", type=int, default=180)
     parser.add_argument("--duplicate-days", type=int, default=30)
     parser.add_argument("--verified-phone", required=True)
@@ -411,10 +507,16 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _parser().parse_args()
+    if not 1 <= args.target_submissions <= 12:
+        raise SystemExit("--target-submissions must be between 1 and 12")
     if not 1 <= args.max_parallel <= 5:
         raise SystemExit("--max-parallel must be between 1 and 5")
+    if not 1 <= args.max_candidates <= 12:
+        raise SystemExit("--max-candidates must be between 1 and 12")
     if not 1 <= args.verification_wait_minutes <= 720:
         raise SystemExit("--verification-wait-minutes must be between 1 and 720")
+    args.output = _unique_run_directory(args.output)
+    print(f"Indeed unattended run directory: {args.output}", flush=True)
     return run(args)
 
 

@@ -36,6 +36,8 @@ def test_job_accepts_explicit_remote_indeed_detail() -> None:
     [
         {"listing_url": "https://company.example/jobs/1"},
         {"listing_url": "https://au.indeed.com/jobs?q=ai"},
+        {"target_country": "Philippines"},
+        {"target_country": "Canada"},
         {"work_mode": "any"},
         {"resume_file": str(Path("nested") / "resume.pdf")},
     ],
