@@ -47,6 +47,13 @@ div/component nesting vary. Saved-resume choices, upload/replace controls, and w
 distinct roles; missing controls are reported as warnings rather than invented selectors. Resume
 selection/upload and Continue remain previewable human gates.
 
+Indeed Smart Apply has a deterministic module planner for the verified contact, location, resume,
+relevant-experience, review, and post-apply routes. Contact names are reconciled against the
+selected resume, but email and phone are never inferred or generated. A blank required phone stops
+before Continue for human input. Resume upload and resume Continue are separate approvals;
+achievements, leadership, and projects never substitute for professional experience; final submit
+still requires its own explicit approval.
+
 For a non-mutating live preview against a user-approved Chrome/CDP session:
 
 ```bash
@@ -99,6 +106,7 @@ stateDiagram-v2
 | `field_mapping.py` | NCD→field helpers: `build_detected_field`, `total_years_experience`, `degree_to_enum` |
 | `website_planner.py` | subdomain/layout sampler + interactive DOM inventory + AI step planner |
 | `session_check.py` | access + session-log + DOM auth gate; AI ambiguity fallback; planning coordinator |
+| `indeed_smart_apply.py` | deterministic Indeed module classification, field/resume planning, and human gates |
 
 ## Contracts / key signatures
 

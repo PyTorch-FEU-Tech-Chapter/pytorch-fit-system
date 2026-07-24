@@ -65,6 +65,15 @@ from resume_builder.job_application.autonomous_questions import (
     QuestionPlanningResult,
 )
 from resume_builder.job_application.visualizer import render_application_overlay
+from resume_builder.job_application.indeed_smart_apply import (
+    IndeedSmartApplyModule,
+    SmartApplyApprovals,
+    SmartApplyModulePlan,
+    build_indeed_smart_apply_plan,
+    classify_indeed_smart_apply_module,
+    load_resume_artifact,
+    recommend_role_resume,
+)
 
 __all__ = [
     "ApplicationPlan",
@@ -117,4 +126,11 @@ __all__ = [
     "AutonomousQuestionPipeline",
     "QuestionPlanningResult",
     "render_application_overlay",
+    "IndeedSmartApplyModule",
+    "SmartApplyApprovals",
+    "SmartApplyModulePlan",
+    "build_indeed_smart_apply_plan",
+    "classify_indeed_smart_apply_module",
+    "load_resume_artifact",
+    "recommend_role_resume",
 ]
