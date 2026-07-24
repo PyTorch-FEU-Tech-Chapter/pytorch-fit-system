@@ -20,6 +20,7 @@ class IndeedSmartApplyModule(str, Enum):
     LOCATION = "location"
     RESUME = "resume"
     RELEVANT_EXPERIENCE = "relevant_experience"
+    QUESTIONS = "questions"
     REVIEW = "review"
     POST_APPLY = "post_apply"
     UNKNOWN = "unknown"
@@ -60,6 +61,8 @@ def classify_indeed_smart_apply_module(page_url: str) -> IndeedSmartApplyModule:
         return IndeedSmartApplyModule.RESUME
     if path.endswith("/resume-module/relevant-experience"):
         return IndeedSmartApplyModule.RELEVANT_EXPERIENCE
+    if "/questions-module" in path:
+        return IndeedSmartApplyModule.QUESTIONS
     if path.endswith("/review-module"):
         return IndeedSmartApplyModule.REVIEW
     if path.endswith("/post-apply"):
@@ -256,6 +259,11 @@ def build_indeed_smart_apply_plan(
         plan.browser_actions.append(
             BrowserAction(step=3, action="click", target="[data-testid=continue-button]")
         )
+        return plan
+
+    if module == IndeedSmartApplyModule.QUESTIONS:
+        plan.requires_ai_fallback = True
+        plan.stop_reason = "questionnaire requires an accepted evidence-grounded answer plan"
         return plan
 
     if module == IndeedSmartApplyModule.REVIEW:

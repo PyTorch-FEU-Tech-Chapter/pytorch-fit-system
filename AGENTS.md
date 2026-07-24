@@ -114,6 +114,8 @@ separate systems even when they share the same learn-once/replay-many pattern.
    Stop on access/layout drift, missing contact evidence, resume preview, unknown questionnaires,
    Review, and final Submit unless the exact gate has been explicitly approved. Reaching Review does
    not imply submit approval and does not enable repeat or bulk submission.
+   Questionnaire execution accepts only an evidence-grounded answer plan, validates required fields,
+   advances one page, and re-inventories before answering another page.
 
    Work-mode translation is adapter-specific and evidence-based. Preserve the requested
    `remote|hybrid|onsite|any` value without substitution. Indeed may map `remote` to the location

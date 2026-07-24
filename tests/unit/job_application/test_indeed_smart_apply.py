@@ -40,6 +40,9 @@ def test_classifies_verified_module_urls_and_rejects_other_domains():
     assert classify_indeed_smart_apply_module(f"{root}/review-module") == (
         IndeedSmartApplyModule.REVIEW
     )
+    assert classify_indeed_smart_apply_module(f"{root}/questions-module/questions/1") == (
+        IndeedSmartApplyModule.QUESTIONS
+    )
     assert classify_indeed_smart_apply_module("https://apply.example.com/review-module") == (
         IndeedSmartApplyModule.UNKNOWN
     )

@@ -17,6 +17,7 @@ from .indeed_smart_apply import (
     build_indeed_smart_apply_plan,
     classify_indeed_smart_apply_module,
 )
+from .autonomous_questions import QuestionPlanningResult
 from .permissions import ApplicationPermissionPolicy
 
 
@@ -111,6 +112,34 @@ def _execute_action(page: Any, action: Any) -> None:
         raise ValueError(f"unsupported Indeed Smart Apply action: {action.action}")
 
 
+def _execute_question_step(page: Any, step: Any) -> None:
+    locator = _first(page, step.selector)
+    if step.action in {"fill", "type"}:
+        locator.wait_for(state="visible")
+        locator.fill(step.value)
+    elif step.action == "select":
+        locator.wait_for(state="visible")
+        locator.get_by_text(step.value, exact=True).last.click()
+    elif step.action == "check":
+        locator.wait_for(state="visible")
+        locator.check()
+    else:
+        raise ValueError(f"unsupported screening-question action: {step.action}")
+
+
+def _required_question_answers_present(page: Any) -> bool:
+    groups = page.locator('fieldset[role="radiogroup"]')
+    for index in range(groups.count()):
+        if groups.nth(index).locator("input:checked").count() == 0:
+            return False
+    for selector in ("input[required]:not([type=radio])", "textarea[required]", "select[required]"):
+        fields = page.locator(selector)
+        for index in range(fields.count()):
+            if not fields.nth(index).input_value().strip():
+                return False
+    return True
+
+
 def run_indeed_smart_apply_until_gate(
     page: Any,
     resume: Resume,
@@ -120,6 +149,7 @@ def run_indeed_smart_apply_until_gate(
     permission_policy: ApplicationPermissionPolicy | None = None,
     verified_phone: str = "",
     phone_country_calling_code: str = "",
+    question_plan: QuestionPlanningResult | None = None,
     max_modules: int = 8,
 ) -> IndeedSmartApplyRunResult:
     """Advance known modules and stop at the next human or AI fallback gate."""
@@ -156,6 +186,53 @@ def run_indeed_smart_apply_until_gate(
                 actions_executed=executed,
                 stop_reason="observable post-apply page reached",
             )
+        if module == IndeedSmartApplyModule.QUESTIONS:
+            if question_plan is None or question_plan.unresolved or not question_plan.steps:
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason=(
+                        "questionnaire requires an accepted evidence-grounded answer plan"
+                    ),
+                )
+            domain = (urlsplit(str(page.url)).hostname or "").lower()
+            for step in sorted(question_plan.steps, key=lambda item: item.step):
+                if not policy.allows(step.action_class, domain=domain):
+                    return IndeedSmartApplyRunResult(
+                        status=IndeedSmartApplyRunStatus.GATE_REACHED,
+                        module=module,
+                        modules_seen=seen,
+                        actions_executed=executed,
+                        stop_reason=f"{step.action_class} permission required",
+                    )
+                _execute_question_step(page, step)
+                executed.append(f"{module.value}:{step.action}")
+            if not _required_question_answers_present(page):
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.GATE_REACHED,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason="required questionnaire fields remain unanswered",
+                )
+            _first(page, "button:visible:has-text('Continue')").click()
+            executed.append(f"{module.value}:click")
+            question_plan = None
+            page.wait_for_timeout(750)
+            if (
+                classify_indeed_smart_apply_module(str(page.url))
+                == IndeedSmartApplyModule.QUESTIONS
+            ):
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.GATE_REACHED,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason="next questionnaire page requires fresh inventory and planning",
+                )
+            continue
 
         selected = _selected_resume(page, approved_resume)
         plan = build_indeed_smart_apply_plan(

@@ -2,7 +2,9 @@ from dataclasses import dataclass
 
 from resume_builder.core.models import ContactInfo, Resume, RoleSpec
 from resume_builder.job_application import (
+    DynamicInteractionStep,
     IndeedSmartApplyRunStatus,
+    QuestionPlanningResult,
     SmartApplyApprovals,
     run_indeed_smart_apply_until_gate,
 )
@@ -24,11 +26,17 @@ class _Locator:
     def first(self):
         return self
 
+    @property
+    def last(self):
+        return self
+
     def nth(self, _index):
         return self
 
     def count(self):
         if self.selector.startswith(("iframe", "[data-testid=challenge")):
+            return 0
+        if self.selector.startswith(("input[required]", "textarea[required]", "select[required]")):
             return 0
         return 1
 
@@ -47,6 +55,12 @@ class _Locator:
             return self.page.state.fields.get("phone", "")
         return ""
 
+    def locator(self, selector):
+        return _Locator(self.page, f"{self.selector} {selector}")
+
+    def get_by_text(self, text, exact=False):
+        return _Locator(self.page, f"text={text}")
+
     def wait_for(self, **_kwargs):
         return None
 
@@ -59,7 +73,13 @@ class _Locator:
             self.page.state.fields["phone"] = value
 
     def click(self):
-        self.page.index += 1
+        if self.selector.startswith("text="):
+            self.page.state.fields["question_answer"] = self.selector.removeprefix("text=")
+        else:
+            self.page.index += 1
+
+    def check(self):
+        self.page.state.fields["checked"] = "true"
 
     def set_input_files(self, value):
         self.page.uploaded = value
@@ -137,3 +157,33 @@ def test_runner_stops_on_unknown_module_without_clicking():
     assert result.status == IndeedSmartApplyRunStatus.HUMAN_HANDOFF
     assert "AI sampling" in result.stop_reason
     assert page.index == 0
+
+
+def test_runner_executes_one_accepted_question_plan_then_stops_at_review():
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    page = _Page(
+        [
+            _State(f"{root}/questions-module/questions/1", "Bachelor degree? Yes No", {}),
+            _State(f"{root}/review-module", "Submit your application", {}),
+        ]
+    )
+    plan = QuestionPlanningResult(
+        steps=[
+            DynamicInteractionStep(
+                step=1,
+                action="select",
+                selector='fieldset[role="radiogroup"]',
+                purpose="answer degree completion question",
+                expected_change="No is selected",
+                value="No",
+                value_source="resume.education",
+                action_class="draft_write",
+            )
+        ]
+    )
+
+    result = run_indeed_smart_apply_until_gate(page, _resume(), question_plan=plan)
+
+    assert result.status == IndeedSmartApplyRunStatus.REVIEW_READY
+    assert result.actions_executed == ["questions:select", "questions:click"]
+    assert page.states[0].fields["question_answer"] == "No"
