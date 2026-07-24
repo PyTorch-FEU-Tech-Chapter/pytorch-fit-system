@@ -177,6 +177,14 @@ separate systems even when they share the same learn-once/replay-many pattern.
    scraped from the user's own authenticated SOLAR session, normalized before storage, and injected
    into resumes only as reviewable academic highlights with source + verification timestamp.
 
+10. **Submission confirmation history.**
+   Keep duplicate prevention confirmation-centered rather than modeling employer lifecycle status.
+   A confirmed exact company + job-title match blocks another submission for 30 days only; after
+   that window the same role is eligible again. Resolve confirmation at the end through the
+   provider-neutral boundary: observable browser proof, explicit manual confirmation from the user,
+   or an authorized email adapter. Email access is optional and must never be assumed; do not store
+   message bodies, credentials, cookies, or unrelated mailbox data.
+
 ## Every Prompt Save Rule
 
 For every user prompt that causes codebase changes, the agent must save the work before ending the turn:

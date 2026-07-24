@@ -7,6 +7,7 @@ import unicodedata
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
+from typing import Protocol
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel
@@ -19,6 +20,32 @@ class SubmissionDecision(str, Enum):
     RESERVED = "reserved"
     RECENT_DUPLICATE = "recent_duplicate"
     UNRESOLVED_ATTEMPT = "unresolved_attempt"
+
+
+class ConfirmationSource(str, Enum):
+    BROWSER = "browser"
+    MANUAL = "manual"
+    EMAIL = "email"
+
+
+class SubmissionConfirmation(BaseModel):
+    """Provider-neutral proof that an application was submitted."""
+
+    source: ConfirmationSource
+    detail: str = ""
+    observed_at: datetime | None = None
+
+
+class SubmissionConfirmationProvider(Protocol):
+    """Boundary implemented by manual, browser, or email confirmation sources."""
+
+    def find_confirmation(
+        self,
+        *,
+        company: str,
+        job_title: str,
+        submitted_after: datetime,
+    ) -> SubmissionConfirmation | None: ...
 
 
 class SubmissionReservation(BaseModel):
@@ -40,6 +67,7 @@ class ApplicationHistoryEntry(BaseModel):
     applied_at: str = ""
     updated_at: str
     confirmation: str = ""
+    confirmation_source: ConfirmationSource | None = None
     source_domain: str = ""
     source_url: str = ""
 
@@ -193,12 +221,14 @@ class ApplicationSubmissionHistory:
         application_id: int,
         *,
         confirmation: str = "",
+        confirmation_source: ConfirmationSource = ConfirmationSource.BROWSER,
         now: datetime | None = None,
     ) -> ApplicationHistoryEntry:
         return self._mark(
             application_id,
             LedgerState.SUBMITTED,
             confirmation=confirmation,
+            confirmation_source=confirmation_source,
             applied_at=now or _utc_now(),
             audit_action="submission_confirmed",
         )
@@ -212,7 +242,7 @@ class ApplicationSubmissionHistory:
         return self._mark(
             application_id,
             LedgerState.SUBMISSION_UNKNOWN,
-            confirmation=details,
+            audit_details=details,
             audit_action="submission_unknown",
         )
 
@@ -220,8 +250,31 @@ class ApplicationSubmissionHistory:
         return self._mark(
             application_id,
             LedgerState.FAILED,
-            confirmation=details,
+            audit_details=details,
             audit_action="submission_failed",
+        )
+
+    def confirm_with_provider(
+        self,
+        application_id: int,
+        provider: SubmissionConfirmationProvider,
+    ) -> ApplicationHistoryEntry | None:
+        """Resolve a pending attempt at the end of the flow using any confirmation provider."""
+        entry = self.get(application_id)
+        if entry is None:
+            raise KeyError(f"application history id {application_id} does not exist")
+        evidence = provider.find_confirmation(
+            company=entry.company,
+            job_title=entry.job_title,
+            submitted_after=datetime.fromisoformat(entry.updated_at),
+        )
+        if evidence is None:
+            return None
+        return self.mark_submitted(
+            application_id,
+            confirmation=evidence.detail,
+            confirmation_source=evidence.source,
+            now=evidence.observed_at,
         )
 
     def record_existing_submission(
@@ -231,6 +284,7 @@ class ApplicationSubmissionHistory:
         job_title: str,
         applied_at: datetime,
         confirmation: str = "confirmed in browser",
+        confirmation_source: ConfirmationSource = ConfirmationSource.BROWSER,
         source_url: str = "",
     ) -> ApplicationHistoryEntry:
         """Seed a known confirmed submission without duplicating a recent record."""
@@ -244,6 +298,7 @@ class ApplicationSubmissionHistory:
             return self.mark_submitted(
                 reservation.application_id,
                 confirmation=confirmation,
+                confirmation_source=confirmation_source,
                 now=applied_at,
             )
         if reservation.matched_application_id is None:
@@ -285,7 +340,9 @@ class ApplicationSubmissionHistory:
         application_id: int,
         state: LedgerState,
         *,
-        confirmation: str,
+        confirmation: str = "",
+        confirmation_source: ConfirmationSource | None = None,
+        audit_details: str = "",
         audit_action: str,
         applied_at: datetime | None = None,
     ) -> ApplicationHistoryEntry:
@@ -294,6 +351,7 @@ class ApplicationSubmissionHistory:
             applied_at.astimezone(timezone.utc).isoformat() if applied_at is not None else None
         )
         safe_confirmation = redact(confirmation, limit=500)
+        safe_audit_details = redact(audit_details or confirmation, limit=500)
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             row = connection.execute(
@@ -306,7 +364,7 @@ class ApplicationSubmissionHistory:
                 """
                 UPDATE applications
                 SET state = ?, applied_at = COALESCE(?, applied_at),
-                    updated_at = ?, confirmation = ?
+                    updated_at = ?, confirmation = ?, confirmation_source = ?
                 WHERE id = ?
                 """,
                 (
@@ -314,6 +372,7 @@ class ApplicationSubmissionHistory:
                     applied_at_text,
                     timestamp,
                     safe_confirmation,
+                    confirmation_source.value if confirmation_source else "",
                     application_id,
                 ),
             )
@@ -324,7 +383,7 @@ class ApplicationSubmissionHistory:
                 row["job_title"],
                 audit_action,
                 state.value,
-                safe_confirmation,
+                safe_audit_details,
                 application_id=application_id,
             )
         entry = self.get(application_id)
@@ -388,6 +447,7 @@ class ApplicationSubmissionHistory:
                     applied_at TEXT,
                     updated_at TEXT NOT NULL,
                     confirmation TEXT NOT NULL DEFAULT '',
+                    confirmation_source TEXT NOT NULL DEFAULT '',
                     source_domain TEXT NOT NULL DEFAULT '',
                     source_url TEXT NOT NULL DEFAULT ''
                 );
@@ -411,6 +471,15 @@ class ApplicationSubmissionHistory:
                     ON submission_audit(application_id, event_at);
                 """
             )
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(applications)").fetchall()
+            }
+            if "confirmation_source" not in columns:
+                connection.execute(
+                    "ALTER TABLE applications "
+                    "ADD COLUMN confirmation_source TEXT NOT NULL DEFAULT ''"
+                )
 
     @staticmethod
     def _entry(row: sqlite3.Row) -> ApplicationHistoryEntry:
@@ -422,6 +491,11 @@ class ApplicationSubmissionHistory:
             applied_at=row["applied_at"] or "",
             updated_at=row["updated_at"],
             confirmation=row["confirmation"],
+            confirmation_source=(
+                ConfirmationSource(row["confirmation_source"])
+                if row["confirmation_source"]
+                else None
+            ),
             source_domain=row["source_domain"],
             source_url=row["source_url"],
         )

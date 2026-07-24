@@ -140,6 +140,12 @@ An actual headless-Chromium integration test uses a local mock ATS. It verifies 
 resume attached + draft ready without approval; submitted + confirmation captured with approval.
 This is assisted sending for one genuine application—not unattended bulk application blasting.
 
+Submission history intentionally records confirmation, not employer decisions such as accepted or
+rejected. An exact company + job-title confirmation prevents another submission for 30 days, then
+the role becomes eligible again. Confirmation is resolved at the end through an abstract provider:
+observable browser proof, an explicit statement from the user, or a separately authorized email
+adapter. The email option is not required and does not grant mailbox access by itself.
+
 ### Scraper token-cost benchmark
 
 The saved benchmark in [`benchmarks/scraper_token_cost/`](benchmarks/scraper_token_cost/README.md)

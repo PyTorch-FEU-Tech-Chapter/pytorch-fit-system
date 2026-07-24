@@ -27,8 +27,12 @@ Confirmed submissions are stored separately in `ApplicationSubmissionHistory`, b
 Before a final click, the runner atomically checks normalized-exact company and job-title keys. A
 confirmed match from the previous 30 days is skipped; a recent unresolved attempt also stops to
 avoid an accidental double submission. A different exact title at the same company remains
-eligible. The database keeps the displayed company/title, UTC application time, state, query-free
-source URL, redacted confirmation, and an audit row for every eligibility/outcome decision.
+eligible, and the same role becomes eligible again after the 30-day window. Employer lifecycle
+states such as accepted or rejected are not tracked. Confirmation evidence is provider-neutral:
+the browser can confirm immediately, the user can confirm manually, or a future email adapter can
+implement `SubmissionConfirmationProvider`. Provider reconciliation runs at the end of the flow.
+The database keeps the displayed company/title, UTC application time, query-free source URL,
+redacted confirmation and its source, plus an audit row for each safety decision.
 
 ## Dynamic website planning
 
