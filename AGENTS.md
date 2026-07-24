@@ -91,6 +91,23 @@ separate systems even when they share the same learn-once/replay-many pattern.
 4. **Rule cache.**
    Cache accepted rules by domain and layout fingerprint. Reuse cached rules on later pages with the
    same fingerprint; resample or replan only when the fingerprint changes or confidence is low.
+   The cache identity is the composite `subdomain + layout fingerprint`; a matching fingerprint from
+   another domain must never reuse rules.
+
+   **Code-specific job-site adapters.** Route explicitly supported Indeed and JobStreet hosts through
+   their deterministic adapter before the generic AI planner. The adapter owns the verified search,
+   filter, listing, detail-panel, and pagination selectors for that site. A known host is not enough:
+   required selectors and observable capabilities must still match the rendered DOM. Missing or
+   changed controls mean layout drift; stop stale deterministic execution and return to bounded
+   rendered-DOM sampling plus AI rule planning. Untagged domains use that generic sampling path
+   immediately. Accepted fallback rules remain scoped to the exact subdomain + layout fingerprint.
+
+   Work-mode translation is adapter-specific and evidence-based. Preserve the requested
+   `remote|hybrid|onsite|any` value without substitution. Indeed may map `remote` to the location
+   value `remote` only when the live location control advertises remote support (for example in its
+   placeholder); do not infer `hybrid` from that signal. JobStreet uses a verified work-arrangement
+   filter when its rendered options contain the requested mode. If the requested mode has no
+   observed deterministic control, stop or use the AI sampling path—never silently broaden it.
 
 5. **Deterministic execution.**
    Execute cached rules with code, not model calls. For job finder, extract job definition details

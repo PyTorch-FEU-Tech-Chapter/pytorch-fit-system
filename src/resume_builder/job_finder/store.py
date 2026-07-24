@@ -11,7 +11,7 @@ class JobListingLayoutStore:
 
     def __init__(self, output_dir: Path | None = Path("out/job-finder-rules")) -> None:
         self.output_dir = output_dir
-        self._layouts: dict[str, LearnedJobListingLayout] = {}
+        self._layouts: dict[tuple[str, str], LearnedJobListingLayout] = {}
         self._load_local_layouts()
 
     def _load_local_layouts(self) -> None:
@@ -24,14 +24,27 @@ class JobListingLayoutStore:
                 )
             except Exception:
                 continue
-            self._layouts[layout.layout_fingerprint] = layout
+            self._layouts[(layout.domain.lower(), layout.layout_fingerprint)] = layout
 
-    def get(self, layout_fingerprint: str) -> LearnedJobListingLayout | None:
-        layout = self._layouts.get(layout_fingerprint)
+    def get(
+        self, layout_fingerprint: str, *, domain: str | None = None
+    ) -> LearnedJobListingLayout | None:
+        layout = None
+        if domain is not None:
+            layout = self._layouts.get((domain.lower(), layout_fingerprint))
+        else:
+            matches = [
+                candidate
+                for (candidate_domain, candidate_fingerprint), candidate in self._layouts.items()
+                if candidate_fingerprint == layout_fingerprint
+            ]
+            layout = matches[0] if len(matches) == 1 else None
         return layout.model_copy(deep=True) if layout else None
 
     def put(self, layout: LearnedJobListingLayout) -> None:
-        self._layouts[layout.layout_fingerprint] = layout.model_copy(deep=True)
+        self._layouts[(layout.domain.lower(), layout.layout_fingerprint)] = layout.model_copy(
+            deep=True
+        )
         if self.output_dir is None:
             return
         self.output_dir.mkdir(parents=True, exist_ok=True)

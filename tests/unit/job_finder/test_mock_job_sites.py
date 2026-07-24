@@ -170,9 +170,9 @@ def test_mock_indeed_ph_listing_rules_extract_and_cache():
     )
     second = planner.plan_page("https://ph.indeed.com/jobs?q=engineer&start=10", _INDEED_PH_PAGE_2)
 
-    assert len(llm.calls) == 1
-    assert first.extraction_method == "ai_rules"
-    assert second.extraction_method == "ai_rules_cache"
+    assert len(llm.calls) == 0
+    assert first.extraction_method == "site_adapter"
+    assert second.extraction_method == "site_adapter"
     assert [listing.title for listing in first.listings] == [
         "Backend Engineer",
         "Machine Learning Engineer",
@@ -198,9 +198,9 @@ def test_mock_jobstreet_ph_listing_rules_extract_and_cache():
         "https://www.jobstreet.com.ph/python-jobs?page=2", _JOBSTREET_PH_PAGE_2
     )
 
-    assert len(llm.calls) == 1
-    assert first.extraction_method == "ai_rules"
-    assert second.extraction_method == "ai_rules_cache"
+    assert len(llm.calls) == 0
+    assert first.extraction_method == "site_adapter"
+    assert second.extraction_method == "site_adapter"
     assert [listing.title for listing in first.listings] == ["Backend Engineer", "Data Engineer"]
     assert first.listings[0].company == "MangoByte PH"
     assert first.listings[1].remote_signal == "Remote"

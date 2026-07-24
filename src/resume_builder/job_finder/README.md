@@ -15,6 +15,32 @@ zero-token extraction for repeated runs.
 This package only handles job discovery/listing extraction. Application form
 analysis and form filling belong in `job_application/`.
 
+## Routing
+
+All routes pass the access gate before search or extraction:
+
+1. Resolve the current hostname against the code-specific adapter registry.
+2. For Indeed or JobStreet, execute the adapter's fixed rules only when they produce a valid
+   deterministic result for the rendered layout.
+3. If a known layout has drifted, discard the stale adapter result and use the bounded inventory +
+   AI planning path.
+4. Unknown sites enter the bounded inventory + AI planning path directly.
+5. Cache accepted learned rules by `subdomain + layout fingerprint`; never share rules across
+   domains just because their fingerprints collide.
+
+`site_adapters.py` also builds strict search plans. Work mode is never inferred or substituted:
+
+- Indeed `remote`: fill the location control with `remote` only when its live placeholder advertises
+  remote support.
+- Indeed `hybrid`: requires a separately observed filter; the remote placeholder is insufficient.
+- JobStreet `remote|hybrid`: select the requested value only when it exists in the rendered
+  work-mode options.
+- `onsite`: requires an explicit location.
+- `any`: adds no work-mode constraint.
+
+Search plans contain ordered `fill`, `select_option`, and `click` steps. Browser execution remains
+separate so callers can pause for human review before submission.
+
 ## Live CDP development test
 
 Use `tools/job_finder/cdp_tag.py` with a normal Chrome instance already opened with local CDP.

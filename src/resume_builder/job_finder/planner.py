@@ -7,6 +7,7 @@ from resume_builder.llm.base import LLMProvider
 from .dom_inventory import build_listing_dom_inventory, fingerprint
 from .models import JobListingRun, LearnedJobListingLayout
 from .rule_executor import apply_listing_rules
+from .site_adapters import DEFAULT_SITE_ADAPTERS, JobSiteAdapter, resolve_site_adapter
 from .store import JobListingLayoutStore, JobScrapeArtifactStore
 from .visualizer import sanitize_debug_dom
 
@@ -81,6 +82,7 @@ class JobListingPlanner:
         *,
         min_listings: int = 1,
         max_revision_attempts: int = 1,
+        site_adapters: tuple[JobSiteAdapter, ...] = DEFAULT_SITE_ADAPTERS,
     ) -> None:
         self.llm = llm
         self.store = store or JobListingLayoutStore()
@@ -89,6 +91,7 @@ class JobListingPlanner:
             self.artifact_store = JobScrapeArtifactStore()
         self.min_listings = min_listings
         self.max_revision_attempts = max_revision_attempts
+        self.site_adapters = site_adapters
 
     def plan_page(
         self,
@@ -99,7 +102,16 @@ class JobListingPlanner:
         force_relearn: bool = False,
     ) -> JobListingRun:
         layout_fingerprint = fingerprint(html)
-        cached = None if force_relearn else self.store.get(layout_fingerprint)
+        domain = urlsplit(page_url).netloc.lower()
+        adapter = resolve_site_adapter(page_url, self.site_adapters)
+        if adapter is not None:
+            adapter_layout = adapter.build_listing_layout(page_url, html)
+            adapter_run = self._execute(page_url, html, adapter_layout, "site_adapter")
+            if not adapter_run.validation_errors:
+                adapter_run.learned_layout = adapter_layout
+                return self._record(adapter_run, adapter_layout, html)
+
+        cached = None if force_relearn else self.store.get(layout_fingerprint, domain=domain)
         if cached is not None:
             run = self._execute(page_url, html, cached, "ai_rules_cache")
             if not run.validation_errors:

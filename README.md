@@ -102,6 +102,22 @@ GitHub evidence collection is runtime-user-driven and website-first: public prof
 are sampled through the same access-gated approach used by other profile sources. No personal
 username is hardcoded. `gh` CLI collection remains an optional local-development backend only.
 
+### Job finder: deterministic known sites, learned unknown sites
+
+Job discovery keeps access checks, listing extraction, and application filling as separate
+boundaries. Indeed and JobStreet use code-specific adapters when their required rendered controls
+still match. Every other domain—or a known site whose layout has drifted—uses bounded rendered-DOM
+sampling, one strict AI planning pass, and deterministic replay cached by subdomain + layout
+fingerprint.
+
+Work mode is an explicit constraint: `remote`, `hybrid`, `onsite`, or `any`. An adapter translates
+it only from observable site capabilities. For example, Indeed may put `remote` in the location
+field when that live field advertises remote support; this does not imply that `hybrid` is a valid
+location value. Unsupported or missing controls stop or fall back to sampling rather than silently
+changing the requested mode.
+
+Detailed development flow: [`src/resume_builder/job_finder/README.md`](src/resume_builder/job_finder/README.md).
+
 ### Job application sender: tested execution boundary
 
 The legacy Python engine now has a deterministic browser executor for accepted application JSON:

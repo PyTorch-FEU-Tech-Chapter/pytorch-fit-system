@@ -161,6 +161,23 @@ def test_store_persists_machine_readable_layout(tmp_path):
     )
 
 
+def test_store_isolates_same_fingerprint_across_domains():
+    first = _good_layout(layout_fingerprint="same")
+    second = first.model_copy(
+        update={
+            "domain": "other.example.com",
+            "sample_url": "https://other.example.com/jobs",
+        }
+    )
+    store = JobListingLayoutStore(output_dir=None)
+    store.put(first)
+    store.put(second)
+
+    assert store.get("same") is None
+    assert store.get("same", domain="careers.example.com").domain == "careers.example.com"
+    assert store.get("same", domain="other.example.com").domain == "other.example.com"
+
+
 def test_planner_persists_model_rules_with_extracted_output(tmp_path):
     llm = _FakeLLM()
     artifact_store = JobScrapeArtifactStore(tmp_path)

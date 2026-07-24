@@ -15,6 +15,17 @@ from .models import (
 )
 from .planner import JobListingPlanner
 from .rule_executor import apply_listing_rules
+from .site_adapters import (
+    DEFAULT_SITE_ADAPTERS,
+    INDEED_ADAPTER,
+    JOBSTREET_ADAPTER,
+    JobSiteAdapter,
+    SearchStep,
+    SiteAdapterDriftError,
+    SiteSearchPlan,
+    WorkMode,
+    resolve_site_adapter,
+)
 from .store import JobListingLayoutStore, JobScrapeArtifactStore
 from .visualizer import render_rule_overlay, sanitize_debug_dom
 
@@ -33,12 +44,21 @@ __all__ = [
     "JobListingPlanner",
     "JobListingRule",
     "JobListingRun",
+    "JobSiteAdapter",
     "JobScrapeArtifactStore",
     "JobScrapeVisualizationArtifact",
     "LearnedJobListingLayout",
+    "SearchStep",
+    "SiteAdapterDriftError",
+    "SiteSearchPlan",
+    "WorkMode",
+    "DEFAULT_SITE_ADAPTERS",
+    "INDEED_ADAPTER",
+    "JOBSTREET_ADAPTER",
     "apply_listing_rules",
     "build_listing_dom_inventory",
     "fingerprint",
     "render_rule_overlay",
+    "resolve_site_adapter",
     "sanitize_debug_dom",
 ]
