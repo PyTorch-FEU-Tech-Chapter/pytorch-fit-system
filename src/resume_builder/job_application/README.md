@@ -16,6 +16,12 @@ Authentication is session-first. The pipeline checks access blockers, visible si
 DOM markers, stored Playwright state, and recent non-secret session-decision logs before considering
 an AI call. AI is an ambiguity fallback only; cookie values and credentials never enter its prompt.
 Login/sign-up walls, expired/unknown sessions, CAPTCHA, and verification stop for human handoff.
+`check_access_gate` performs this check deterministically; it never solves or bypasses a challenge.
+`HumanVerificationQueue` can persist blocked applications using only a redacted application
+reference, domain, query-free URL, reason, timestamps, and status. After the user completes the
+challenge in the same legitimate browser session, a clear recheck resolves the queue item and the
+normal runner can resume. Cookies, credentials, storage state, proxy rotation, fingerprint
+spoofing, solver services, and other anti-bot evasion are outside this pipeline.
 
 ## Dynamic website planning
 
@@ -127,6 +133,7 @@ stateDiagram-v2
 | `field_mapping.py` | NCD→field helpers: `build_detected_field`, `total_years_experience`, `degree_to_enum` |
 | `website_planner.py` | subdomain/layout sampler + interactive DOM inventory + AI step planner |
 | `session_check.py` | access + session-log + DOM auth gate; AI ambiguity fallback; planning coordinator |
+| `access_verification.py` | deterministic CAPTCHA/access checker + non-secret human queue |
 | `indeed_smart_apply.py` | deterministic Indeed module classification, field/resume planning, and human gates |
 | `indeed_smart_apply_runner.py` | bounded sequential execution with access, permission, and transition checks |
 

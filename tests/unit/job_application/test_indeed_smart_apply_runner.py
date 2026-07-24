@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from resume_builder.core.models import ContactInfo, Resume, RoleSpec
 from resume_builder.job_application import (
+    HumanVerificationQueue,
     ApplicationPermissionPolicy,
     DynamicInteractionStep,
     IndeedSmartApplyRunStatus,
@@ -335,3 +336,24 @@ def test_completed_recaptcha_anchor_is_not_an_active_blocker():
 
 def test_unchecked_recaptcha_anchor_requires_human_handoff():
     assert _visible_access_blocker(_RecaptchaPage(checked=False)) == "captcha"
+
+
+def test_runner_queues_active_captcha_without_storing_query_values(tmp_path):
+    page = _RecaptchaPage(checked=False)
+    page.url = (
+        "https://smartapply.indeed.com/beta/indeedapply/form/review-module"
+        "?iaUid=private-session"
+    )
+    queue = HumanVerificationQueue(tmp_path / "verification.json")
+
+    result = run_indeed_smart_apply_until_gate(
+        page,
+        _resume(),
+        verification_queue=queue,
+        application_reference="Backend Developer - AI Trainer",
+    )
+
+    assert result.status == IndeedSmartApplyRunStatus.HUMAN_HANDOFF
+    assert len(queue.pending()) == 1
+    assert queue.pending()[0].reason == "captcha"
+    assert "private-session" not in queue.path.read_text(encoding="utf-8")

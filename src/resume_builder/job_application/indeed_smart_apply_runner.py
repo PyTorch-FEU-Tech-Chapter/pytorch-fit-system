@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from resume_builder.core.models import Resume
 
+from .access_verification import HumanVerificationQueue, check_access_gate
 from .indeed_smart_apply import (
     IndeedSmartApplyModule,
     SmartApplyApprovals,
@@ -48,43 +49,7 @@ def _input_value(page: Any, selector: str) -> str:
 
 
 def _visible_access_blocker(page: Any) -> str:
-    recaptcha_frames = page.locator('iframe[src*="recaptcha"]')
-    for index in range(recaptcha_frames.count()):
-        iframe = recaptcha_frames.nth(index)
-        if not iframe.is_visible():
-            continue
-        src = iframe.get_attribute("src") or ""
-        if "/bframe" in src:
-            return "captcha"
-        handle = iframe.element_handle()
-        frame = handle.content_frame() if handle is not None else None
-        anchor = frame.locator("#recaptcha-anchor") if frame is not None else None
-        if (
-            anchor is not None
-            and anchor.count()
-            and anchor.get_attribute("aria-checked") == "true"
-        ):
-            continue
-        return "captcha"
-
-    for selector, reason in (
-        ('iframe[src*="hcaptcha"]', "captcha"),
-        ("[data-testid=challenge-form]", "verification_required"),
-    ):
-        locator = page.locator(selector)
-        if any(locator.nth(index).is_visible() for index in range(locator.count())):
-            return reason
-
-    text = _first(page, "body").inner_text().lower()
-    for marker, reason in (
-        ("verify you are human", "verification_required"),
-        ("sign in to continue", "signed_out"),
-        ("access denied", "blocked"),
-        ("too many requests", "rate_limited"),
-    ):
-        if marker in text:
-            return reason
-    return ""
+    return check_access_gate(page).reason
 
 
 def _observe_fields(page: Any, module: IndeedSmartApplyModule) -> dict[str, str]:
@@ -189,6 +154,8 @@ def run_indeed_smart_apply_until_gate(
     verified_phone: str = "",
     phone_country_calling_code: str = "",
     question_plan: QuestionPlanningResult | None = None,
+    verification_queue: HumanVerificationQueue | None = None,
+    application_reference: str = "",
     max_modules: int = 8,
 ) -> IndeedSmartApplyRunResult:
     """Advance known modules and stop at the next human or AI fallback gate."""
@@ -198,15 +165,28 @@ def run_indeed_smart_apply_until_gate(
     executed: list[str] = []
 
     for _ in range(max(1, max_modules)):
-        blocker = _visible_access_blocker(page)
+        access = check_access_gate(page)
         module = classify_indeed_smart_apply_module(str(page.url))
-        if blocker:
+        queue_reference = application_reference or str(page.url)
+        if access.blocked:
+            if verification_queue is not None:
+                verification_queue.enqueue(
+                    application_reference=queue_reference,
+                    url=str(page.url),
+                    result=access,
+                )
             return IndeedSmartApplyRunResult(
                 status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
                 module=module,
                 modules_seen=seen,
                 actions_executed=executed,
-                stop_reason=f"access gate: {blocker}",
+                stop_reason=f"access gate: {access.reason}",
+            )
+        if verification_queue is not None:
+            verification_queue.resolve_if_clear(
+                application_reference=queue_reference,
+                url=str(page.url),
+                result=access,
             )
         if module == IndeedSmartApplyModule.UNKNOWN:
             module = _wait_for_known_module(page)

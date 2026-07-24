@@ -60,6 +60,15 @@ from resume_builder.job_application.evidence_context import CareerEvidenceTool
 from resume_builder.job_application.question_answering import AIQuestionAnswerer
 from resume_builder.job_application.permissions import ApplicationPermissionPolicy
 from resume_builder.job_application.ledger import ApplicationLedger, LedgerState
+from resume_builder.job_application.access_verification import (
+    AccessGateResult,
+    AccessGateState,
+    HumanVerificationQueue,
+    VerificationQueueEntry,
+    VerificationQueueState,
+    check_access_gate,
+    sanitize_application_url,
+)
 from resume_builder.job_application.autonomous_questions import (
     AutonomousQuestionPipeline,
     HybridQuestionPipeline,
@@ -134,6 +143,13 @@ __all__ = [
     "ApplicationPermissionPolicy",
     "ApplicationLedger",
     "LedgerState",
+    "AccessGateResult",
+    "AccessGateState",
+    "HumanVerificationQueue",
+    "VerificationQueueEntry",
+    "VerificationQueueState",
+    "check_access_gate",
+    "sanitize_application_url",
     "AutonomousQuestionPipeline",
     "HybridQuestionPipeline",
     "QuestionPlanningResult",
