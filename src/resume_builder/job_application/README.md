@@ -60,6 +60,8 @@ still requires its own explicit approval.
 It re-observes the page after every Continue, stops on access/layout drift, and returns at resume
 preview, missing/sensitive data, review, or final-submit gates. Reaching Review is not permission to
 submit; unattended repeat runs still require an explicit domain-scoped `autonomous_submit` policy.
+Navigation checks use bounded polling so delayed URL changes and short-lived hydration shells do
+not trigger duplicate clicks or stale-page actions; an unresolved transition still fails closed.
 Employer questionnaires accept only an evidence-grounded `QuestionPlanningResult`. The runner
 validates required answers, advances one questionnaire page, then requires fresh inventory and
 planning if another question page appears.

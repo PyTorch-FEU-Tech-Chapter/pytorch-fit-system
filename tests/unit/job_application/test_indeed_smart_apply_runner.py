@@ -76,7 +76,7 @@ class _Locator:
         if self.selector.startswith("text="):
             self.page.state.fields["question_answer"] = self.selector.removeprefix("text=")
         else:
-            self.page.index += 1
+            self.page.advance()
 
     def check(self):
         self.page.state.fields["checked"] = "true"
@@ -104,6 +104,36 @@ class _Page:
 
     def wait_for_timeout(self, _milliseconds):
         return None
+
+    def advance(self):
+        self.index += 1
+
+
+class _DelayedPage(_Page):
+    def __init__(self, states):
+        super().__init__(states)
+        self.pending_advance = False
+        self.waits = 0
+
+    def advance(self):
+        self.pending_advance = True
+
+    def wait_for_timeout(self, _milliseconds):
+        self.waits += 1
+        if self.pending_advance and self.waits >= 2:
+            self.index += 1
+            self.pending_advance = False
+
+
+class _HydratingPage(_Page):
+    def __init__(self, states):
+        super().__init__(states)
+        self.waits = 0
+
+    def wait_for_timeout(self, _milliseconds):
+        self.waits += 1
+        if self.waits == 2:
+            self.index += 1
 
 
 def _resume():
@@ -157,6 +187,36 @@ def test_runner_stops_on_unknown_module_without_clicking():
     assert result.status == IndeedSmartApplyRunStatus.HUMAN_HANDOFF
     assert "AI sampling" in result.stop_reason
     assert page.index == 0
+
+
+def test_runner_waits_for_delayed_module_navigation():
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    page = _DelayedPage(
+        [
+            _State(f"{root}/profile-location", "Country Philippines", {}),
+            _State(f"{root}/review-module", "Submit your application", {}),
+        ]
+    )
+
+    result = run_indeed_smart_apply_until_gate(page, _resume())
+
+    assert result.status == IndeedSmartApplyRunStatus.REVIEW_READY
+    assert page.waits >= 2
+
+
+def test_runner_waits_for_unknown_hydration_route_before_handoff():
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    page = _HydratingPage(
+        [
+            _State(f"{root}/resume-selection-module", "Loading", {}),
+            _State(f"{root}/review-module", "Submit your application", {}),
+        ]
+    )
+
+    result = run_indeed_smart_apply_until_gate(page, _resume())
+
+    assert result.status == IndeedSmartApplyRunStatus.REVIEW_READY
+    assert page.waits == 2
 
 
 def test_runner_executes_one_accepted_question_plan_then_stops_at_review():

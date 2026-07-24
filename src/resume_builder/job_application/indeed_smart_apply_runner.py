@@ -140,6 +140,27 @@ def _required_question_answers_present(page: Any) -> bool:
     return True
 
 
+def _wait_for_url_change(page: Any, before_url: str, *, timeout_ms: int = 5_000) -> bool:
+    interval_ms = 250
+    attempts = max(1, timeout_ms // interval_ms)
+    for _ in range(attempts):
+        if str(page.url) != before_url:
+            return True
+        page.wait_for_timeout(interval_ms)
+    return str(page.url) != before_url
+
+
+def _wait_for_known_module(page: Any, *, timeout_ms: int = 5_000) -> IndeedSmartApplyModule:
+    interval_ms = 250
+    attempts = max(1, timeout_ms // interval_ms)
+    for _ in range(attempts):
+        module = classify_indeed_smart_apply_module(str(page.url))
+        if module != IndeedSmartApplyModule.UNKNOWN:
+            return module
+        page.wait_for_timeout(interval_ms)
+    return classify_indeed_smart_apply_module(str(page.url))
+
+
 def run_indeed_smart_apply_until_gate(
     page: Any,
     resume: Resume,
@@ -169,6 +190,8 @@ def run_indeed_smart_apply_until_gate(
                 actions_executed=executed,
                 stop_reason=f"access gate: {blocker}",
             )
+        if module == IndeedSmartApplyModule.UNKNOWN:
+            module = _wait_for_known_module(page)
         seen.append(module)
         if module == IndeedSmartApplyModule.UNKNOWN:
             return IndeedSmartApplyRunResult(
@@ -217,10 +240,18 @@ def run_indeed_smart_apply_until_gate(
                     actions_executed=executed,
                     stop_reason="required questionnaire fields remain unanswered",
                 )
+            before_url = str(page.url)
             _first(page, "button:visible:has-text('Continue')").click()
             executed.append(f"{module.value}:click")
             question_plan = None
-            page.wait_for_timeout(750)
+            if not _wait_for_url_change(page, before_url):
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.FAILED,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason="expected questionnaire transition was not observed",
+                )
             if (
                 classify_indeed_smart_apply_module(str(page.url))
                 == IndeedSmartApplyModule.QUESTIONS
@@ -289,8 +320,7 @@ def run_indeed_smart_apply_until_gate(
                 selected_resume=plan.selected_resume,
             )
 
-        page.wait_for_timeout(750)
-        if str(page.url) == before_url:
+        if not _wait_for_url_change(page, before_url):
             return IndeedSmartApplyRunResult(
                 status=IndeedSmartApplyRunStatus.FAILED,
                 module=module,
