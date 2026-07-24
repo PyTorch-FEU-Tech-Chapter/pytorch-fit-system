@@ -70,15 +70,56 @@ def classify_indeed_smart_apply_module(page_url: str) -> IndeedSmartApplyModule:
     return IndeedSmartApplyModule.UNKNOWN
 
 
-def recommend_role_resume(job_title: str, artifact_dir: Path) -> Path | None:
-    """Return a real role-specific artifact; never invent a resume path."""
-    normalized = job_title.lower()
-    if any(token in normalized for token in ("machine learning", " ai ", "ai/", "ml ")):
-        filename = "ai-ml-research.pdf"
-    elif any(token in normalized for token in ("data", "automation", "scraping")):
-        filename = "automation-data.pdf"
-    else:
-        filename = "software-systems.pdf"
+def recommend_role_resume(
+    job_title: str,
+    artifact_dir: Path,
+    *,
+    job_description: str = "",
+) -> Path | None:
+    """Score all catered artifacts deterministically and return only a real file."""
+    title = f" {job_title.casefold()} "
+    description = f" {job_description.casefold()} "
+    profiles = {
+        "ai-ml-research.pdf": (
+            " ai ",
+            "machine learning",
+            " ml ",
+            "llm",
+            "model training",
+            "ai trainer",
+            "research",
+        ),
+        "automation-data.pdf": (
+            "data engineer",
+            "data analyst",
+            "business intelligence",
+            "automation",
+            "pipeline",
+            "scraping",
+            "sql",
+            "analytics",
+        ),
+        "software-systems.pdf": (
+            "backend software",
+            "software",
+            "backend",
+            "front end",
+            "frontend",
+            "full stack",
+            "full-stack",
+            "web developer",
+            "react",
+            "next.js",
+            "fastapi",
+            "systems",
+        ),
+    }
+    scores = {
+        filename: sum(3 for term in terms if term in title)
+        + sum(1 for term in terms if term in description)
+        for filename, terms in profiles.items()
+    }
+    filename = max(scores, key=scores.get)
     candidate = artifact_dir / filename
     return candidate.resolve() if candidate.is_file() else None
 

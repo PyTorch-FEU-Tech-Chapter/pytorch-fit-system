@@ -47,6 +47,9 @@ class _Locator:
     def is_visible(self):
         return True
 
+    def is_enabled(self):
+        return True
+
     def inner_text(self):
         return self.page.state.body
 
@@ -391,6 +394,33 @@ def test_runner_queues_active_captcha_without_storing_query_values(tmp_path):
     assert len(queue.pending()) == 1
     assert queue.pending()[0].reason == "captcha"
     assert "private-session" not in queue.path.read_text(encoding="utf-8")
+
+
+def test_runner_stops_before_reservation_when_final_captcha_is_visible(tmp_path):
+    page = _RecaptchaPage(checked=False)
+    page.url = "https://smartapply.indeed.com/beta/indeedapply/form/review-module"
+    history = ApplicationSubmissionHistory(tmp_path / "persistent.sqlite3")
+    queue = HumanVerificationQueue(tmp_path / "verification.json")
+
+    result = run_indeed_smart_apply_until_gate(
+        page,
+        _resume(),
+        approvals=SmartApplyApprovals(final_submit=True),
+        permission_policy=ApplicationPermissionPolicy(
+            autonomous_submit=True,
+            allowed_domains={"smartapply.indeed.com"},
+        ),
+        submission_history=history,
+        verification_queue=queue,
+        application_reference="Example Co — Backend Engineer",
+        company="Example Co",
+        job_title="Backend Engineer",
+    )
+
+    assert result.status == IndeedSmartApplyRunStatus.HUMAN_HANDOFF
+    assert "access gate" in result.stop_reason
+    assert history.recent_submissions() == []
+    assert len(queue.pending()) == 1
 
 
 def test_runner_skips_recent_exact_company_title_before_submit_click(tmp_path):

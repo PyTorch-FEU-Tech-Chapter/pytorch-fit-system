@@ -187,6 +187,27 @@ def test_role_resume_recommendation_returns_only_existing_artifacts(tmp_path: Pa
     assert recommend_role_resume("Machine Learning Engineer", tmp_path) is None
 
 
+def test_hybrid_title_scores_all_catered_resumes(tmp_path: Path):
+    for filename in ("ai-ml-research.pdf", "automation-data.pdf", "software-systems.pdf"):
+        (tmp_path / filename).write_bytes(b"%PDF")
+
+    assert (
+        recommend_role_resume(
+            "Backend Software Engineer - AI Trainer",
+            tmp_path,
+        )
+        == (tmp_path / "software-systems.pdf").resolve()
+    )
+    assert (
+        recommend_role_resume(
+            "Business Intelligence Engineer",
+            tmp_path,
+            job_description="Build SQL analytics pipelines and dashboards",
+        )
+        == (tmp_path / "automation-data.pdf").resolve()
+    )
+
+
 def test_generated_resume_loader_ignores_renderer_metadata(tmp_path: Path):
     path = tmp_path / "resume.json"
     payload = _resume().model_dump(mode="json")

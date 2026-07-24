@@ -332,6 +332,22 @@ def run_indeed_smart_apply_until_gate(
         )
         reservation_id: int | None = None
         if submitted and submission_history is not None:
+            pre_submit_access = check_access_gate(page)
+            if pre_submit_access.blocked:
+                if verification_queue is not None:
+                    verification_queue.enqueue(
+                        application_reference=queue_reference,
+                        url=str(page.url),
+                        result=pre_submit_access,
+                    )
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason=f"access gate before final submit: {pre_submit_access.reason}",
+                    selected_resume=plan.selected_resume,
+                )
             if not company.strip() or not job_title.strip():
                 return IndeedSmartApplyRunResult(
                     status=IndeedSmartApplyRunStatus.GATE_REACHED,
@@ -366,6 +382,34 @@ def run_indeed_smart_apply_until_gate(
 
         before_url = str(page.url)
         for action in ordered_actions:
+            if action.action.lower().strip() == "final_submit":
+                final_access = check_access_gate(page)
+                submit_button = _first(page, action.target)
+                if final_access.blocked or not submit_button.is_enabled():
+                    if reservation_id is not None and submission_history is not None:
+                        submission_history.mark_failed(
+                            reservation_id,
+                            details="final submit was not initiated because its gate was blocked",
+                        )
+                    if final_access.blocked and verification_queue is not None:
+                        verification_queue.enqueue(
+                            application_reference=queue_reference,
+                            url=str(page.url),
+                            result=final_access,
+                        )
+                    reason = (
+                        f"access gate before final submit: {final_access.reason}"
+                        if final_access.blocked
+                        else "final submit control is disabled; fresh inventory required"
+                    )
+                    return IndeedSmartApplyRunResult(
+                        status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
+                        module=module,
+                        modules_seen=seen,
+                        actions_executed=executed,
+                        stop_reason=reason,
+                        selected_resume=plan.selected_resume,
+                    )
             try:
                 _execute_action(page, action)
             except Exception:
