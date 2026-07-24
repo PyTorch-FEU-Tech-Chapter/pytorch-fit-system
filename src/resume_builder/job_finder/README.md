@@ -41,6 +41,13 @@ All routes pass the access gate before search or extraction:
 Search plans contain ordered `fill`, `select_option`, and `click` steps. Browser execution remains
 separate so callers can pause for human review before submission.
 
+Foreign-country runs use a human-selected allowlist that is independent of contact data. A truthful
+Philippines phone country code remains `+63`; it never selects or rewrites the job country. With
+`--foreign-only`, the home country and its configured aliases are blocked, every target must come
+from repeated `--target-country` values, and `--work-mode remote` is mandatory. Application batches
+may use the same `ForeignCountryPolicy`, preventing a worker or site locale from silently replacing
+the selected country.
+
 ## Live CDP development test
 
 Use `tools/job_finder/cdp_tag.py` with a normal Chrome instance already opened with local CDP.
@@ -69,6 +76,14 @@ Pass work arrangement separately so it remains a strict constraint rather than f
 
 ```bash
 python tools/job_finder/cdp_tag.py api-plan --work-mode hybrid
+```
+
+For a reviewed foreign-country remote run:
+
+```bash
+python tools/job_finder/cdp_tag.py api-plan \
+  --foreign-only --home-country Philippines --home-country-alias PH \
+  --target-country Australia --target-country Canada --work-mode remote
 ```
 
 No command implements access-control bypass, fingerprint spoofing, proxy/identity rotation, or

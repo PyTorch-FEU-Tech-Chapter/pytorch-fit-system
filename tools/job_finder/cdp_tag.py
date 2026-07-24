@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from resume_builder.job_finder import (  # noqa: E402
     AccessGuard,
+    ForeignCountryPolicy,
     JobListingLayoutStore,
     JobListingPlanner,
     JobListingRun,
@@ -41,6 +42,25 @@ from resume_builder.llm import get_provider  # noqa: E402
 DEFAULT_OUTPUT = ROOT / "out" / "live-job-model"
 
 
+def _foreign_country_policy(args: argparse.Namespace) -> ForeignCountryPolicy | None:
+    countries = tuple(args.target_country)
+    if not args.foreign_only and not countries:
+        return None
+    if not args.foreign_only:
+        raise SystemExit("--target-country requires --foreign-only")
+    try:
+        policy = ForeignCountryPolicy(
+            home_country=args.home_country,
+            home_country_aliases=tuple(args.home_country_alias),
+            selected_countries=countries,
+        )
+        for country in policy.selected_countries:
+            policy.require_allowed(target_country=country, work_mode=args.work_mode)
+    except ValueError as exc:
+        raise SystemExit(f"Invalid foreign-country policy: {exc}") from exc
+    return policy
+
+
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
@@ -49,6 +69,7 @@ def _write(path: Path, content: str) -> None:
 def _capture(args: argparse.Namespace) -> int:
     from playwright.sync_api import sync_playwright
 
+    country_policy = _foreign_country_policy(args)
     with sync_playwright() as playwright:
         browser = playwright.chromium.connect_over_cdp(args.cdp_url)
         pages = [page for context in browser.contexts for page in context.pages]
@@ -69,6 +90,9 @@ def _capture(args: argparse.Namespace) -> int:
             "should_continue": decision.should_continue,
             "reason": decision.reason,
             "work_mode": args.work_mode,
+            "foreign_country_policy": (
+                country_policy.model_dump(mode="json") if country_policy else None
+            ),
         }
         _write(args.output_dir / "access.json", json.dumps(metadata, indent=2))
         page.screenshot(path=str(args.output_dir / "access.png"), full_page=False)
@@ -200,6 +224,7 @@ def _apply(args: argparse.Namespace) -> int:
 
 def _api_plan(args: argparse.Namespace) -> int:
     html, capture = _load_capture(args.output_dir)
+    country_policy = _foreign_country_policy(args)
     layout_store = JobListingLayoutStore(args.output_dir / "rules")
     artifact_store = JobScrapeArtifactStore(args.output_dir / "runs")
     planner = JobListingPlanner(
@@ -210,10 +235,16 @@ def _api_plan(args: argparse.Namespace) -> int:
     run = planner.plan_page(
         capture["url"],
         html,
-        user_preferences=(
-            f"required work mode: {args.work_mode}\n{args.preferences}"
-            if args.work_mode != "any"
-            else args.preferences
+        user_preferences="\n".join(
+            part
+            for part in (
+                f"required work mode: {args.work_mode}"
+                if args.work_mode != "any"
+                else "",
+                country_policy.planner_constraint() if country_policy else "",
+                args.preferences,
+            )
+            if part
         ),
         force_relearn=args.force_relearn,
     )
@@ -247,6 +278,28 @@ def _parser() -> argparse.ArgumentParser:
         choices=("remote", "hybrid", "onsite", "any"),
         default="any",
         help="Explicit user work-mode preference supplied to model planning.",
+    )
+    parser.add_argument(
+        "--foreign-only",
+        action="store_true",
+        help="Restrict the run to explicitly human-selected non-home countries.",
+    )
+    parser.add_argument(
+        "--home-country",
+        default="",
+        help="Home country excluded by --foreign-only.",
+    )
+    parser.add_argument(
+        "--home-country-alias",
+        action="append",
+        default=[],
+        help="Additional home-country name/code to exclude; may be repeated.",
+    )
+    parser.add_argument(
+        "--target-country",
+        action="append",
+        default=[],
+        help="Human-approved foreign target country; may be repeated.",
     )
     parser.add_argument("--force-relearn", action="store_true")
     return parser

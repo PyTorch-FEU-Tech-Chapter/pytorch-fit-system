@@ -9,6 +9,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from resume_builder.job_finder.country_policy import ForeignCountryPolicy
+
 
 class BatchApplicationStatus(str, Enum):
     SUBMITTED = "submitted"
@@ -72,16 +74,28 @@ class ApplicationBatchCoordinator:
     between worker threads.
     """
 
-    def __init__(self, *, max_parallel: int = 3) -> None:
+    def __init__(
+        self,
+        *,
+        max_parallel: int = 3,
+        country_policy: ForeignCountryPolicy | None = None,
+    ) -> None:
         if max_parallel < 1:
             raise ValueError("max_parallel must be at least 1")
         self.max_parallel = max_parallel
+        self.country_policy = country_policy
 
     def run(
         self,
         tasks: Sequence[BatchApplicationTask],
         worker: BatchWorker,
     ) -> BatchApplicationRun:
+        if self.country_policy is not None:
+            for task in tasks:
+                self.country_policy.require_allowed(
+                    target_country=task.target_country,
+                    work_mode=task.work_mode,
+                )
         indexed_outcomes: dict[int, BatchApplicationOutcome] = {}
         with ThreadPoolExecutor(max_workers=self.max_parallel) as executor:
             futures = {

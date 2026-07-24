@@ -12,7 +12,13 @@ from resume_builder.job_finder import (
     LearnedJobListingLayout,
     fingerprint,
 )
-from tools.job_finder.cdp_tag import _apply, _load_capture, _parser, _validate_layout
+from tools.job_finder.cdp_tag import (
+    _apply,
+    _foreign_country_policy,
+    _load_capture,
+    _parser,
+    _validate_layout,
+)
 
 
 HTML = """
@@ -74,6 +80,48 @@ def test_work_mode_flag_is_explicit_and_bounded():
     args = _parser().parse_args(["api-plan", "--work-mode", "hybrid"])
 
     assert args.work_mode == "hybrid"
+
+
+def test_foreign_country_flags_require_remote_and_exclude_home_country():
+    args = _parser().parse_args(
+        [
+            "api-plan",
+            "--foreign-only",
+            "--home-country",
+            "Philippines",
+            "--home-country-alias",
+            "PH",
+            "--target-country",
+            "Australia",
+            "--target-country",
+            "Canada",
+            "--work-mode",
+            "remote",
+        ]
+    )
+
+    policy = _foreign_country_policy(args)
+
+    assert policy is not None
+    assert policy.selected_countries == ("Australia", "Canada")
+
+
+def test_foreign_country_flags_reject_home_country():
+    args = _parser().parse_args(
+        [
+            "api-plan",
+            "--foreign-only",
+            "--home-country",
+            "Philippines",
+            "--target-country",
+            "Philippines",
+            "--work-mode",
+            "remote",
+        ]
+    )
+
+    with pytest.raises(SystemExit, match="home country"):
+        _foreign_country_policy(args)
 
 
 def test_apply_uses_captured_html_and_strict_rules(tmp_path, monkeypatch):

@@ -1,3 +1,5 @@
+import pytest
+
 from resume_builder.job_application import (
     AccessGateResult,
     AccessGateState,
@@ -11,6 +13,7 @@ from resume_builder.job_application import (
     IndeedSmartApplyRunStatus,
     indeed_batch_outcome,
 )
+from resume_builder.job_finder import ForeignCountryPolicy
 
 
 def _task(index: int) -> BatchApplicationTask:
@@ -83,6 +86,23 @@ def test_worker_cannot_substitute_country_or_work_mode():
 
     assert result.outcomes[0].status == BatchApplicationStatus.FAILED
     assert "location preference" in result.outcomes[0].detail
+
+
+def test_batch_rejects_country_outside_human_selected_foreign_list():
+    policy = ForeignCountryPolicy(
+        home_country="Philippines",
+        home_country_aliases=("PH", "PHL"),
+        selected_countries=("Australia", "Canada"),
+    )
+
+    with pytest.raises(ValueError, match="not explicitly selected"):
+        ApplicationBatchCoordinator(country_policy=policy).run(
+            [_task(1).model_copy(update={"target_country": "United States"})],
+            lambda task: BatchApplicationOutcome(
+                task=task,
+                status=BatchApplicationStatus.SUBMITTED,
+            ),
+        )
 
 
 def test_indeed_captcha_handoff_maps_to_verification_batch():
