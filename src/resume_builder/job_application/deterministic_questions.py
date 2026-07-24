@@ -189,7 +189,8 @@ class DeterministicQuestionResolver:
             )
         if re.search(
             r"\b(have you|already)\s+graduated\b|\bare you (?:a )?graduate\b|"
-            r"\bdegree\s+completed\b",
+            r"\bdegree\s+completed\b|\bcompleted\s+(?:bachelor'?s?|master'?s?|"
+            r"doctoral|college|university)?\s*degree\b",
             lowered,
         ):
             if education_end is None:

@@ -82,7 +82,7 @@ def test_standard_resume_and_verified_profile_questions_skip_ai():
             _question("phone", "Mobile number"),
             _question(
                 "graduate",
-                "Have you graduated?",
+                "Do you have a completed Bachelor's degree?",
                 kind="radio",
                 options=["Yes", "No"],
             ),
