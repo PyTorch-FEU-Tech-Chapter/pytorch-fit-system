@@ -81,6 +81,21 @@ def test_submit_gate_stops_on_generic_access_marker_before_control_check():
     assert result.access.reason == "blocked"
 
 
+def test_submit_gate_stops_on_indeed_cloudflare_verification_page():
+    result = evaluate_final_submit_gate(
+        _Page(
+            body=(
+                "Additional Verification Required. "
+                "Troubleshooting Cloudflare Errors. Ray ID abc123."
+            )
+        ),
+        "#submit",
+    )
+
+    assert not result.allowed
+    assert result.access.reason == "verification_required"
+
+
 def test_resume_matcher_accepts_arbitrary_website_profiles(tmp_path: Path):
     backend = tmp_path / "backend.pdf"
     data = tmp_path / "data.pdf"

@@ -83,6 +83,8 @@ def check_access_gate(page: Any) -> AccessGateResult:
     text = body.inner_text().lower() if body.count() else ""
     for marker, reason in (
         ("verify you are human", "verification_required"),
+        ("additional verification required", "verification_required"),
+        ("cloudflare errors", "verification_required"),
         ("sign in to continue", "signed_out"),
         ("access denied", "blocked"),
         ("too many requests", "rate_limited"),
