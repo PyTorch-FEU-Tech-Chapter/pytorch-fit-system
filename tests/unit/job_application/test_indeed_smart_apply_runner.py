@@ -270,12 +270,46 @@ def test_runner_waits_for_observable_post_apply_after_approved_submit():
             autonomous_submit=True,
             allowed_domains={"smartapply.indeed.com"},
         ),
+        submission_history=None,
     )
 
     assert result.status == IndeedSmartApplyRunStatus.POST_APPLY
     assert result.module.value == "post_apply"
     assert result.actions_executed == ["review:final_submit"]
     assert page.index == 1
+
+
+def test_runner_uses_persistent_history_by_default(tmp_path, monkeypatch):
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    history = ApplicationSubmissionHistory(tmp_path / "persistent.sqlite3")
+    monkeypatch.setattr(
+        "resume_builder.job_application.indeed_smart_apply_runner.default_submission_history",
+        lambda: history,
+    )
+    page = _Page(
+        [
+            _State(f"{root}/review-module", "Submit your application", {}),
+            _State(f"{root}/post-apply", "Your application has been submitted", {}),
+        ]
+    )
+
+    result = run_indeed_smart_apply_until_gate(
+        page,
+        _resume(),
+        approvals=SmartApplyApprovals(final_submit=True),
+        permission_policy=ApplicationPermissionPolicy(
+            autonomous_submit=True,
+            allowed_domains={"smartapply.indeed.com"},
+        ),
+        company="Example Co",
+        job_title="Backend Engineer",
+    )
+
+    assert result.status == IndeedSmartApplyRunStatus.POST_APPLY
+    entries = history.recent_submissions()
+    assert [(entry.company, entry.job_title) for entry in entries] == [
+        ("Example Co", "Backend Engineer")
+    ]
 
 
 class _RecaptchaLocator:
@@ -342,8 +376,7 @@ def test_unchecked_recaptcha_anchor_requires_human_handoff():
 def test_runner_queues_active_captcha_without_storing_query_values(tmp_path):
     page = _RecaptchaPage(checked=False)
     page.url = (
-        "https://smartapply.indeed.com/beta/indeedapply/form/review-module"
-        "?iaUid=private-session"
+        "https://smartapply.indeed.com/beta/indeedapply/form/review-module?iaUid=private-session"
     )
     queue = HumanVerificationQueue(tmp_path / "verification.json")
 

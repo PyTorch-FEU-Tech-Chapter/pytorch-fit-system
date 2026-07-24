@@ -184,6 +184,9 @@ separate systems even when they share the same learn-once/replay-many pattern.
    provider-neutral boundary: observable browser proof, explicit manual confirmation from the user,
    or an authorized email adapter. Email access is optional and must never be assumed; do not store
    message bodies, credentials, cookies, or unrelated mailbox data.
+   Normal runs must use the persistent `.cache/application-submissions.sqlite3` history. Reconcile
+   an open, access-clear Indeed Applied page with `tools/job_finder/sync_indeed_applied.py`; never
+   infer confirmation from search cards, drafts, Review pages, or employer status controls.
 
 ## Every Prompt Save Rule
 

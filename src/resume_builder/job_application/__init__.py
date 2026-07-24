@@ -70,6 +70,7 @@ from resume_builder.job_application.access_verification import (
     sanitize_application_url,
 )
 from resume_builder.job_application.submission_history import (
+    DEFAULT_SUBMISSION_HISTORY_PATH,
     ApplicationHistoryEntry,
     ApplicationSubmissionHistory,
     ConfirmationSource,
@@ -77,6 +78,7 @@ from resume_builder.job_application.submission_history import (
     SubmissionConfirmationProvider,
     SubmissionDecision,
     SubmissionReservation,
+    default_submission_history,
     normalize_exact_identity,
 )
 from resume_builder.job_application.autonomous_questions import (
@@ -160,6 +162,7 @@ __all__ = [
     "VerificationQueueState",
     "check_access_gate",
     "sanitize_application_url",
+    "DEFAULT_SUBMISSION_HISTORY_PATH",
     "ApplicationHistoryEntry",
     "ApplicationSubmissionHistory",
     "ConfirmationSource",
@@ -167,6 +170,7 @@ __all__ = [
     "SubmissionConfirmationProvider",
     "SubmissionDecision",
     "SubmissionReservation",
+    "default_submission_history",
     "normalize_exact_identity",
     "AutonomousQuestionPipeline",
     "HybridQuestionPipeline",

@@ -15,6 +15,10 @@ from pydantic import BaseModel
 from .ledger import LedgerState
 from .privacy import redact
 
+DEFAULT_SUBMISSION_HISTORY_PATH = (
+    Path(__file__).resolve().parents[3] / ".cache" / "application-submissions.sqlite3"
+)
+
 
 class SubmissionDecision(str, Enum):
     RESERVED = "reserved"
@@ -306,6 +310,13 @@ class ApplicationSubmissionHistory:
         entry = self.get(reservation.matched_application_id)
         if entry is None:
             raise RuntimeError("matching submission history entry was not found")
+        if entry.confirmation_source is None:
+            return self.mark_submitted(
+                entry.id,
+                confirmation=entry.confirmation or confirmation,
+                confirmation_source=confirmation_source,
+                now=datetime.fromisoformat(entry.applied_at) if entry.applied_at else applied_at,
+            )
         return entry
 
     def get(self, application_id: int) -> ApplicationHistoryEntry | None:
@@ -499,3 +510,8 @@ class ApplicationSubmissionHistory:
             source_domain=row["source_domain"],
             source_url=row["source_url"],
         )
+
+
+def default_submission_history() -> ApplicationSubmissionHistory:
+    """Return the persistent history used by normal application runs."""
+    return ApplicationSubmissionHistory(DEFAULT_SUBMISSION_HISTORY_PATH)

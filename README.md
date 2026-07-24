@@ -145,6 +145,9 @@ rejected. An exact company + job-title confirmation prevents another submission 
 the role becomes eligible again. Confirmation is resolved at the end through an abstract provider:
 observable browser proof, an explicit statement from the user, or a separately authorized email
 adapter. The email option is not required and does not grant mailbox access by itself.
+Normal application runs use `.cache/application-submissions.sqlite3`; visible Indeed history can be
+reconciled from an approved Chrome session with
+`python tools/job_finder/sync_indeed_applied.py`.
 
 ### Scraper token-cost benchmark
 

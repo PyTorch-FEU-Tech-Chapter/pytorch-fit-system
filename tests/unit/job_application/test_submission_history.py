@@ -161,3 +161,32 @@ def test_pending_attempt_can_be_confirmed_by_abstract_email_provider(tmp_path):
     assert entry.state == LedgerState.SUBMITTED
     assert entry.confirmation_source == ConfirmationSource.EMAIL
     assert entry.confirmation == "application receipt matched"
+
+
+def test_existing_legacy_confirmation_gets_source_without_changing_date(tmp_path):
+    history = ApplicationSubmissionHistory(tmp_path / "applications.sqlite3")
+    reservation = history.reserve_submission(
+        company="Example Co",
+        job_title="Backend Engineer",
+        now=NOW,
+    )
+    original = history.mark_submitted(
+        reservation.application_id,
+        confirmation="visible receipt",
+        now=NOW,
+    )
+    with history._connect() as connection:
+        connection.execute(
+            "UPDATE applications SET confirmation_source = '' WHERE id = ?",
+            (original.id,),
+        )
+
+    reconciled = history.record_existing_submission(
+        company="Example Co",
+        job_title="Backend Engineer",
+        applied_at=NOW + timedelta(hours=2),
+        confirmation_source=ConfirmationSource.BROWSER,
+    )
+
+    assert reconciled.confirmation_source == ConfirmationSource.BROWSER
+    assert reconciled.applied_at == original.applied_at

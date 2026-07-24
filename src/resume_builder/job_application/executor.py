@@ -15,7 +15,18 @@ from .models import ApplicationPlan, BrowserAction, DynamicApplicationPlan, Dyna
 from .ledger import ApplicationLedger, LedgerState
 from .permissions import ApplicationPermissionPolicy
 from .privacy import redact
-from .submission_history import ApplicationSubmissionHistory, SubmissionDecision
+from .submission_history import (
+    ApplicationSubmissionHistory,
+    SubmissionDecision,
+    default_submission_history,
+)
+
+
+class _DefaultSubmissionHistory:
+    pass
+
+
+_DEFAULT_SUBMISSION_HISTORY = _DefaultSubmissionHistory()
 
 
 class ExecutionStatus(str, Enum):
@@ -70,7 +81,9 @@ class SafeApplicationExecutor:
         permission_policy: ApplicationPermissionPolicy | None = None,
         application_id: str = "",
         ledger: ApplicationLedger | None = None,
-        submission_history: ApplicationSubmissionHistory | None = None,
+        submission_history: (
+            ApplicationSubmissionHistory | None | _DefaultSubmissionHistory
+        ) = _DEFAULT_SUBMISSION_HISTORY,
         company: str = "",
         job_title: str = "",
         duplicate_window_days: int = 30,
@@ -78,12 +91,21 @@ class SafeApplicationExecutor:
         events: list[ExecutionEvent] = []
         policy = permission_policy or ApplicationPermissionPolicy()
         domain = (urlsplit(str(getattr(page, "url", ""))).hostname or "").lower()
+        if isinstance(submission_history, _DefaultSubmissionHistory):
+            submission_history = default_submission_history()
 
         if dynamic_plan and not self._plan_matches_page(page, dynamic_plan):
             return ApplicationExecutionResult(
                 status=ExecutionStatus.HUMAN_HANDOFF,
-                events=[ExecutionEvent(step=0, action="validate_plan", target=domain,
-                                       status="blocked", detail="domain or layout mismatch")],
+                events=[
+                    ExecutionEvent(
+                        step=0,
+                        action="validate_plan",
+                        target=domain,
+                        status="blocked",
+                        detail="domain or layout mismatch",
+                    )
+                ],
             )
         if ledger and application_id:
             existing = ledger.get(application_id)
@@ -114,11 +136,18 @@ class SafeApplicationExecutor:
                 if self._is_submit_action(action.action, action.target):
                     validation_error = self._validate(page, application_plan)
                     if validation_error:
-                        events.append(ExecutionEvent(step=action.step, action="validate",
-                                                     target="application", status="failed",
-                                                     detail=validation_error))
-                        return ApplicationExecutionResult(status=ExecutionStatus.FAILED,
-                                                          events=events)
+                        events.append(
+                            ExecutionEvent(
+                                step=action.step,
+                                action="validate",
+                                target="application",
+                                status="failed",
+                                detail=validation_error,
+                            )
+                        )
+                        return ApplicationExecutionResult(
+                            status=ExecutionStatus.FAILED, events=events
+                        )
                     submit_result = self._submit_or_stop(
                         page,
                         action.step,
@@ -137,11 +166,18 @@ class SafeApplicationExecutor:
                         return submit_result
                     continue
                 if not policy.allows(action.action_class, domain=domain):
-                    events.append(ExecutionEvent(step=action.step, action=action.action,
-                                                 target=action.target, status="blocked",
-                                                 detail="permission required"))
-                    return ApplicationExecutionResult(status=ExecutionStatus.HUMAN_HANDOFF,
-                                                      events=events)
+                    events.append(
+                        ExecutionEvent(
+                            step=action.step,
+                            action=action.action,
+                            target=action.target,
+                            status="blocked",
+                            detail="permission required",
+                        )
+                    )
+                    return ApplicationExecutionResult(
+                        status=ExecutionStatus.HUMAN_HANDOFF, events=events
+                    )
                 self._retry(page, lambda: self._execute_browser_action(page, action))
                 events.append(
                     ExecutionEvent(
@@ -159,11 +195,18 @@ class SafeApplicationExecutor:
                 if step.action == "final_submit":
                     validation_error = self._validate(page, application_plan)
                     if validation_error:
-                        events.append(ExecutionEvent(step=step.step, action="validate",
-                                                     target="application", status="failed",
-                                                     detail=validation_error))
-                        return ApplicationExecutionResult(status=ExecutionStatus.FAILED,
-                                                          events=events)
+                        events.append(
+                            ExecutionEvent(
+                                step=step.step,
+                                action="validate",
+                                target="application",
+                                status="failed",
+                                detail=validation_error,
+                            )
+                        )
+                        return ApplicationExecutionResult(
+                            status=ExecutionStatus.FAILED, events=events
+                        )
                     result = self._submit_or_stop(
                         page,
                         step.step,
@@ -199,9 +242,15 @@ class SafeApplicationExecutor:
 
             validation_error = self._validate(page, application_plan)
             if validation_error:
-                events.append(ExecutionEvent(step=len(events) + 1, action="validate",
-                                             target="application", status="failed",
-                                             detail=validation_error))
+                events.append(
+                    ExecutionEvent(
+                        step=len(events) + 1,
+                        action="validate",
+                        target="application",
+                        status="failed",
+                        detail=validation_error,
+                    )
+                )
                 return ApplicationExecutionResult(status=ExecutionStatus.FAILED, events=events)
 
             return ApplicationExecutionResult(
@@ -366,9 +415,15 @@ class SafeApplicationExecutor:
                         reservation_id,
                         details="confirmation proof not observed",
                     )
-                events.append(ExecutionEvent(step=step, action="final_submit", target=selector,
-                                             status="unknown",
-                                             detail="confirmation proof not observed"))
+                events.append(
+                    ExecutionEvent(
+                        step=step,
+                        action="final_submit",
+                        target=selector,
+                        status="unknown",
+                        detail="confirmation proof not observed",
+                    )
+                )
                 return ApplicationExecutionResult(
                     status=ExecutionStatus.SUBMISSION_UNKNOWN, events=events
                 )
@@ -380,9 +435,15 @@ class SafeApplicationExecutor:
                     reservation_id,
                     details="no confirmation proof configured",
                 )
-            events.append(ExecutionEvent(step=step, action="final_submit", target=selector,
-                                         status="unknown",
-                                         detail="no confirmation proof configured"))
+            events.append(
+                ExecutionEvent(
+                    step=step,
+                    action="final_submit",
+                    target=selector,
+                    status="unknown",
+                    detail="no confirmation proof configured",
+                )
+            )
             return ApplicationExecutionResult(
                 status=ExecutionStatus.SUBMISSION_UNKNOWN, events=events
             )
@@ -419,15 +480,15 @@ class SafeApplicationExecutor:
         host = (urlsplit(str(getattr(page, "url", ""))).hostname or "").lower()
         if not host:
             return True
-        if plan.root_domain and not (host == plan.root_domain or host.endswith("." + plan.root_domain)):
+        if plan.root_domain and not (
+            host == plan.root_domain or host.endswith("." + plan.root_domain)
+        ):
             return False
         sample_hosts = {sample.subdomain.lower() for sample in plan.samples}
         if sample_hosts and host not in sample_hosts:
             return False
         host_fingerprints = {
-            sample.layout_fingerprint
-            for sample in plan.samples
-            if sample.subdomain.lower() == host
+            sample.layout_fingerprint for sample in plan.samples if sample.subdomain.lower() == host
         }
         if host_fingerprints and hasattr(page, "content"):
             return fingerprint(page.content()) in host_fingerprints
@@ -442,7 +503,7 @@ class SafeApplicationExecutor:
             except Exception as exc:
                 last_error = exc
                 if attempt + 1 < self.max_attempts:
-                    page.wait_for_timeout(250 * (2 ** attempt))
+                    page.wait_for_timeout(250 * (2**attempt))
         if last_error:
             raise last_error
 

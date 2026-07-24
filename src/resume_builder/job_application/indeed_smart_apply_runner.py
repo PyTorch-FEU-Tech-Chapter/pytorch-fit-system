@@ -20,7 +20,18 @@ from .indeed_smart_apply import (
 )
 from .autonomous_questions import QuestionPlanningResult
 from .permissions import ApplicationPermissionPolicy
-from .submission_history import ApplicationSubmissionHistory, SubmissionDecision
+from .submission_history import (
+    ApplicationSubmissionHistory,
+    SubmissionDecision,
+    default_submission_history,
+)
+
+
+class _DefaultSubmissionHistory:
+    pass
+
+
+_DEFAULT_SUBMISSION_HISTORY = _DefaultSubmissionHistory()
 
 
 class IndeedSmartApplyRunStatus(str, Enum):
@@ -158,7 +169,9 @@ def run_indeed_smart_apply_until_gate(
     question_plan: QuestionPlanningResult | None = None,
     verification_queue: HumanVerificationQueue | None = None,
     application_reference: str = "",
-    submission_history: ApplicationSubmissionHistory | None = None,
+    submission_history: (
+        ApplicationSubmissionHistory | None | _DefaultSubmissionHistory
+    ) = _DEFAULT_SUBMISSION_HISTORY,
     company: str = "",
     job_title: str = "",
     duplicate_window_days: int = 30,
@@ -167,6 +180,8 @@ def run_indeed_smart_apply_until_gate(
     """Advance known modules and stop at the next human or AI fallback gate."""
     gates = approvals or SmartApplyApprovals()
     policy = permission_policy or ApplicationPermissionPolicy()
+    if isinstance(submission_history, _DefaultSubmissionHistory):
+        submission_history = default_submission_history()
     seen: list[IndeedSmartApplyModule] = []
     executed: list[str] = []
 
@@ -313,8 +328,7 @@ def run_indeed_smart_apply_until_gate(
                 )
 
         submitted = any(
-            action.action.lower().strip() == "final_submit"
-            for action in ordered_actions
+            action.action.lower().strip() == "final_submit" for action in ordered_actions
         )
         reservation_id: int | None = None
         if submitted and submission_history is not None:
@@ -324,9 +338,7 @@ def run_indeed_smart_apply_until_gate(
                     module=module,
                     modules_seen=seen,
                     actions_executed=executed,
-                    stop_reason=(
-                        "company and exact job title are required for submission history"
-                    ),
+                    stop_reason=("company and exact job title are required for submission history"),
                     selected_resume=plan.selected_resume,
                 )
             reservation = submission_history.reserve_submission(

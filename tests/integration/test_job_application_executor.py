@@ -109,6 +109,7 @@ def test_browser_executor_submits_once_after_explicit_human_approval(tmp_path: P
             application_plan,
             dynamic_plan,
             human_approved=True,
+            submission_history=None,
         )
 
         assert result.status == ExecutionStatus.SUBMITTED
@@ -131,12 +132,22 @@ def test_browser_executor_autonomous_submit_is_explicit_and_idempotent(tmp_path:
         page = browser.new_page()
         page.set_content(FORM_HTML)
         first = SafeApplicationExecutor().execute(
-            page, application_plan, dynamic_plan,
-            permission_policy=policy, application_id="company:job-1", ledger=ledger,
+            page,
+            application_plan,
+            dynamic_plan,
+            permission_policy=policy,
+            application_id="company:job-1",
+            ledger=ledger,
+            submission_history=None,
         )
         second = SafeApplicationExecutor().execute(
-            page, application_plan, dynamic_plan,
-            permission_policy=policy, application_id="company:job-1", ledger=ledger,
+            page,
+            application_plan,
+            dynamic_plan,
+            permission_policy=policy,
+            application_id="company:job-1",
+            ledger=ledger,
+            submission_history=None,
         )
         assert first.status == ExecutionStatus.SUBMITTED
         assert second.status == ExecutionStatus.ALREADY_SUBMITTED
@@ -194,7 +205,11 @@ def test_submit_without_confirmation_proof_is_unknown(tmp_path: Path) -> None:
         page = browser.new_page()
         page.set_content(FORM_HTML)
         result = SafeApplicationExecutor().execute(
-            page, application_plan, dynamic_plan, human_approved=True
+            page,
+            application_plan,
+            dynamic_plan,
+            human_approved=True,
+            submission_history=None,
         )
         assert result.status == ExecutionStatus.SUBMISSION_UNKNOWN
         assert result.events[-1].status == "unknown"
