@@ -148,6 +148,9 @@ adapter. The email option is not required and does not grant mailbox access by i
 Normal application runs use `.cache/application-submissions.sqlite3`; visible Indeed history can be
 reconciled from an approved Chrome session with
 `python tools/job_finder/sync_indeed_applied.py`.
+Reusable cross-site checks live in `src/resume_builder/job_application/shared/`: access/challenge
+classification, final-submit readiness, and configurable role-specific resume matching. Website
+adapters provide only their verified selectors, routes, and profile configuration.
 
 ### Scraper token-cost benchmark
 

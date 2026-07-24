@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from resume_builder.core.models import Resume
 
-from .access_verification import HumanVerificationQueue, check_access_gate
+from .access_verification import HumanVerificationQueue
 from .indeed_smart_apply import (
     IndeedSmartApplyModule,
     SmartApplyApprovals,
@@ -20,6 +20,7 @@ from .indeed_smart_apply import (
 )
 from .autonomous_questions import QuestionPlanningResult
 from .permissions import ApplicationPermissionPolicy
+from .shared import check_access_gate, evaluate_final_submit_gate
 from .submission_history import (
     ApplicationSubmissionHistory,
     SubmissionDecision,
@@ -332,20 +333,26 @@ def run_indeed_smart_apply_until_gate(
         )
         reservation_id: int | None = None
         if submitted and submission_history is not None:
-            pre_submit_access = check_access_gate(page)
-            if pre_submit_access.blocked:
+            submit_selector = next(
+                action.target
+                for action in ordered_actions
+                if action.action.lower().strip() == "final_submit"
+            )
+            pre_submit_gate = evaluate_final_submit_gate(page, submit_selector)
+            if not pre_submit_gate.allowed:
                 if verification_queue is not None:
-                    verification_queue.enqueue(
-                        application_reference=queue_reference,
-                        url=str(page.url),
-                        result=pre_submit_access,
-                    )
+                    if pre_submit_gate.access.blocked:
+                        verification_queue.enqueue(
+                            application_reference=queue_reference,
+                            url=str(page.url),
+                            result=pre_submit_gate.access,
+                        )
                 return IndeedSmartApplyRunResult(
                     status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
                     module=module,
                     modules_seen=seen,
                     actions_executed=executed,
-                    stop_reason=f"access gate before final submit: {pre_submit_access.reason}",
+                    stop_reason=f"final submit gate: {pre_submit_gate.reason}",
                     selected_resume=plan.selected_resume,
                 )
             if not company.strip() or not job_title.strip():
@@ -383,31 +390,25 @@ def run_indeed_smart_apply_until_gate(
         before_url = str(page.url)
         for action in ordered_actions:
             if action.action.lower().strip() == "final_submit":
-                final_access = check_access_gate(page)
-                submit_button = _first(page, action.target)
-                if final_access.blocked or not submit_button.is_enabled():
+                final_gate = evaluate_final_submit_gate(page, action.target)
+                if not final_gate.allowed:
                     if reservation_id is not None and submission_history is not None:
                         submission_history.mark_failed(
                             reservation_id,
                             details="final submit was not initiated because its gate was blocked",
                         )
-                    if final_access.blocked and verification_queue is not None:
+                    if final_gate.access.blocked and verification_queue is not None:
                         verification_queue.enqueue(
                             application_reference=queue_reference,
                             url=str(page.url),
-                            result=final_access,
+                            result=final_gate.access,
                         )
-                    reason = (
-                        f"access gate before final submit: {final_access.reason}"
-                        if final_access.blocked
-                        else "final submit control is disabled; fresh inventory required"
-                    )
                     return IndeedSmartApplyRunResult(
                         status=IndeedSmartApplyRunStatus.HUMAN_HANDOFF,
                         module=module,
                         modules_seen=seen,
                         actions_executed=executed,
-                        stop_reason=reason,
+                        stop_reason=f"final submit gate: {final_gate.reason}",
                         selected_resume=plan.selected_resume,
                     )
             try:

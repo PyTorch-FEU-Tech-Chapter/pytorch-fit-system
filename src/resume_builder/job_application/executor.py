@@ -15,6 +15,7 @@ from .models import ApplicationPlan, BrowserAction, DynamicApplicationPlan, Dyna
 from .ledger import ApplicationLedger, LedgerState
 from .permissions import ApplicationPermissionPolicy
 from .privacy import redact
+from .shared import evaluate_final_submit_gate
 from .submission_history import (
     ApplicationSubmissionHistory,
     SubmissionDecision,
@@ -341,6 +342,22 @@ class SafeApplicationExecutor:
             )
             return ApplicationExecutionResult(
                 status=ExecutionStatus.DRAFT_READY,
+                events=events,
+            )
+
+        submit_gate = evaluate_final_submit_gate(page, selector)
+        if not submit_gate.allowed:
+            events.append(
+                ExecutionEvent(
+                    step=step,
+                    action="final_submit_gate",
+                    target=selector,
+                    status="blocked",
+                    detail=submit_gate.reason,
+                )
+            )
+            return ApplicationExecutionResult(
+                status=ExecutionStatus.HUMAN_HANDOFF,
                 events=events,
             )
 

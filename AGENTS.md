@@ -169,6 +169,9 @@ separate systems even when they share the same learn-once/replay-many pattern.
    capability object, never scattered booleans or a global safety-off flag. Known first-party
    integrations such as FEU Tech SOLAR use fixed deterministic selectors and headless execution;
    AI DOM planning is reserved for genuinely website-agnostic flows.
+   Put reusable application checks in `src/resume_builder/job_application/shared/`: access gates,
+   final-submit readiness, and configurable resume scoring. Website adapters may supply selectors,
+   routes, and scoring profiles, but must not copy those shared decisions into vendor modules.
 
 9. **Career evidence and grades.**
    Screening-question AI may retrieve only bounded normalized `Resume`/NCD evidence (skills,

@@ -13,6 +13,53 @@ from pydantic import BaseModel, Field
 from resume_builder.core.models import Resume
 
 from .models import BrowserAction
+from .shared import ResumeArtifactProfile, select_resume_artifact
+
+
+_RESUME_PROFILES = (
+    ResumeArtifactProfile(
+        filename="ai-ml-research.pdf",
+        terms=(
+            " ai ",
+            "machine learning",
+            " ml ",
+            "llm",
+            "model training",
+            "ai trainer",
+            "research",
+        ),
+    ),
+    ResumeArtifactProfile(
+        filename="automation-data.pdf",
+        terms=(
+            "data engineer",
+            "data analyst",
+            "business intelligence",
+            "automation",
+            "pipeline",
+            "scraping",
+            "sql",
+            "analytics",
+        ),
+    ),
+    ResumeArtifactProfile(
+        filename="software-systems.pdf",
+        terms=(
+            "backend software",
+            "software",
+            "backend",
+            "front end",
+            "frontend",
+            "full stack",
+            "full-stack",
+            "web developer",
+            "react",
+            "next.js",
+            "fastapi",
+            "systems",
+        ),
+    ),
+)
 
 
 class IndeedSmartApplyModule(str, Enum):
@@ -76,52 +123,14 @@ def recommend_role_resume(
     *,
     job_description: str = "",
 ) -> Path | None:
-    """Score all catered artifacts deterministically and return only a real file."""
-    title = f" {job_title.casefold()} "
-    description = f" {job_description.casefold()} "
-    profiles = {
-        "ai-ml-research.pdf": (
-            " ai ",
-            "machine learning",
-            " ml ",
-            "llm",
-            "model training",
-            "ai trainer",
-            "research",
-        ),
-        "automation-data.pdf": (
-            "data engineer",
-            "data analyst",
-            "business intelligence",
-            "automation",
-            "pipeline",
-            "scraping",
-            "sql",
-            "analytics",
-        ),
-        "software-systems.pdf": (
-            "backend software",
-            "software",
-            "backend",
-            "front end",
-            "frontend",
-            "full stack",
-            "full-stack",
-            "web developer",
-            "react",
-            "next.js",
-            "fastapi",
-            "systems",
-        ),
-    }
-    scores = {
-        filename: sum(3 for term in terms if term in title)
-        + sum(1 for term in terms if term in description)
-        for filename, terms in profiles.items()
-    }
-    filename = max(scores, key=scores.get)
-    candidate = artifact_dir / filename
-    return candidate.resolve() if candidate.is_file() else None
+    """Apply Indeed's profile configuration through the shared matcher."""
+    return select_resume_artifact(
+        job_title,
+        artifact_dir,
+        _RESUME_PROFILES,
+        job_description=job_description,
+        default_filename="software-systems.pdf",
+    )
 
 
 def _split_name(full_name: str) -> tuple[str, str]:

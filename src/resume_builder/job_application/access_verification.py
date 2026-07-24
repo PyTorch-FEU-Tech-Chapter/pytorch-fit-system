@@ -7,32 +7,32 @@ import json
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel
 
 from .privacy import redact
+from .shared.access_gate import (
+    AccessGateResult,
+    AccessGateState,
+    check_access_gate,
+    sanitize_application_url,
+)
 
-
-class AccessGateState(str, Enum):
-    CLEAR = "clear"
-    HUMAN_REQUIRED = "human_required"
+__all__ = [
+    "AccessGateResult",
+    "AccessGateState",
+    "HumanVerificationQueue",
+    "VerificationQueueEntry",
+    "VerificationQueueState",
+    "check_access_gate",
+    "sanitize_application_url",
+]
 
 
 class VerificationQueueState(str, Enum):
     PENDING = "pending"
     RESOLVED = "resolved"
-
-
-class AccessGateResult(BaseModel):
-    state: AccessGateState
-    reason: str = ""
-    evidence: str = ""
-
-    @property
-    def blocked(self) -> bool:
-        return self.state == AccessGateState.HUMAN_REQUIRED
 
 
 class VerificationQueueEntry(BaseModel):
@@ -47,84 +47,12 @@ class VerificationQueueEntry(BaseModel):
     occurrences: int = 1
 
 
-def sanitize_application_url(url: str) -> str:
-    """Remove query parameters and fragments that may contain session identifiers."""
-    parts = urlsplit(url)
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
-
-
 def _safe_application_reference(application_reference: str, safe_url: str) -> str:
     reference = application_reference.strip()
     parts = urlsplit(reference)
     if parts.scheme and parts.netloc:
         reference = sanitize_application_url(reference)
     return redact(reference, limit=200) or safe_url
-
-
-def check_access_gate(page: Any) -> AccessGateResult:
-    """Classify visible access controls without solving or bypassing them."""
-    recaptcha_frames = page.locator('iframe[src*="recaptcha"]')
-    for index in range(recaptcha_frames.count()):
-        iframe = recaptcha_frames.nth(index)
-        if not iframe.is_visible():
-            continue
-        src = iframe.get_attribute("src") or ""
-        if "/bframe" in src:
-            return AccessGateResult(
-                state=AccessGateState.HUMAN_REQUIRED,
-                reason="captcha",
-                evidence="visible reCAPTCHA challenge",
-            )
-        try:
-            handle = iframe.element_handle()
-            frame = handle.content_frame() if handle is not None else None
-            anchor = frame.locator("#recaptcha-anchor") if frame is not None else None
-            checked = (
-                anchor is not None
-                and anchor.count()
-                and anchor.get_attribute("aria-checked") == "true"
-            )
-        except Exception:  # Browser/frame drift must fail closed.
-            checked = False
-        if checked:
-            continue
-        return AccessGateResult(
-            state=AccessGateState.HUMAN_REQUIRED,
-            reason="captcha",
-            evidence="visible incomplete reCAPTCHA",
-        )
-
-    for selector, reason, evidence in (
-        ('iframe[src*="hcaptcha"]', "captcha", "visible hCaptcha"),
-        (
-            "[data-testid=challenge-form]",
-            "verification_required",
-            "visible verification challenge",
-        ),
-    ):
-        locator = page.locator(selector)
-        if any(locator.nth(index).is_visible() for index in range(locator.count())):
-            return AccessGateResult(
-                state=AccessGateState.HUMAN_REQUIRED,
-                reason=reason,
-                evidence=evidence,
-            )
-
-    body = page.locator("body").first
-    text = body.inner_text().lower() if body.count() else ""
-    for marker, reason in (
-        ("verify you are human", "verification_required"),
-        ("sign in to continue", "signed_out"),
-        ("access denied", "blocked"),
-        ("too many requests", "rate_limited"),
-    ):
-        if marker in text:
-            return AccessGateResult(
-                state=AccessGateState.HUMAN_REQUIRED,
-                reason=reason,
-                evidence=f"visible page marker: {marker}",
-            )
-    return AccessGateResult(state=AccessGateState.CLEAR)
 
 
 class HumanVerificationQueue:

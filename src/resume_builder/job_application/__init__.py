@@ -69,6 +69,12 @@ from resume_builder.job_application.access_verification import (
     check_access_gate,
     sanitize_application_url,
 )
+from resume_builder.job_application.shared import (
+    FinalSubmitGateResult,
+    ResumeArtifactProfile,
+    evaluate_final_submit_gate,
+    select_resume_artifact,
+)
 from resume_builder.job_application.submission_history import (
     DEFAULT_SUBMISSION_HISTORY_PATH,
     ApplicationHistoryEntry,
@@ -162,6 +168,10 @@ __all__ = [
     "VerificationQueueState",
     "check_access_gate",
     "sanitize_application_url",
+    "FinalSubmitGateResult",
+    "ResumeArtifactProfile",
+    "evaluate_final_submit_gate",
+    "select_resume_artifact",
     "DEFAULT_SUBMISSION_HISTORY_PATH",
     "ApplicationHistoryEntry",
     "ApplicationSubmissionHistory",

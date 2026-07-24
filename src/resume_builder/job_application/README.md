@@ -12,6 +12,12 @@ Playwright execution now supports dynamic reveal/fill steps, evidence-grounded A
 permissions, validation, bounded retry, confirmed submission, and an idempotency ledger. ATS vendor
 fingerprints and Action-RAG recovery remain deferred.
 
+Website-agnostic checks live in `shared/`: access/challenge classification, final-submit readiness,
+and configurable role-to-resume artifact scoring. Generic execution and site adapters consume
+these primitives. Site modules retain only verified DOM selectors, routes, and workflow semantics;
+new websites configure the shared library instead of copying CAPTCHA, submit, or resume-selection
+logic.
+
 Authentication is session-first. The pipeline checks access blockers, visible signed-in/signed-out
 DOM markers, stored Playwright state, and recent non-secret session-decision logs before considering
 an AI call. AI is an ambiguity fallback only; cookie values and credentials never enter its prompt.
