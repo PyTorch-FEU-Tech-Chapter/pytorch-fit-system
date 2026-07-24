@@ -26,9 +26,10 @@ fails only that task closed and never enables retries or submission for another 
 Every batch task carries an explicit target country and `remote|hybrid|onsite|any` work mode. The
 coordinator rejects a worker result that changes either value, so a foreign-country remote search
 cannot silently become a Philippines-targeted or onsite application.
-When configured with `ForeignCountryPolicy`, the coordinator also rejects any task outside the
-human-selected country allowlist and requires remote mode. Phone/contact country codes remain
-truthful profile data and never participate in this decision.
+When configured with `CountrySelectionPolicy`, the coordinator also rejects any task outside the
+human-selected country allowlist and requires remote mode. Home-country exclusion is optional, not
+implicit. Phone/contact country codes remain truthful profile data and never participate in this
+decision.
 
 Authentication is session-first. The pipeline checks access blockers, visible signed-in/signed-out
 DOM markers, stored Playwright state, and recent non-secret session-decision logs before considering

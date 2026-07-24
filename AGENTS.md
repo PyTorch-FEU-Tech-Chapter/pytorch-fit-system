@@ -151,8 +151,8 @@ separate systems even when they share the same learn-once/replay-many pattern.
    either preference fails closed; do not silently substitute the browser locale, current domain,
    Philippines, or onsite work for a requested foreign-country remote search.
    Contact data and job geography are separate: a truthful `+63` phone code must never select,
-   rewrite, or broaden the target country. For foreign-only runs, require a human-selected country
-   allowlist, exclude the runtime user's home country and aliases, and require remote work mode.
+   rewrite, or broaden the target country. Require a human-selected country allowlist and remote
+   work mode. Home-country exclusion is optional and must be explicitly enabled for that run.
 
 7. **Debug visualizers only.**
    Playwright visual tagging is allowed only as a temporary development aid under `/out/`. The final

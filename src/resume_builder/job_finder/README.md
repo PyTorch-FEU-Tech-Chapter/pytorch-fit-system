@@ -41,12 +41,13 @@ All routes pass the access gate before search or extraction:
 Search plans contain ordered `fill`, `select_option`, and `click` steps. Browser execution remains
 separate so callers can pause for human review before submission.
 
-Foreign-country runs use a human-selected allowlist that is independent of contact data. A truthful
-Philippines phone country code remains `+63`; it never selects or rewrites the job country. With
-`--foreign-only`, the home country and its configured aliases are blocked, every target must come
-from repeated `--target-country` values, and `--work-mode remote` is mandatory. Application batches
-may use the same `ForeignCountryPolicy`, preventing a worker or site locale from silently replacing
-the selected country.
+Country targeting uses a human-selected allowlist that is independent of contact data. A truthful
+Philippines phone country code remains `+63`; it never selects or rewrites the job country. Every
+target comes from repeated `--target-country` values and remote mode remains mandatory for this
+policy. Philippines may be selected like any other country. Add `--foreign-only` only when the
+human also wants to exclude the configured home country and aliases. Application batches may use
+the same `CountrySelectionPolicy`, preventing a worker or site locale from silently replacing the
+selected country.
 
 ## Live CDP development test
 
@@ -78,13 +79,14 @@ Pass work arrangement separately so it remains a strict constraint rather than f
 python tools/job_finder/cdp_tag.py api-plan --work-mode hybrid
 ```
 
-For a reviewed foreign-country remote run:
+For a reviewed multi-country remote run:
 
 ```bash
 python tools/job_finder/cdp_tag.py api-plan \
-  --foreign-only --home-country Philippines --home-country-alias PH \
   --target-country Australia --target-country Canada --work-mode remote
 ```
 
+Add `--foreign-only --home-country Philippines --home-country-alias PH` only for a run where the
+human explicitly wants Philippines excluded.
 No command implements access-control bypass, fingerprint spoofing, proxy/identity rotation, or
 CAPTCHA solving.

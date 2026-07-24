@@ -1,7 +1,7 @@
 """Reusable AI-learned job listing extraction rules."""
 
 from .access_guard import AccessDecision, AccessGuard, AccessPolicy, AccessState, DomainThrottle
-from .country_policy import ForeignCountryPolicy
+from .country_policy import CountrySelectionPolicy, ForeignCountryPolicy
 from .dom_inventory import build_listing_dom_inventory, fingerprint
 from .models import (
     JobListing,
@@ -36,6 +36,7 @@ __all__ = [
     "AccessPolicy",
     "AccessState",
     "DomainThrottle",
+    "CountrySelectionPolicy",
     "ForeignCountryPolicy",
     "JobListing",
     "JobListingAction",

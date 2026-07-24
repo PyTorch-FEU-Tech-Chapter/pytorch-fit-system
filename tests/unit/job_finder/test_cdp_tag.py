@@ -14,7 +14,7 @@ from resume_builder.job_finder import (
 )
 from tools.job_finder.cdp_tag import (
     _apply,
-    _foreign_country_policy,
+    _country_selection_policy,
     _load_capture,
     _parser,
     _validate_layout,
@@ -100,7 +100,7 @@ def test_foreign_country_flags_require_remote_and_exclude_home_country():
         ]
     )
 
-    policy = _foreign_country_policy(args)
+    policy = _country_selection_policy(args)
 
     assert policy is not None
     assert policy.selected_countries == ("Australia", "Canada")
@@ -121,7 +121,27 @@ def test_foreign_country_flags_reject_home_country():
     )
 
     with pytest.raises(SystemExit, match="home country"):
-        _foreign_country_policy(args)
+        _country_selection_policy(args)
+
+
+def test_country_selection_can_include_philippines_when_human_selects_it():
+    args = _parser().parse_args(
+        [
+            "api-plan",
+            "--target-country",
+            "Philippines",
+            "--target-country",
+            "Australia",
+            "--work-mode",
+            "remote",
+        ]
+    )
+
+    policy = _country_selection_policy(args)
+
+    assert policy is not None
+    assert policy.selected_countries == ("Philippines", "Australia")
+    assert not policy.exclude_home_country
 
 
 def test_apply_uses_captured_html_and_strict_rules(tmp_path, monkeypatch):

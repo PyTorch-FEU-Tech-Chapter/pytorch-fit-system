@@ -11,32 +11,35 @@ def _country_key(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.casefold())
 
 
-class ForeignCountryPolicy(BaseModel):
-    """Allow only explicitly human-selected countries outside the user's home country."""
+class CountrySelectionPolicy(BaseModel):
+    """Allow only explicitly human-selected target countries."""
 
-    home_country: str
     selected_countries: tuple[str, ...]
+    home_country: str = ""
     home_country_aliases: tuple[str, ...] = Field(default_factory=tuple)
+    exclude_home_country: bool = False
     require_remote: bool = True
 
     @model_validator(mode="after")
-    def validate_selection(self) -> ForeignCountryPolicy:
+    def validate_selection(self) -> CountrySelectionPolicy:
         home = self.home_country.strip()
         selected = tuple(dict.fromkeys(country.strip() for country in self.selected_countries))
-        if not home:
-            raise ValueError("home_country must be explicit")
         if not selected or any(not country for country in selected):
             raise ValueError("at least one explicit target country is required")
-        blocked = {
-            _country_key(country)
-            for country in (home, *self.home_country_aliases)
-            if country.strip()
-        }
-        overlap = [country for country in selected if _country_key(country) in blocked]
-        if overlap:
-            raise ValueError(
-                "foreign-only selection includes the home country: " + ", ".join(overlap)
-            )
+        if self.exclude_home_country:
+            if not home:
+                raise ValueError("home_country must be explicit when exclusion is enabled")
+            blocked = {
+                _country_key(country)
+                for country in (home, *self.home_country_aliases)
+                if country.strip()
+            }
+            overlap = [country for country in selected if _country_key(country) in blocked]
+            if overlap:
+                raise ValueError(
+                    "country selection includes an excluded home country: "
+                    + ", ".join(overlap)
+                )
         self.home_country = home
         self.selected_countries = selected
         return self
@@ -50,8 +53,15 @@ class ForeignCountryPolicy(BaseModel):
 
     def planner_constraint(self) -> str:
         countries = ", ".join(self.selected_countries)
-        mode = "remote only; " if self.require_remote else ""
-        return (
-            f"human-selected target countries: {countries}\n"
-            f"{mode}exclude home country: {self.home_country}"
-        )
+        constraints = [f"human-selected target countries only: {countries}"]
+        if self.require_remote:
+            constraints.append("required work mode: remote")
+        if self.exclude_home_country:
+            constraints.append(f"exclude home country: {self.home_country}")
+        return "\n".join(constraints)
+
+
+class ForeignCountryPolicy(CountrySelectionPolicy):
+    """Compatibility policy for runs that explicitly exclude the home country."""
+
+    exclude_home_country: bool = True

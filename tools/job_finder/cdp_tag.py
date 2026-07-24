@@ -25,7 +25,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from resume_builder.job_finder import (  # noqa: E402
     AccessGuard,
-    ForeignCountryPolicy,
+    CountrySelectionPolicy,
     JobListingLayoutStore,
     JobListingPlanner,
     JobListingRun,
@@ -42,17 +42,16 @@ from resume_builder.llm import get_provider  # noqa: E402
 DEFAULT_OUTPUT = ROOT / "out" / "live-job-model"
 
 
-def _foreign_country_policy(args: argparse.Namespace) -> ForeignCountryPolicy | None:
+def _country_selection_policy(args: argparse.Namespace) -> CountrySelectionPolicy | None:
     countries = tuple(args.target_country)
     if not args.foreign_only and not countries:
         return None
-    if not args.foreign_only:
-        raise SystemExit("--target-country requires --foreign-only")
     try:
-        policy = ForeignCountryPolicy(
+        policy = CountrySelectionPolicy(
             home_country=args.home_country,
             home_country_aliases=tuple(args.home_country_alias),
             selected_countries=countries,
+            exclude_home_country=args.foreign_only,
         )
         for country in policy.selected_countries:
             policy.require_allowed(target_country=country, work_mode=args.work_mode)
@@ -69,7 +68,7 @@ def _write(path: Path, content: str) -> None:
 def _capture(args: argparse.Namespace) -> int:
     from playwright.sync_api import sync_playwright
 
-    country_policy = _foreign_country_policy(args)
+    country_policy = _country_selection_policy(args)
     with sync_playwright() as playwright:
         browser = playwright.chromium.connect_over_cdp(args.cdp_url)
         pages = [page for context in browser.contexts for page in context.pages]
@@ -224,7 +223,7 @@ def _apply(args: argparse.Namespace) -> int:
 
 def _api_plan(args: argparse.Namespace) -> int:
     html, capture = _load_capture(args.output_dir)
-    country_policy = _foreign_country_policy(args)
+    country_policy = _country_selection_policy(args)
     layout_store = JobListingLayoutStore(args.output_dir / "rules")
     artifact_store = JobScrapeArtifactStore(args.output_dir / "runs")
     planner = JobListingPlanner(
@@ -282,7 +281,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--foreign-only",
         action="store_true",
-        help="Restrict the run to explicitly human-selected non-home countries.",
+        help="Optionally exclude the home country from the selected country list.",
     )
     parser.add_argument(
         "--home-country",
@@ -299,7 +298,7 @@ def _parser() -> argparse.ArgumentParser:
         "--target-country",
         action="append",
         default=[],
-        help="Human-approved foreign target country; may be repeated.",
+        help="Human-approved target country; may be repeated.",
     )
     parser.add_argument("--force-relearn", action="store_true")
     return parser

@@ -9,7 +9,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from resume_builder.job_finder.country_policy import ForeignCountryPolicy
+from resume_builder.job_finder.country_policy import CountrySelectionPolicy
 
 
 class BatchApplicationStatus(str, Enum):
@@ -78,7 +78,7 @@ class ApplicationBatchCoordinator:
         self,
         *,
         max_parallel: int = 3,
-        country_policy: ForeignCountryPolicy | None = None,
+        country_policy: CountrySelectionPolicy | None = None,
     ) -> None:
         if max_parallel < 1:
             raise ValueError("max_parallel must be at least 1")
