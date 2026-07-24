@@ -22,10 +22,13 @@ from resume_builder.job_application import (  # noqa: E402
     BatchApplicationOutcome,
     BatchApplicationStatus,
     HumanVerificationQueue,
+    ApprovedIndeedQuestionAnswerSet,
     SmartApplyApprovals,
     check_access_gate,
     indeed_batch_outcome,
+    build_approved_indeed_question_plan,
     load_resume_artifact,
+    observe_indeed_screening_questions,
     recommend_role_resume,
     run_indeed_smart_apply_until_gate,
 )
@@ -198,7 +201,22 @@ def _run_application(
         final_submit=True,
     )
     result = None
-    for _ in range(3):
+    approved_questions = None
+    if getattr(args, "approved_answers", None):
+        approved_questions = ApprovedIndeedQuestionAnswerSet.model_validate_json(
+            args.approved_answers.read_text(encoding="utf-8")
+        )
+    for _ in range(8):
+        question_plan = None
+        if (
+            approved_questions is not None
+            and "/questions-module" in urlsplit(str(application_page.url)).path
+        ):
+            observed_questions = observe_indeed_screening_questions(application_page)
+            question_plan = build_approved_indeed_question_plan(
+                observed_questions,
+                approved_questions.matching(observed_questions),
+            )
         result = run_indeed_smart_apply_until_gate(
             application_page,
             resume,
@@ -208,6 +226,7 @@ def _run_application(
             verified_phone=args.verified_phone,
             phone_country_calling_code=args.phone_country_calling_code,
             phone_country_iso=args.phone_country_iso,
+            question_plan=question_plan,
             verification_queue=queue,
             application_reference=job.batch_task().application_reference,
             submission_history=history,
@@ -215,7 +234,14 @@ def _run_application(
             job_title=job.job_title,
             duplicate_window_days=args.duplicate_days,
         )
-        if result.status.value != "gate_reached" or "stop after upload" not in result.stop_reason:
+        repeatable_gate = any(
+            marker in result.stop_reason
+            for marker in (
+                "stop after upload",
+                "next questionnaire page requires fresh inventory and planning",
+            )
+        )
+        if result.status.value != "gate_reached" or not repeatable_gate:
             break
         application_page.wait_for_timeout(2_000)
     if result is None:
@@ -508,6 +534,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--verified-phone", required=True)
     parser.add_argument("--phone-country-calling-code", required=True)
     parser.add_argument("--phone-country-iso", required=True)
+    parser.add_argument(
+        "--approved-answers",
+        type=Path,
+        help="Local exact-label answer profile scoped to an observed question fingerprint.",
+    )
     return parser
 
 

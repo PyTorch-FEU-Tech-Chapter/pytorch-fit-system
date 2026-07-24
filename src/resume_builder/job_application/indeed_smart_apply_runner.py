@@ -134,7 +134,27 @@ def _execute_question_step(page: Any, step: Any) -> None:
         locator.fill(step.value)
     elif step.action == "select":
         locator.wait_for(state="visible")
-        locator.get_by_text(step.value, exact=True).last.click()
+        if locator.get_attribute("role") == "combobox":
+            test_id = locator.get_attribute("data-testid") or ""
+            prefix = test_id.removesuffix("-select-list")
+            locator.click()
+            filter_input = _first(page, f'[data-testid="{prefix}-filter-input"]')
+            filter_input.wait_for(state="visible")
+            filter_input.fill(step.value)
+            options = page.locator(f'[data-testid^="{prefix}-"][role="option"]')
+            matches = [
+                options.nth(index)
+                for index in range(options.count())
+                if options.nth(index).is_visible()
+                and options.nth(index).inner_text().strip() == step.value
+            ]
+            if len(matches) != 1:
+                raise ValueError(
+                    f"expected one visible exact questionnaire option, found {len(matches)}"
+                )
+            matches[0].click()
+        else:
+            locator.get_by_text(step.value, exact=True).last.click()
     elif step.action == "check":
         locator.wait_for(state="visible")
         locator.check()

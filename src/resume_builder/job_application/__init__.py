@@ -123,6 +123,13 @@ from resume_builder.job_application.indeed_batch import (
     indeed_batch_outcome,
     reconcile_indeed_post_apply,
 )
+from resume_builder.job_application.indeed_questionnaire import (
+    ApprovedIndeedQuestionAnswerSet,
+    ApprovedIndeedQuestionAnswers,
+    build_approved_indeed_question_plan,
+    observe_indeed_screening_questions,
+    question_set_fingerprint,
+)
 
 __all__ = [
     "ApplicationPlan",
@@ -217,4 +224,9 @@ __all__ = [
     "indeed_batch_outcome",
     "reconcile_indeed_post_apply",
     "run_indeed_smart_apply_until_gate",
+    "ApprovedIndeedQuestionAnswers",
+    "ApprovedIndeedQuestionAnswerSet",
+    "build_approved_indeed_question_plan",
+    "observe_indeed_screening_questions",
+    "question_set_fingerprint",
 ]
