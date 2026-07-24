@@ -191,7 +191,7 @@ def _wait_for_transition(
     page: Any,
     before: tuple[str, IndeedSmartApplyModule, str],
     *,
-    timeout_ms: int = 5_000,
+    timeout_ms: int = 15_000,
 ) -> tuple[bool, tuple[str, IndeedSmartApplyModule, str]]:
     interval_ms = 250
     attempts = max(1, timeout_ms // interval_ms)
@@ -221,7 +221,7 @@ def _post_apply_is_confirmed(page: Any) -> bool:
     )
 
 
-def _wait_for_post_apply_confirmation(page: Any, *, timeout_ms: int = 5_000) -> bool:
+def _wait_for_post_apply_confirmation(page: Any, *, timeout_ms: int = 15_000) -> bool:
     interval_ms = 250
     attempts = max(1, timeout_ms // interval_ms)
     for _ in range(attempts):
@@ -231,7 +231,7 @@ def _wait_for_post_apply_confirmation(page: Any, *, timeout_ms: int = 5_000) -> 
     return _post_apply_is_confirmed(page)
 
 
-def _wait_for_known_module(page: Any, *, timeout_ms: int = 5_000) -> IndeedSmartApplyModule:
+def _wait_for_known_module(page: Any, *, timeout_ms: int = 15_000) -> IndeedSmartApplyModule:
     interval_ms = 250
     attempts = max(1, timeout_ms // interval_ms)
     for _ in range(attempts):
