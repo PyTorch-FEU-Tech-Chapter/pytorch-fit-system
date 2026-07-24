@@ -48,8 +48,26 @@ def _input_value(page: Any, selector: str) -> str:
 
 
 def _visible_access_blocker(page: Any) -> str:
+    recaptcha_frames = page.locator('iframe[src*="recaptcha"]')
+    for index in range(recaptcha_frames.count()):
+        iframe = recaptcha_frames.nth(index)
+        if not iframe.is_visible():
+            continue
+        src = iframe.get_attribute("src") or ""
+        if "/bframe" in src:
+            return "captcha"
+        handle = iframe.element_handle()
+        frame = handle.content_frame() if handle is not None else None
+        anchor = frame.locator("#recaptcha-anchor") if frame is not None else None
+        if (
+            anchor is not None
+            and anchor.count()
+            and anchor.get_attribute("aria-checked") == "true"
+        ):
+            continue
+        return "captcha"
+
     for selector, reason in (
-        ('iframe[src*="recaptcha"]', "captcha"),
         ('iframe[src*="hcaptcha"]', "captcha"),
         ("[data-testid=challenge-form]", "verification_required"),
     ):
@@ -309,6 +327,39 @@ def run_indeed_smart_apply_until_gate(
                 )
             _execute_action(page, action)
             executed.append(f"{module.value}:{action.action}")
+
+        submitted = any(
+            action.action.lower().strip() == "final_submit"
+            for action in plan.browser_actions
+        )
+        if submitted:
+            if not _wait_for_url_change(page, before_url):
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.FAILED,
+                    module=module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason="submission outcome was not observably confirmed; do not retry",
+                    selected_resume=plan.selected_resume,
+                )
+            next_module = _wait_for_known_module(page)
+            if next_module == IndeedSmartApplyModule.POST_APPLY:
+                return IndeedSmartApplyRunResult(
+                    status=IndeedSmartApplyRunStatus.POST_APPLY,
+                    module=next_module,
+                    modules_seen=seen,
+                    actions_executed=executed,
+                    stop_reason="observable post-apply page reached",
+                    selected_resume=plan.selected_resume,
+                )
+            return IndeedSmartApplyRunResult(
+                status=IndeedSmartApplyRunStatus.FAILED,
+                module=next_module,
+                modules_seen=seen,
+                actions_executed=executed,
+                stop_reason="submit navigated to an unexpected route; do not retry",
+                selected_resume=plan.selected_resume,
+            )
 
         if plan.stop_reason:
             return IndeedSmartApplyRunResult(

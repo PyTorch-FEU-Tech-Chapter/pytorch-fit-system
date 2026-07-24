@@ -2,12 +2,14 @@ from dataclasses import dataclass
 
 from resume_builder.core.models import ContactInfo, Resume, RoleSpec
 from resume_builder.job_application import (
+    ApplicationPermissionPolicy,
     DynamicInteractionStep,
     IndeedSmartApplyRunStatus,
     QuestionPlanningResult,
     SmartApplyApprovals,
     run_indeed_smart_apply_until_gate,
 )
+from resume_builder.job_application.indeed_smart_apply_runner import _visible_access_blocker
 
 
 @dataclass
@@ -247,3 +249,89 @@ def test_runner_executes_one_accepted_question_plan_then_stops_at_review():
     assert result.status == IndeedSmartApplyRunStatus.REVIEW_READY
     assert result.actions_executed == ["questions:select", "questions:click"]
     assert page.states[0].fields["question_answer"] == "No"
+
+
+def test_runner_waits_for_observable_post_apply_after_approved_submit():
+    root = "https://smartapply.indeed.com/beta/indeedapply/form"
+    page = _Page(
+        [
+            _State(f"{root}/review-module", "Submit your application", {}),
+            _State(f"{root}/post-apply", "Your application has been submitted", {}),
+        ]
+    )
+
+    result = run_indeed_smart_apply_until_gate(
+        page,
+        _resume(),
+        approvals=SmartApplyApprovals(final_submit=True),
+        permission_policy=ApplicationPermissionPolicy(
+            autonomous_submit=True,
+            allowed_domains={"smartapply.indeed.com"},
+        ),
+    )
+
+    assert result.status == IndeedSmartApplyRunStatus.POST_APPLY
+    assert result.module.value == "post_apply"
+    assert result.actions_executed == ["review:final_submit"]
+    assert page.index == 1
+
+
+class _RecaptchaLocator:
+    def __init__(self, *, checked: bool):
+        self.checked = checked
+
+    def count(self):
+        return 1
+
+    def nth(self, _index):
+        return self
+
+    def is_visible(self):
+        return True
+
+    def get_attribute(self, name):
+        if name == "src":
+            return "https://www.recaptcha.net/recaptcha/enterprise/anchor"
+        if name == "aria-checked":
+            return "true" if self.checked else "false"
+        return None
+
+    def element_handle(self):
+        return self
+
+    def content_frame(self):
+        return self
+
+    def locator(self, selector):
+        assert selector == "#recaptcha-anchor"
+        return self
+
+
+class _EmptyLocator:
+    @property
+    def first(self):
+        return self
+
+    def count(self):
+        return 0
+
+    def inner_text(self):
+        return "Review your application"
+
+
+class _RecaptchaPage:
+    def __init__(self, *, checked: bool):
+        self.anchor = _RecaptchaLocator(checked=checked)
+
+    def locator(self, selector):
+        if selector == 'iframe[src*="recaptcha"]':
+            return self.anchor
+        return _EmptyLocator()
+
+
+def test_completed_recaptcha_anchor_is_not_an_active_blocker():
+    assert _visible_access_blocker(_RecaptchaPage(checked=True)) == ""
+
+
+def test_unchecked_recaptcha_anchor_requires_human_handoff():
+    assert _visible_access_blocker(_RecaptchaPage(checked=False)) == "captcha"
