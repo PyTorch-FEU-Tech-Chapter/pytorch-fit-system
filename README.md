@@ -1,189 +1,161 @@
-# PyTorch FIT System — AI Career Intelligence Platform
+# PyTorch FIT System
 
-The canonical product frontend is [`apps/portal`](apps/portal/README.md). Run `npm run setup` once,
-then `npm run dev` for the member site, officer site, local Supabase, automatic synthetic sessions,
-and Prefect. See the [repository architecture](docs/ARCHITECTURE.md) and
-[Process Lab guide](development/process-lab/README.md).
+**Purpose:** AI career-intelligence platform for collecting, normalizing, and deriving outputs from verified career evidence.
 
-Local runtime data has one ignored home: `var/`. Durable SQLite state and browser sessions stay
-there; `out/` is reserved for human-reviewable screenshots, reports, and exports. Override these
-roots with `PYTORCH_FIT_VAR_ROOT` and `PYTORCH_FIT_ARTIFACT_ROOT`.
+**Canonical model:** Normalized Career Database (NCD) = source of truth. Résumés, profiles, portfolios, analytics, and recommendations are derived artifacts.
 
-> Built by the **PyTorch FEU Institute of Technology (FEU Tech) Student Chapter**.
-> 📖 **Master spec (NotebookLM source of truth):** [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md)
-> 🗂️ **Delegation backlog / board:** [`docs/TASKS.md`](docs/TASKS.md)
+## Quick start
 
-This is **not** just an AI resume builder. It is a **Career Intelligence Platform** that collects
-a user's career information, normalizes it into a single career database, and *generates*
-everything else from it — resumes, public profiles, portfolios, analytics, and AI suggestions.
+Prerequisites: Node.js `>=22.13.0 <25`, Docker Desktop, npm.
 
-## The one principle
+```powershell
+npm run setup  # first run or dependency refresh
+npm run dev    # portal + local Supabase + synthetic sessions + Prefect
+```
 
-> **The source of truth is the Normalized Career Database — never the résumé.**
+Endpoints:
 
-A résumé, a PDF, a Facebook post, a LinkedIn profile — these are inputs or disposable outputs.
-The database is the truth. One database → unlimited industry-targeted resumes and views.
+- Member portal: `http://members.localhost:3000`
+- Officer portal: `http://officers.localhost:3000`
+- Prefect: `http://127.0.0.1:4200`
 
-## AI evidence output: results that explain themselves
+Runtime paths:
 
-AI interpretation produces strict JSON—not loose prose. Each evidence record separates outcomes
-from its takeaway:
+- `var/`: durable SQLite state, browser sessions, environments, caches, bounded logs
+- `out/`: human-reviewable screenshots, reports, exports
+- Overrides: `PYTORCH_FIT_VAR_ROOT`, `PYTORCH_FIT_ARTIFACT_ROOT`
+
+Canonical references:
+
+- [Product specification](docs/SPECIFICATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Task backlog](docs/TASKS.md)
+- [Portal](apps/portal/README.md)
+- [Process Lab](development/process-lab/README.md)
+- [Agent operating policy](AGENTS.md)
+
+## Architecture
+
+```text
+Next.js/Vercel
+  -> Supabase Auth
+  -> PostgreSQL + Row Level Security (RLS)
+  -> Normalized Career Database
+  -> AI processing
+  -> derived résumés, profiles, portfolios, analytics, recommendations
+```
+
+MVP: serverless Next.js + Supabase. Future server boundary: verification, AI queues, scheduled jobs, payments.
+
+| Layer | Data | Access |
+|---|---|---|
+| Auth | users, profiles, roles | policy-controlled |
+| Raw | posts, certificates, projects, history | private via RLS |
+| Normalized | experiences, skills, projects, industries | private via RLS |
+| Generated | résumés, summaries, recommendations | derived/disposable |
+| Analytics | metrics, trends, leaderboards | aggregated/anonymous |
+
+Privacy classes:
+
+- **Private:** owner only.
+- **Public profile:** curated fields; excludes email, phone, raw posts, certificates, full résumés.
+- **Aggregated analytics:** anonymous.
+- Enforcement boundary: database [Row Level Security (RLS)](https://supabase.com/docs/guides/database/postgres/row-level-security), not UI-only checks.
+
+## AI evidence contract
+
+AI interpretation MUST return strict JSON:
 
 ```json
 {
   "results": {
-    "quantitative": [
-      "Reduced processing time from 10 min to 2 min: 8 min saved/run; 80% faster.",
-      "Context: the measured workflow completes in one-fifth of the original time."
-    ],
-    "qualitative": [
-      "Replaced a manual workflow with repeatable automation.",
-      "Context: fewer handoffs; easier operation for non-developers."
-    ]
+    "quantitative": ["metric + exact value + context + plain-language meaning"],
+    "qualitative": ["problem solved + beneficiary/system effect + demonstrated capability"]
   },
-  "conclusion": "Demonstrates end-to-end automation work that converts a slow manual process into a faster, reusable system."
+  "conclusion": "evidence-grounded value + strongest demonstrated capability"
 }
 ```
 
-- `quantitative`: sourced metric + exact value + context + plain-language meaning; no invented or
-  extrapolated numbers.
-- `qualitative`: non-numeric value—problem solved, beneficiary/system effect, difficulty, ownership,
-  or capability demonstrated.
-- `conclusion`: concise synthesis of value created + strongest evidence-backed capability; no hype.
+Constraints:
 
-Result explanations add context without rewriting an already-good sentence. Missing meaning becomes
-a separate short sentence or bullet—not a longer original sentence. Syntax stays compact—lists, `:`,
-`-`, `,`, `()`—so tokens carry evidence rather than connector words.
+- Never invent, estimate, alter, or extrapolate metrics.
+- Preserve an already-effective evidence sentence; add missing context as a separate short item.
+- Keep normalized `skill_subtags` atomic for matching and deduplication.
+- Resume JSON uses `skill_groups[]`: platform/language `name` + evidenced framework/library `items[]`.
+- Renderers compute skill-grid columns from content and usable width; no fixed column count.
+- Chromium bounds analysis and actual PDF page count determine one-page fit.
 
-Skills remain atomic in normalized data for reliable matching. Resume JSON adds a display hierarchy
-with names only: `JavaScript → ReactJS, React Native, Vue`; `Python → PyTorch, FastAPI`. Libraries and
-frameworks provide the context—no explanatory skill prose or unsupported proficiency labels.
-Renderers compute skill columns from the actual labels and usable page width, then verify the final
-injection using Chromium bounds and PDF page count. Unrelated tools must not be forced into a group.
+## Web automation
 
-## Architecture (MVP)
+Systems remain separate: evidence scraping, job discovery, application form filling.
 
-```mermaid
-flowchart TD
-    FE[Next.js on Vercel] --> Auth[Supabase Auth]
-    Auth --> DB[(Supabase Postgres + RLS)]
-    DB --> NCD[Normalized Career Database]
-    NCD --> AI[AI Processing]
-    AI --> OUT[Generated: resume · profile · analytics]
-    OUT --> FE
+Pipeline:
+
+1. Access gate: stop on CAPTCHA, Cloudflare, `403`, `429`, login, or verification.
+2. Bounded rendered-DOM inventory.
+3. Provider-neutral HTTP model API produces strict JSON rules once per layout.
+4. Cache key: exact `subdomain + layout fingerprint`.
+5. Deterministic code replay; no repeated model call for a confident cached layout.
+6. Human gate for low confidence, sensitive judgment, uploads, Continue, Review, and final Submit unless an explicit domain-scoped policy authorizes the action.
+
+Permission model: domain-scoped `ApplicationPermissionPolicy`; conservative defaults. `autonomous_submit` applies only to its configured domain and still requires validation plus observable confirmation.
+
+Safety invariants:
+
+- No CAPTCHA/anti-bot bypass, stealth plugin, fingerprint spoofing, solver, proxy rotation, or identity rotation.
+- Preserve explicit `work_mode`: `remote | hybrid | onsite | any`; never infer or broaden it.
+- Treat contact data and job geography as independent inputs.
+- Inventory complete application questionnaire containers and nested fields.
+- Recommend only existing role-specific résumés; require human review before upload or progression.
+- Fail closed on missing required data, unknown questionnaires, access/layout drift, Review, and final Submit without the matching scoped approval.
+- A confirmed exact `company + job title` blocks duplicate submission for 30 days.
+- Confirmation providers: observable browser proof, explicit manual confirmation, or an authorized optional email adapter. Never store mailbox bodies, credentials, cookies, or unrelated messages.
+- Persistent confirmation ledger: `var/state/job-applications/submissions.sqlite3`.
+
+Adapters:
+
+- Indeed and JobStreet: deterministic adapter only when required live selectors/capabilities match.
+- Indeed Smart Apply: preserve matching contact fields; derive names from the selected résumé; use only runtime-verified phone data; re-observe after each module transition.
+- Layout drift or unknown domain: bounded inventory -> AI plan -> cached deterministic replay.
+- Production execution: headless.
+- Development overlays: `/out/`; exact executable rules only.
+- Application executor: text, selections, checkboxes, approved safe clicks, and approved résumé upload; required-field validation; explicit failure on unsafe or unsupported actions.
+- Mock-ATS Chromium integration test covers draft-ready and confirmed-submission outcomes.
+- CDP harnesses: `tools/job_finder/cdp_tag.py`, `tools/job_finder/application_cdp_tag.py`.
+- Indeed history reconciliation: `tools/job_finder/sync_indeed_applied.py`.
+- Cross-site application checks: `legacy/python/resume_builder/job_application/shared/`.
+
+Full invariants: [Agent operating policy](AGENTS.md).
+
+## Repository state
+
+The active platform is the fresh Next.js + Supabase implementation. The Python résumé engine under [`legacy/python/resume_builder/`](legacy/python/resume_builder/README.md) is a proven, non-production parity reference during migration.
+
+GitHub evidence collection is runtime-user-driven and website-first. `gh` is an optional development backend; no account identifier is hardcoded.
+
+## Verification
+
+```powershell
+npm run typecheck
+npm test
+npm run build
 ```
 
-Serverless for the MVP (Vercel + Supabase). A backend (verification, AI queue, scheduled jobs,
-payments) is a future phase. Full detail: [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
+Scraper cost benchmark: [`tests/benchmarks/scraper_token_cost/`](tests/benchmarks/scraper_token_cost/README.md).
 
-## Data layers (summary)
+Recorded benchmark facts:
 
-| Layer | Purpose | Visibility |
-|---|---|---|
-| 1 — Auth | users, profiles, roles | — |
-| 2 — Raw inputs | posts, certs, projects, history | private (RLS) |
-| 3 — Normalized | experiences, skills, projects, industries… | private (RLS) |
-| 4 — Generated | resumes, summaries, recommendations | derived / disposable |
-| 5 — Analytics | metrics, trends, leaderboards | aggregated / anonymous |
+- Five live `quotes.toscrape.com` pages; `tiktoken cl100k_base` tokenization.
+- Strict DOM fingerprint: two layouts; pages 3-5 cache hits.
+- Accumulating agent context: modeled `O(N²)`; isolated calls and pipeline: modeled `O(N)`.
+- Pipeline token slope: approximately `15x` smaller than isolated calls plus bounded `O(L)` layout-learning cost.
+- Modeled crossover: approximately six pages.
+- Scope: measured page/fingerprint data plus an explicit complexity model; not provider billing.
 
-## Privacy
+## Contribution contract
 
-Three levels — **Private** (owner only), **Public Profile** (curated fields only), **Aggregated
-Analytics** (anonymous). Enforced with **Row Level Security** at the database, not just the UI.
-Public profiles never expose email, phone, raw posts, certificates, or full resumes.
+1. Read the [product specification](docs/SPECIFICATION.md).
+2. Select work from the [task backlog](docs/TASKS.md).
+3. Require human review for every AI-generated artifact before shipment.
 
-## Status — pivot in progress
-
-This repository is moving from a single-output **résumé builder** to the multi-user
-**platform** described above. Decision: **start fresh** on Next.js + Supabase rather than
-incrementally refactor the old Python CLI.
-
-### Legacy reference engine (Python)
-
-The prior résumé pipeline still lives here as a **proven blueprint** for the AI Processing layer
-— do not treat it as the running platform:
-
-- Code: [`legacy/python/resume_builder/`](legacy/python/resume_builder/README.md) (module-level READMEs + diagrams)
-- Architecture docs: [`docs/departments/`](docs/departments/README.md)
-- How it maps to the new platform: [`docs/SPECIFICATION.md` §18](docs/SPECIFICATION.md)
-
-GitHub evidence collection is runtime-user-driven and website-first: public profile/repository pages
-are sampled through the same access-gated approach used by other profile sources. No personal
-username is hardcoded. `gh` CLI collection remains an optional local-development backend only.
-
-### Job finder: deterministic known sites, learned unknown sites
-
-Job discovery keeps access checks, listing extraction, and application filling as separate
-boundaries. Indeed and JobStreet use code-specific adapters when their required rendered controls
-still match. Every other domain—or a known site whose layout has drifted—uses bounded rendered-DOM
-sampling, one strict AI planning pass, and deterministic replay cached by subdomain + layout
-fingerprint.
-
-Work mode is an explicit constraint: `remote`, `hybrid`, `onsite`, or `any`. An adapter translates
-it only from observable site capabilities. For example, Indeed may put `remote` in the location
-field when that live field advertises remote support; this does not imply that `hybrid` is a valid
-location value. Unsupported or missing controls stop or fall back to sampling rather than silently
-changing the requested mode.
-
-Detailed development flow: [`legacy/python/resume_builder/job_finder/README.md`](legacy/python/resume_builder/job_finder/README.md).
-
-### Job application sender: tested execution boundary
-
-The legacy Python engine now has a deterministic browser executor for accepted application JSON:
-
-- Auto-fill: text, selections, checkboxes, safe clicks, resume upload.
-- Dynamic pages: replay approved read-only interactions from the cached layout plan.
-- Draft validation: missing information stops for human input; unsupported or unsafe actions fail
-  closed.
-- Indeed Smart Apply: check each contact field before editing, reconcile names from the selected
-  resume, and obtain phone only from runtime-verified contact data; never infer or hardcode it.
-- Sequential Smart Apply runs re-check each module and stop at resume preview, unknown questions,
-  access/layout drift, Review, and final Submit unless the corresponding scoped approval is present.
-- Role-specific resumes: upload and Continue are separate approvals; only actual professional
-  experience may populate employment fields.
-- Final send: always blocked until the user gives explicit approval for that application.
-- Confirmation: after approval, click once; wait for the planned confirmation selector; record the
-  visible reference/message without storing cookies or credentials.
-
-An actual headless-Chromium integration test uses a local mock ATS. It verifies both outcomes:
-resume attached + draft ready without approval; submitted + confirmation captured with approval.
-This is assisted sending for one genuine application—not unattended bulk application blasting.
-
-Submission history intentionally records confirmation, not employer decisions such as accepted or
-rejected. An exact company + job-title confirmation prevents another submission for 30 days, then
-the role becomes eligible again. Confirmation is resolved at the end through an abstract provider:
-observable browser proof, an explicit statement from the user, or a separately authorized email
-adapter. The email option is not required and does not grant mailbox access by itself.
-Normal application runs use `var/state/job-applications/submissions.sqlite3`; visible Indeed history can be
-reconciled from an approved Chrome session with
-`python tools/job_finder/sync_indeed_applied.py`.
-Reusable cross-site checks live in `legacy/python/resume_builder/job_application/shared/`: access/challenge
-classification, final-submit readiness, and configurable role-specific resume matching. Website
-adapters provide only their verified selectors, routes, and profile configuration.
-
-### Scraper token-cost benchmark
-
-The saved benchmark in [`tests/benchmarks/scraper_token_cost/`](tests/benchmarks/scraper_token_cost/README.md)
-compares naive agent tool-calling against the `AgenticCrawler` pipeline.
-
-Measured evidence:
-
-- Captured five live `quotes.toscrape.com` pages and tokenized them with `tiktoken cl100k_base`.
-- The strict DOM fingerprint split pages 1-5 into exactly two layouts; pages 3-5 were cache hits.
-- Agent tool-calling with accumulating context is modeled as O(N^2), while best-case isolated agent calls and the pipeline are O(N).
-- The pipeline has a roughly 15x smaller per-page token slope than best-case isolated agent calls, plus a bounded O(L) layout-learning term.
-- Crossover is about six pages: below that, the agent has lower fixed overhead; above it, the pipeline wins and the gap widens.
-
-Caveat: the benchmark is explicit about what is measured versus modeled. It does not claim live
-provider billing; it locks in the complexity model and measured page/fingerprint data so future
-scraper changes cannot silently invalidate the token-cost argument.
-
-## Contributing (chapter members)
-
-1. Read [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) end to end.
-2. Find your role workstream in §17 and your open tasks in [`docs/TASKS.md`](docs/TASKS.md).
-3. Every AI-generated artifact passes a **human-in-the-loop** review before it ships.
-
-## License
-
-See repository for license details.
+License: see repository license metadata.
