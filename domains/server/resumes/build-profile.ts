@@ -28,14 +28,14 @@ export function resumeProfileFromEvidence(
     location: identity.location || "",
     summary: identity.summary || "Career profile generated from user-approved normalized evidence.",
     experience: approved
-      .filter((item) => item.role)
+      .filter((item) => item.evidenceKind === "experience" && item.role)
       .map((item) => ({
         title: item.role,
         organization: item.organization,
         dateLabel: item.dateLabel,
         bullets: [item.description, ...item.quantitative, ...item.qualitative].filter(Boolean),
       })),
-    projects: approved.map((item) => ({
+    projects: approved.filter((item) => item.evidenceKind !== "experience").map((item) => ({
       title: item.title,
       summary: item.description,
       bullets: [...item.quantitative, ...item.qualitative],

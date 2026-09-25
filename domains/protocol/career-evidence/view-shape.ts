@@ -56,6 +56,7 @@ export type EvidenceSource = {
 export type EvidenceItem = {
   id: string;
   sourceId: string;
+  evidenceKind?: "experience" | "project";
   collectionOrigin?: "manual" | "upload" | "automated_scrape" | "legacy_unknown";
   title: string;
   organization: string;

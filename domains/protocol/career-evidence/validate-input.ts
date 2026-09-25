@@ -25,13 +25,15 @@ export function validatedEvidenceItem(value: unknown, options: { id?: string; ap
   const mediaUrl = text(item.mediaUrl, 4_000, "/demo/evidence/manual-placeholder.svg");
   if (!(mediaUrl.startsWith("/") || mediaUrl.startsWith("https://"))) throw new Error("Evidence media URL is invalid.");
   const confidence = typeof item.confidence === "number" && Number.isFinite(item.confidence) ? Math.max(0, Math.min(100, Math.round(item.confidence))) : undefined;
+  const evidenceKind = item.evidenceKind === "experience" ? "experience" as const : "project" as const;
   return {
     id: options.id || text(item.id, 100),
     sourceId,
+    evidenceKind,
     collectionOrigin,
     title,
     organization: text(item.organization, 200),
-    role: text(item.role, 200),
+    role: evidenceKind === "experience" ? text(item.role, 200) : "",
     dateLabel: text(item.dateLabel, 100),
     description: text(item.description, 5_000),
     quantitative: strings(item.quantitative),

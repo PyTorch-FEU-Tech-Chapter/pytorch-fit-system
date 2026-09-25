@@ -272,6 +272,7 @@ function EvidenceDialog({
   const form = useForm<EvidenceFormValues>({
     resolver: zodResolver(evidenceFormSchema),
     defaultValues: {
+      evidenceKind: item.evidenceKind || "project",
       title: item.title,
       organization: item.organization,
       role: item.role,
@@ -386,6 +387,17 @@ function EvidenceDialog({
         </div>
         <div className="space-y-4">
           <div>
+            <Label htmlFor="evidence-kind">Evidence type</Label>
+            <select
+              className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+              id="evidence-kind"
+              {...form.register("evidenceKind")}
+            >
+              <option value="project">Personal project</option>
+              <option value="experience">Professional experience</option>
+            </select>
+          </div>
+          <div>
             <Label htmlFor="evidence-title">Achievement title</Label>
             <Input
               id="evidence-title"
@@ -400,13 +412,12 @@ function EvidenceDialog({
                 {...form.register("organization")}
               />
             </div>
-            <div>
-              <Label htmlFor="evidence-role">Role</Label>
-              <Input
-                id="evidence-role"
-                {...form.register("role")}
-              />
-            </div>
+            {values.evidenceKind === "experience" && (
+              <div>
+                <Label htmlFor="evidence-role">Professional position</Label>
+                <Input id="evidence-role" {...form.register("role")} />
+              </div>
+            )}
           </div>
           <div>
             <Label htmlFor="evidence-date">Date</Label>
@@ -518,9 +529,10 @@ function EvidenceDialog({
                 try {
                   await onSave({
                     ...draft,
+                    evidenceKind: formValues.evidenceKind || "project",
                     title: formValues.title,
                     organization: formValues.organization,
-                    role: formValues.role,
+                    role: formValues.evidenceKind === "experience" ? formValues.role : "",
                     dateLabel: formValues.dateLabel,
                     description: formValues.description,
                     skills: formValues.skillsText

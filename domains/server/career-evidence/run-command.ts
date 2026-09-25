@@ -62,7 +62,7 @@ export async function createEvidence(userId: string, input: EvidenceCreateInput)
     id,
     user_id: userId,
     source_id: sourceId,
-    evidence_kind: input.sourceId === "manual" ? "project" : "project",
+    evidence_kind: input.evidenceKind || "project",
     label: input.title,
     normalized_value: input.description,
     is_verified: input.verificationState === "user_verified",
@@ -99,6 +99,7 @@ export async function updateEvidence(userId: string, item: EvidenceItem): Promis
   const { error } = await client.from("career_evidence_items").update({
     label: item.title,
     normalized_value: item.description,
+    evidence_kind: item.evidenceKind || "project",
     is_verified: item.verificationState === "user_verified",
     title: item.title,
     organization: item.organization,

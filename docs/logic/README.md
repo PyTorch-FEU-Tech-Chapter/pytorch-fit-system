@@ -8,6 +8,7 @@ when the change crosses that boundary.
 |---|---|---|
 | `client-automation.evidence-extension` | MV3 presence, access gate, inventory, replay, preview | [`client-automation/evidence-extension.md`](client-automation/evidence-extension.md) |
 | `career-evidence.ingestion` | Untrusted evidence envelope, dedupe, rubric, point authority | [`career-evidence/ingestion.md`](career-evidence/ingestion.md) |
+| `career-evidence.resume-injection` | Evidence-kind classification and resume section injection | [`career-evidence/resume-injection.md`](career-evidence/resume-injection.md) |
 | `career-evidence.integrity-review` | Officer flash cards, sanctions, appeals, audit | [`career-evidence/integrity-review-and-appeals.md`](career-evidence/integrity-review-and-appeals.md) |
 | `privacy-feedback.operational-events` | Automatic minimal telemetry and opt-in details | [`privacy-feedback/operational-events.md`](privacy-feedback/operational-events.md) |
 | `leaderboards.verification-views` | Verified/provisional projections and points-only ordering | [`leaderboards/verification-views.md`](leaderboards/verification-views.md) |
