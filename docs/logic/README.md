@@ -7,7 +7,6 @@ when the change crosses that boundary.
 | Logic ID | Decision boundary | Document |
 |---|---|---|
 | `client-automation.evidence-extension` | MV3 presence, access gate, inventory, replay, preview | [`client-automation/evidence-extension.md`](client-automation/evidence-extension.md) |
-| `community.website-preview` | Synthetic PyTorch PH community page, sample roles, and channel recommendations | [`community/website-preview.md`](community/website-preview.md) |
 | `career-evidence.ingestion` | Untrusted evidence envelope, dedupe, rubric, point authority | [`career-evidence/ingestion.md`](career-evidence/ingestion.md) |
 | `career-evidence.resume-injection` | Evidence-kind classification and resume section injection | [`career-evidence/resume-injection.md`](career-evidence/resume-injection.md) |
 | `career-evidence.integrity-review` | Officer flash cards, sanctions, appeals, audit | [`career-evidence/integrity-review-and-appeals.md`](career-evidence/integrity-review-and-appeals.md) |
