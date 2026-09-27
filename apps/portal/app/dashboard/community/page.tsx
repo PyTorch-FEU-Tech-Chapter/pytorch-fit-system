@@ -16,7 +16,7 @@ const bandDescription: Record<string, string> = {
   mentor: "Guide and review others",
 };
 
-export default function CommunityDemoPage() {
+export function CommunityDemoContent() {
   const [profileId, setProfileId] = useState("beginner");
   const [interests, setInterests] = useState<string[]>(["interest-learn"]);
   const [showAll, setShowAll] = useState(false);
@@ -29,8 +29,7 @@ export default function CommunityDemoPage() {
     setInterests((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key]);
   }
 
-  return <AppShell>
-    <div className="space-y-6 pb-10">
+  return <div className="space-y-6 pb-10">
       <section className="overflow-hidden rounded-3xl border border-accent/25 bg-[radial-gradient(circle_at_90%_10%,rgba(232,89,12,.27),transparent_38%),linear-gradient(130deg,#1c1818,#101013)] p-6 lg:p-9">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl">
@@ -79,6 +78,9 @@ export default function CommunityDemoPage() {
           <Card className="bg-surface"><div className="flex items-center gap-2"><Bell className="text-accent" size={18}/><h2 className="font-bold">Launch approach</h2></div><p className="mt-2 text-sm leading-6 text-muted">Discord's own Onboarding, Server Guide, forums, and AutoMod keep the setup familiar. The custom PyTorch PH app would handle website-linked roles in a later phase.</p><Badge className="mt-4" variant="warning">Preview only</Badge></Card>
         </div>
       </section>
-    </div>
-  </AppShell>;
+  </div>;
+}
+
+export default function CommunityDemoPage() {
+  return <AppShell><CommunityDemoContent /></AppShell>;
 }
