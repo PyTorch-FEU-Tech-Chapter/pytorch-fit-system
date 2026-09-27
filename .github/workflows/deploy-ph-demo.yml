@@ -1,0 +1,50 @@
+name: Deploy PyTorch PH demo to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pytorch-ph-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: fit
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: PyTorchPH/PyTorchPH.github.io
+          ref: 40b0f3a70d1ef4a6ca3900d30cab8f3c68639ffc
+          path: ph
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ph/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: ph
+      - run: node fit/development/pages-demo/prepare-fit-export.mjs ph
+      - run: npm run build --workspace @pytorch-ph/pages-demo
+        working-directory: ph
+      - run: touch ph/apps/pages-demo/out/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ph/apps/pages-demo/out
+      - id: deployment
+        uses: actions/deploy-pages@v4

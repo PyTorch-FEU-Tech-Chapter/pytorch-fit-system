@@ -3,7 +3,6 @@ logic_id: community.website-preview
 code_paths:
   - apps/portal/app/dashboard/community
   - apps/portal/app/community-preview
-  - apps/community-preview-pages
   - domains/client/navigation/render-shell.tsx
 tests:
   - apps/portal/tests/community-demo.test.ts
@@ -27,8 +26,9 @@ Verification checks the seven default channels, absence of staff channels, inter
 recommendations, and the credential-based mentor sample. A later integration must replace the
 sample data with reviewed server-side access decisions; this page is not an authorization source.
 
-GitHub Pages publishes only this synthetic preview from `apps/community-preview-pages` at
-`/pytorch-fit-system/`. The static build reuses `CommunityDemoContent` and the portal theme;
-it has no Next server, login, API, or Discord integration. The workflow builds on `master`
-and deploys `out/community-pages` through GitHub Pages. Relative asset URLs support the
-repository subpath. The full portal remains on its existing host.
+GitHub Pages at `/pytorch-fit-system/` publishes the PyTorch PH static demo from
+`PyTorchPH/PyTorchPH.github.io` commit `40b0f3a70d1ef4a6ca3900d30cab8f3c68639ffc`.
+The FIT workflow builds the same landing page, example login/register, member and officer
+dashboards, events, and leaderboard with a Next.js base path for this repository.
+All demo accounts and records are fictional; Pages does not provide real authentication,
+payments, API writes, or Discord integration. The full FIT portal remains on its existing host.

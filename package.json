@@ -23,7 +23,6 @@
     "dev:manual-login": "node development/local-workspace/start.mjs --manual-login",
     "dev:process-lab": "node development/local-workspace/start-process-lab.mjs",
     "build": "npm run build --workspace @pytorch-fit/portal",
-    "build:community-pages": "node apps/community-preview-pages/build.mjs",
     "start": "npm run start --workspace @pytorch-fit/portal",
     "typecheck": "npm run typecheck --workspace @pytorch-fit/portal",
     "test:boundaries": "node --test tests/node/workspace-boundaries.test.mjs tests/node/logic-doc-contracts.test.mjs tests/node/observability-project.test.mjs tests/node/production-preview.test.mjs",
@@ -32,8 +31,5 @@
     "grades:scrape": "npm run scrape --workspace @pytorch-fit/academic-records --",
     "grades:inject": "npm run inject --workspace @pytorch-fit/academic-records --",
     "test": "npm run test:boundaries && npm run test:portal-hosts --workspace @pytorch-fit/portal && npm run test:capabilities --workspace @pytorch-fit/portal && npm run test:product --workspace @pytorch-fit/portal"
-  },
-  "devDependencies": {
-    "esbuild": "0.28.2"
   }
 }
