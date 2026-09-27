@@ -3,6 +3,7 @@ logic_id: community.website-preview
 code_paths:
   - apps/portal/app/dashboard/community
   - apps/portal/app/community-preview
+  - apps/community-preview-pages
   - domains/client/navigation/render-shell.tsx
 tests:
   - apps/portal/tests/community-demo.test.ts
@@ -25,3 +26,9 @@ member, persist choices, call Discord, assign roles, or enforce access.
 Verification checks the seven default channels, absence of staff channels, interest-only
 recommendations, and the credential-based mentor sample. A later integration must replace the
 sample data with reviewed server-side access decisions; this page is not an authorization source.
+
+GitHub Pages publishes only this synthetic preview from `apps/community-preview-pages` at
+`/pytorch-fit-system/`. The static build reuses `CommunityDemoContent` and the portal theme;
+it has no Next server, login, API, or Discord integration. The workflow builds on `master`
+and deploys `out/community-pages` through GitHub Pages. Relative asset URLs support the
+repository subpath. The full portal remains on its existing host.
