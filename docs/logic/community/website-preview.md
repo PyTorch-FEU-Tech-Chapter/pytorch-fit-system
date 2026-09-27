@@ -27,8 +27,9 @@ recommendations, and the credential-based mentor sample. A later integration mus
 sample data with reviewed server-side access decisions; this page is not an authorization source.
 
 GitHub Pages at `/pytorch-fit-system/` publishes the PyTorch PH static demo from
-`PyTorchPH/PyTorchPH.github.io` commit `40b0f3a70d1ef4a6ca3900d30cab8f3c68639ffc`.
-The FIT workflow builds the same landing page, example login/register, member and officer
-dashboards, events, and leaderboard with a Next.js base path for this repository.
+`PyTorchPH/PyTorchPH.github.io` commit `7082d8ee0620478fefb159cee46ae5947bee6987`, built with
+`PAGES_BASE_PATH=/pytorch-fit-system`. The demo renders the real portal UI—app shell, member
+dashboard, officer command center, career workspaces, events, and leaderboards—from fixtures
+captured from the synthetic local portal, without school-specific text.
 All demo accounts and records are fictional; Pages does not provide real authentication,
 payments, API writes, or Discord integration. The full FIT portal remains on its existing host.

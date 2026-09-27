@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: PyTorchPH/PyTorchPH.github.io
-          ref: 40b0f3a70d1ef4a6ca3900d30cab8f3c68639ffc
+          ref: 7082d8ee0620478fefb159cee46ae5947bee6987
           path: ph
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -38,10 +38,10 @@ jobs:
           cache-dependency-path: ph/package-lock.json
       - run: npm ci --no-audit --no-fund
         working-directory: ph
-      - run: node fit/development/pages-demo/prepare-fit-export.mjs ph
       - run: npm run build --workspace @pytorch-ph/pages-demo
         working-directory: ph
-      - run: touch ph/apps/pages-demo/out/.nojekyll
+        env:
+          PAGES_BASE_PATH: /pytorch-fit-system
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
